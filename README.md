@@ -1,9 +1,9 @@
-# TestRunUI
+# PHPUnit Hub
 
 ![PHP Version](https://img.shields.io/badge/php-8.1%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
-TestRunUI is a modern, real-time web interface for running and analyzing PHPUnit tests. It provides a local, self-contained server that discovers your tests, runs them, and displays the results in a clean and interactive web UI.
+PHPUnit Hub is a modern, real-time web interface for running and analyzing PHPUnit tests. It provides a local, self-contained server that discovers your tests, runs them, and displays the results in a clean and interactive web UI.
 
 The entire application is powered by a PHP backend using the high-performance [ReactPHP](https://reactphp.org/) event loop, with a frontend built on [Vue.js](https://vuejs.org/) and [Tailwind CSS](https://tailwindcss.com/).
 
