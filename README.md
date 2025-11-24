@@ -26,9 +26,8 @@ TestRunUI is designed to be included as a development dependency in your PHP pro
 1.  **Require with Composer**:
     Navigate to your project's root directory and run:
     ```sh
-    composer require --dev your-vendor/phpunit-gui
+    composer require --dev raffaelecarelle/phpunit-hub
     ```
-    *(Note: Replace `raffaelecarelle/phpunit-hub` with the actual package name once published on Packagist.)*
 
 2.  **Ensure PHPUnit is configured**:
     TestRunUI requires a `phpunit.xml` or `phpunit.xml.dist` file in your project's root directory to discover your tests.
@@ -40,7 +39,7 @@ That's it! All dependencies will be installed automatically.
 1.  **Start the Server**:
     From your project's root directory, run the `serve` command:
     ```sh
-    vendor/bin/phpunit-gui
+    vendor/bin/phpunit-hub
     ```
     The server will start, and you will see a confirmation message:
     ```
