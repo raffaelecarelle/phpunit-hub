@@ -7,8 +7,6 @@ PHPUnit Hub is a modern, real-time web interface for running and analyzing PHPUn
 
 The entire application is powered by a PHP backend using the high-performance [ReactPHP](https://reactphp.org/) event loop, with a frontend built on [Vue.js](https://vuejs.org/) and [Tailwind CSS](https://tailwindcss.com/).
 
-![Screenshot of TestRunUI](img.png)
-
 ## Features
 
 - **Real-Time Feedback**: Watch your tests run in real-time via WebSockets.
