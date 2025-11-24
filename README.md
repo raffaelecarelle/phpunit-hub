@@ -19,7 +19,7 @@ The entire application is powered by a PHP backend using the high-performance [R
 
 ## Installation
 
-TestRunUI is designed to be included as a development dependency in your PHP project.
+PHPUnit Hub is designed to be included as a development dependency in your PHP project.
 
 1.  **Require with Composer**:
     Navigate to your project's root directory and run:
@@ -28,7 +28,7 @@ TestRunUI is designed to be included as a development dependency in your PHP pro
     ```
 
 2.  **Ensure PHPUnit is configured**:
-    TestRunUI requires a `phpunit.xml` or `phpunit.xml.dist` file in your project's root directory to discover your tests.
+    PHPUnit Hub requires a `phpunit.xml` or `phpunit.xml.dist` file in your project's root directory to discover your tests.
 
 That's it! All dependencies will be installed automatically.
 
