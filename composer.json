@@ -1,0 +1,39 @@
+{
+    "name": "your-vendor/phpunit-gui",
+    "description": "A modern web UI for running and analyzing PHPUnit tests.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "symfony/console": "^6.0",
+        "symfony/process": "^6.0",
+        "react/http": "^1.8",
+        "cboden/ratchet": "^0.4.4",
+        "react/event-loop": "^1.3",
+        "react/child-process": "^0.6.1",
+        "ramsey/uuid": "^4.7",
+        "symfony/finder": "^6.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "mikey179/vfsstream": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "PHPUnitGUI\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PHPUnitGUI\\Tests\\": "tests/",
+            "App\\Tests\\": "vfs://testRootDir/"
+        }
+    },
+    "bin": ["bin/phpunit-hub"]
+}
