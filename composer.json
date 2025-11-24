@@ -1,12 +1,12 @@
 {
-    "name": "your-vendor/phpunit-gui",
+    "name": "raffaelecarelle/phpunit-hub",
     "description": "A modern web UI for running and analyzing PHPUnit tests.",
     "type": "project",
     "license": "MIT",
     "authors": [
         {
-            "name": "Your Name",
-            "email": "your.email@example.com"
+            "name": "Raffaele Carelle",
+            "email": "raffaele.carelle@gmail.com"
         }
     ],
     "require": {

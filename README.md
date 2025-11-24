@@ -28,7 +28,7 @@ TestRunUI is designed to be included as a development dependency in your PHP pro
     ```sh
     composer require --dev your-vendor/phpunit-gui
     ```
-    *(Note: Replace `your-vendor/phpunit-gui` with the actual package name once published on Packagist.)*
+    *(Note: Replace `raffaelecarelle/phpunit-hub` with the actual package name once published on Packagist.)*
 
 2.  **Ensure PHPUnit is configured**:
     TestRunUI requires a `phpunit.xml` or `phpunit.xml.dist` file in your project's root directory to discover your tests.
@@ -103,4 +103,4 @@ This project is open-source software licensed under the **MIT License**. See the
 
 ---
 
-Copyright (c) 2024 - Your Name
+Copyright (c) 2025 - Raffaele Carelle
