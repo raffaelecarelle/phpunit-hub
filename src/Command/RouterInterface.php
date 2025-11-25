@@ -15,4 +15,16 @@ interface RouterInterface extends HttpServerInterface
      * @return string[]
      */
     public function getLastFilters(): array;
+
+    /**
+     * @return string[]
+     */
+    public function getLastSuites(): array;
+
+    public function getLastGroup(): string;
+
+    /**
+     * @return array<string, bool>
+     */
+    public function getLastOptions(): array;
 }

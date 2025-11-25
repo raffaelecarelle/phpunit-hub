@@ -45,6 +45,14 @@ class Router implements RouterInterface
     /** @var string[] */
     private array $lastFilters = [];
 
+    /** @var string[] */
+    private array $lastSuites = [];
+
+    private string $lastGroup = '';
+
+    /** @var array<string, bool> */
+    private array $lastOptions = [];
+
     // Track the currently running process so we can terminate it
     private ?Process $currentProcess = null;
 
@@ -112,6 +120,9 @@ class Router implements RouterInterface
                     $suites = $payload['suites'] ?? [];
                     $options = $payload['options'] ?? [];
                     $this->lastFilters = $filters;
+                    $this->lastSuites = $suites;
+                    $this->lastGroup = $group;
+                    $this->lastOptions = $options;
                 } else { // /api/run-failed
                     $isRerun = true;
                     if ($this->failedTests === []) {
@@ -247,12 +258,24 @@ class Router implements RouterInterface
         });
     }
 
-    /**
-     * @return string[]
-     */
     public function getLastFilters(): array
     {
         return $this->lastFilters;
+    }
+
+    public function getLastGroup(): string
+    {
+        return $this->lastGroup;
+    }
+
+    public function getLastOptions(): array
+    {
+        return $this->lastOptions;
+    }
+
+    public function getLastSuites(): array
+    {
+        return $this->lastSuites;
     }
 
     /**

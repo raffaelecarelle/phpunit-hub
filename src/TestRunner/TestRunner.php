@@ -80,16 +80,9 @@ class TestRunner
 
     private function camelToKebab(string $input): string
     {
-        // normalizza spazi/underscore -> trattino
         $s = preg_replace('/[_\s]+/', '-', $input);
-
-        // separa sequenze tipo "aA" => "a-A"
         $s = preg_replace('/([a-z\d])([A-Z])/', '$1-$2', (string) $s);
-
-        // separa confini fra acronimi e parole tipo "XMLHttp" => "XML-Http"
         $s = preg_replace('/([A-Z]+)([A-Z][a-z])/', '$1-$2', (string) $s);
-
-        // riduce più trattini e porta tutto a minuscolo
         $s = strtolower((string) preg_replace('/-+/', '-', (string) $s));
 
         return trim($s, '-');
