@@ -94,8 +94,9 @@ class JUnitParser
                     $failureContent = trim((string) $testcase->failure);
                     // If there's additional content (like a stack trace), append it after the message
                     if ($failureContent && $failureContent !== $failureMessage) {
-                        $failureMessage = $failureMessage ? $failureMessage . "\n" . $failureContent : $failureContent;
+                        $failureMessage = $failureMessage !== '' && $failureMessage !== '0' ? $failureMessage . "\n" . $failureContent : $failureContent;
                     }
+
                     $caseData['failure'] = [
                         'type' => (string) $testcase->failure['type'],
                         'message' => $failureMessage,
@@ -108,8 +109,9 @@ class JUnitParser
                     $errorContent = trim((string) $testcase->error);
                     // If there's additional content (like a stack trace), append it after the message
                     if ($errorContent && $errorContent !== $errorMessage) {
-                        $errorMessage = $errorMessage ? $errorMessage . "\n" . $errorContent : $errorContent;
+                        $errorMessage = $errorMessage !== '' && $errorMessage !== '0' ? $errorMessage . "\n" . $errorContent : $errorContent;
                     }
+
                     $caseData['error'] = [
                         'type' => (string) $testcase->error['type'],
                         'message' => $errorMessage,
