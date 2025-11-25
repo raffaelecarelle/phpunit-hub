@@ -21,8 +21,10 @@ class Router implements RouterInterface
 
     private bool $isTestRunning = false;
 
+    /** @var string[] */
     private array $failedTests = [];
 
+    /** @var string[] */
     private array $lastFilters = [];
 
     public function __construct(
@@ -36,7 +38,7 @@ class Router implements RouterInterface
         $this->publicPath = dirname(__DIR__, 2) . '/public';
     }
 
-    public function onOpen(ConnectionInterface $conn, RequestInterface $request = null): void
+    public function onOpen(ConnectionInterface $conn, ?RequestInterface $request = null): void
     {
         $path = $request?->getUri()->getPath();
         $this->output->writeln('Request for ' . $path, OutputInterface::VERBOSITY_VERBOSE);
@@ -49,30 +51,47 @@ class Router implements RouterInterface
         $this->handleHttpRequest($conn, $request);
     }
 
-    private function handleHttpRequest(ConnectionInterface $connection, RequestInterface $request): void
+    private function handleHttpRequest(ConnectionInterface $connection, ?RequestInterface $request): void
     {
-        $path = $request->getUri()->getPath();
-        $method = $request->getMethod();
+        $path = $request?->getUri()->getPath();
+        $method = $request?->getMethod();
         $response = null;
 
         if ($path === '/api/tests' && $method === 'GET') {
             $tests = $this->testDiscoverer->discover();
-            $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($tests));
+            $jsonResponse = json_encode($tests);
+            if ($jsonResponse === false) {
+                $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode tests to JSON.']));
+            } else {
+                $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
+            }
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
             if ($this->isTestRunning) {
-                $response = new GuzzleResponse(429, ['Content-Type' => 'application/json'], json_encode(['error' => 'A test run is already in progress.']));
+                $jsonResponse = json_encode(['error' => 'A test run is already in progress.']);
+                if ($jsonResponse === false) {
+                    $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
+                } else {
+                    $response = new GuzzleResponse(429, ['Content-Type' => 'application/json'], $jsonResponse);
+                }
             } else {
+                /** @var string[] $filters */
                 $filters = [];
                 $isRerun = false;
                 if ($path === '/api/run') {
-                    $body = $request->getBody()->getContents();
-                    $payload = json_decode($body, true) ?? [];
+                    $body = $request?->getBody()->getContents();
+                    $payload = json_decode((string) $body, true) ?? [];
                     $filters = $payload['filters'] ?? [];
                     $this->lastFilters = $filters;
                 } else { // /api/run-failed
                     $isRerun = true;
                     if ($this->failedTests === []) {
-                        $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'No failed tests to run.']));
+                        $jsonResponse = json_encode(['error' => 'No failed tests to run.']);
+                        if ($jsonResponse === false) {
+                            $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
+                        } else {
+                            $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], $jsonResponse);
+                        }
+
                         $this->sendResponse($connection, $response);
                         return;
                     }
@@ -81,7 +100,12 @@ class Router implements RouterInterface
                 }
 
                 $this->runTests($filters, $isRerun);
-                $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], json_encode(['message' => 'Test run started.']));
+                $jsonResponse = json_encode(['message' => 'Test run started.']);
+                if ($jsonResponse === false) {
+                    $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
+                } else {
+                    $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
+                }
             }
         } else {
             $filePath = $this->publicPath . $path;
@@ -101,6 +125,9 @@ class Router implements RouterInterface
         $this->sendResponse($connection, $response);
     }
 
+    /**
+     * @param string[] $filters
+     */
     public function runTests(array $filters, bool $isRerun = false): void
     {
         if ($this->isTestRunning) {
@@ -113,11 +140,22 @@ class Router implements RouterInterface
         $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
         $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
 
-        $this->statusHandler->broadcast(json_encode(['type' => 'start', 'runId' => $runId]));
+        $jsonBroadcast = json_encode(['type' => 'start', 'runId' => $runId]);
+        if ($jsonBroadcast !== false) {
+            $this->statusHandler->broadcast($jsonBroadcast);
+        } else {
+            $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
+        }
+
         $process = $this->testRunner->run($junitLogfile, $filters);
 
         $process->stdout->on('data', function ($chunk) {
-            $this->statusHandler->broadcast(json_encode(['type' => 'stdout', 'data' => $chunk]));
+            $jsonBroadcast = json_encode(['type' => 'stdout', 'data' => $chunk]);
+            if ($jsonBroadcast !== false) {
+                $this->statusHandler->broadcast($jsonBroadcast);
+            } else {
+                $this->output->writeln('<error>Failed to encode stdout message to JSON for broadcast.</error>');
+            }
         });
 
         $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
@@ -133,14 +171,11 @@ class Router implements RouterInterface
 
                 if (!$isRerun && $parsedResults !== null) {
                     $currentRunFailedTests = [];
-                    if (isset($parsedResults['suites'])) {
-                        foreach ($parsedResults['suites'] as $suite) {
-                            if (isset($suite['testcases'])) {
-                                foreach ($suite['testcases'] as $testcase) {
-                                    if (in_array($testcase['status'], ['failed', 'error'])) {
-                                        $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
-                                    }
-                                }
+                    // PHPStan knows 'suites' and 'testcases' always exist due to JUnitParser::parse return type
+                    foreach ($parsedResults['suites'] as $suite) {
+                        foreach ($suite['testcases'] as $testcase) {
+                            if (in_array($testcase['status'], ['failed', 'error'])) {
+                                $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
                             }
                         }
                     }
@@ -151,17 +186,26 @@ class Router implements RouterInterface
                 unlink($junitLogfile);
             }
 
-            $this->statusHandler->broadcast(json_encode([
+            $jsonBroadcast = json_encode([
                 'type' => 'exit',
                 'runId' => $runId,
                 'exitCode' => $exitCode,
                 'results' => $parsedResults,
-            ]));
+            ]);
+
+            if ($jsonBroadcast !== false) {
+                $this->statusHandler->broadcast($jsonBroadcast);
+            } else {
+                $this->output->writeln('<error>Failed to encode exit message to JSON for broadcast.</error>');
+            }
 
             $this->isTestRunning = false;
         });
     }
 
+    /**
+     * @return string[]
+     */
     public function getLastFilters(): array
     {
         return $this->lastFilters;

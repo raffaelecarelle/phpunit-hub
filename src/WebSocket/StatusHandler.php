@@ -10,6 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class StatusHandler implements MessageComponentInterface
 {
+    /** @var SplObjectStorage<ConnectionInterface, mixed> */
     private readonly SplObjectStorage $connections;
 
     public function __construct(private readonly ?OutputInterface $output = null)
@@ -20,6 +21,8 @@ class StatusHandler implements MessageComponentInterface
     public function onOpen(ConnectionInterface $conn): void
     {
         $this->connections->attach($conn);
+        /** @var \Ratchet\WebSocket\WsConnection $conn */
+        // @phpstan-ignore-next-line
         $this->output?->writeln(sprintf('New connection! (%s)', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }
 
@@ -31,6 +34,8 @@ class StatusHandler implements MessageComponentInterface
     public function onClose(ConnectionInterface $conn): void
     {
         $this->connections->detach($conn);
+        /** @var \Ratchet\WebSocket\WsConnection $conn */
+        // @phpstan-ignore-next-line
         $this->output?->writeln(sprintf('Connection %s has disconnected', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }
 

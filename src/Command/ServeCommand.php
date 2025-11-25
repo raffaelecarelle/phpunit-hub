@@ -11,6 +11,7 @@ use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
 use React\ChildProcess\Process;
 use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 use React\Socket\SocketServer;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -33,7 +34,7 @@ class ServeCommand extends Command
         $watch = $input->getOption('watch');
 
         $loop = Loop::get();
-        $statusHandler = new StatusHandler();
+        $statusHandler = new StatusHandler($output); // Pass $output here
         $router = new Router(
             new WsServer($statusHandler),
             $output,
@@ -63,7 +64,7 @@ class ServeCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function startFileWatcher(Loop $loop, OutputInterface $output, RouterInterface $router): void
+    private function startFileWatcher(LoopInterface $loop, OutputInterface $output, RouterInterface $router): void
     {
         // Check for inotifywait availability
         $checkProcess = new Process('command -v inotifywait');
@@ -129,9 +130,11 @@ class ServeCommand extends Command
                     if (trim($line) === '') {
                         continue;
                     }
+
                     if (!str_ends_with(strtolower($line), '.php')) {
                         continue;
                     }
+
                     $output->writeln(sprintf('<comment>File change detected: %s</comment>', $line));
                 }
 

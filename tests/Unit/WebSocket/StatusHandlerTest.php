@@ -16,6 +16,9 @@ class StatusHandlerTest extends TestCase
         $this->statusHandler = new StatusHandler();
     }
 
+    /**
+     * @return \SplObjectStorage<ConnectionInterface, mixed>
+     */
     private function getConnections(): \SplObjectStorage
     {
         $reflectionClass = new ReflectionClass($this->statusHandler);
@@ -23,9 +26,11 @@ class StatusHandlerTest extends TestCase
         return $reflectionProperty->getValue($this->statusHandler);
     }
 
-    public function testOnOpenAttachesConnection()
+    public function testOnOpenAttachesConnection(): void
     {
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn */
         $conn = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn->resourceId = 1; // Mock the property
 
         $this->assertCount(0, $this->getConnections());
@@ -33,9 +38,11 @@ class StatusHandlerTest extends TestCase
         $this->assertCount(1, $this->getConnections());
     }
 
-    public function testOnCloseDetachesConnection()
+    public function testOnCloseDetachesConnection(): void
     {
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn */
         $conn = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn->resourceId = 1; // Mock the property
 
         $this->statusHandler->onOpen($conn);
@@ -45,13 +52,17 @@ class StatusHandlerTest extends TestCase
         $this->assertCount(0, $this->getConnections());
     }
 
-    public function testBroadcastSendsToAllConnections()
+    public function testBroadcastSendsToAllConnections(): void
     {
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn1 */
         $conn1 = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn1->resourceId = 1;
         $conn1->expects($this->once())->method('send')->with('Hello World');
 
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn2 */
         $conn2 = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn2->resourceId = 2;
         $conn2->expects($this->once())->method('send')->with('Hello World');
 
@@ -61,13 +72,17 @@ class StatusHandlerTest extends TestCase
         $this->statusHandler->broadcast('Hello World');
     }
 
-    public function testBroadcastDoesNotSendToClosedConnections()
+    public function testBroadcastDoesNotSendToClosedConnections(): void
     {
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn1 */
         $conn1 = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn1->resourceId = 1;
         $conn1->expects($this->once())->method('send')->with('Still here');
 
+        /** @var ConnectionInterface&\PHPUnit\Framework\MockObject\MockObject $conn2 */
         $conn2 = $this->createMock(ConnectionInterface::class);
+        // @phpstan-ignore-next-line
         $conn2->resourceId = 2;
         $conn2->expects($this->never())->method('send');
 

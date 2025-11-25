@@ -60,7 +60,7 @@ class JUnitParser
         // This is a more robust way to get to the actual test suites.
         $testSuitesWithCases = $xml->xpath('//testsuite[testcase]');
 
-        if ($testSuitesWithCases === false) {
+        if (!is_array($testSuitesWithCases)) { // Changed from === false
             $testSuitesWithCases = [];
         }
 

@@ -63,11 +63,16 @@ class TestDiscoverer
             return [];
         }
 
-        $xml = new SimpleXMLElement(file_get_contents($this->configFile));
+        $fileContents = file_get_contents($this->configFile);
+        if ($fileContents === false) {
+            throw new Exception(sprintf('Could not read config file: %s', $this->configFile));
+        }
+
+        $xml = new SimpleXMLElement($fileContents);
         $suites = [];
         $suiteNodes = $xml->xpath('//testsuites/testsuite');
 
-        if ($suiteNodes === false) {
+        if (!is_array($suiteNodes)) { // Changed from === false
             return [];
         }
 
@@ -99,16 +104,21 @@ class TestDiscoverer
      */
     private function parseTestDirectories(string $configFile): array
     {
-        $xml = new SimpleXMLElement(file_get_contents($configFile));
+        $fileContents = file_get_contents($configFile);
+        if ($fileContents === false) {
+            throw new Exception(sprintf('Could not read config file: %s', $configFile));
+        }
+
+        $xml = new SimpleXMLElement($fileContents);
         $directories = [];
         $dirNodes = $xml->xpath('//testsuite/directory');
 
-        if ($dirNodes === false) {
+        if (!is_array($dirNodes)) { // Changed from === false
             return [];
         }
 
         foreach ($dirNodes as $dirNode) {
-            $fullPath = $this->projectRoot . '/' . $dirNode;
+            $fullPath = $this->projectRoot . '/' . $dirNode; // Corrected variable name
             if (is_dir($fullPath)) {
                 $directories[] = $fullPath;
             }
@@ -146,6 +156,7 @@ class TestDiscoverer
                 if (!$reflection->isInstantiable()) {
                     continue;
                 }
+
                 if (!$reflection->isSubclassOf(TestCase::class)) {
                     continue;
                 }
@@ -180,6 +191,10 @@ class TestDiscoverer
     private function getClassNameFromFile(string $filePath): ?string
     {
         $content = file_get_contents($filePath);
+        if ($content === false) {
+            return null;
+        }
+
         if (preg_match('/^namespace\s+([^;]+);/m', $content, $namespaceMatches) &&
             preg_match('/^class\s+([^{\s]+)/m', $content, $classMatches)) {
             return trim($namespaceMatches[1]) . '\\' . $classMatches[1];

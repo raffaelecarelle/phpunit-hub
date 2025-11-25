@@ -16,7 +16,7 @@ class TestDiscovererTest extends TestCase
         $this->vfsStreamDirectory = vfsStream::setup('testRootDir');
     }
 
-    public function testDiscoverFindsTests()
+    public function testDiscoverFindsTests(): void
     {
         // 1. Create virtual file system respecting PSR-4
         $testContent = <<<PHP_WRAP
@@ -48,8 +48,9 @@ class TestDiscovererTest extends TestCase
         $results = $testDiscoverer->discover();
 
         // 3. Assert results
-        $this->assertCount(1, $results, 'Should discover exactly one test suite.');
-        $suite = $results[0];
+        $this->assertArrayHasKey('suites', $results);
+        $this->assertCount(1, $results['suites'], 'Should discover exactly one test suite.');
+        $suite = $results['suites'][0]; // Accessing the first suite after checking count
         $this->assertEquals('App\Tests\MyFirstTest', $suite['id']);
         $this->assertEquals('MyFirstTest', $suite['name']);
         $this->assertCount(2, $suite['methods'], 'Should discover two test methods.');
@@ -57,14 +58,14 @@ class TestDiscovererTest extends TestCase
         $this->assertEquals('testAnotherThing', $suite['methods'][1]['name']);
     }
 
-    public function testDiscoverHandlesNoConfigFile()
+    public function testDiscoverHandlesNoConfigFile(): void
     {
         $testDiscoverer = new TestDiscoverer($this->vfsStreamDirectory->url());
         $results = $testDiscoverer->discover();
-        $this->assertEmpty($results);
+        $this->assertEmpty($results['suites']); // Check the 'suites' key specifically
     }
 
-    public function testDiscoverIgnoresNonTestClasses()
+    public function testDiscoverIgnoresNonTestClasses(): void
     {
         $nonTestContent = <<<PHP
             <?php
@@ -82,6 +83,6 @@ class TestDiscovererTest extends TestCase
         $testDiscoverer = new TestDiscoverer($this->vfsStreamDirectory->url());
         $results = $testDiscoverer->discover();
 
-        $this->assertEmpty($results);
+        $this->assertEmpty($results['suites']); // Check the 'suites' key specifically
     }
 }

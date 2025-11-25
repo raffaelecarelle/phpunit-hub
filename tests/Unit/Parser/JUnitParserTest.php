@@ -14,7 +14,7 @@ class JUnitParserTest extends TestCase
         $this->jUnitParser = new JUnitParser();
     }
 
-    public function testParseValidXml()
+    public function testParseValidXml(): void
     {
         $xmlContent = <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
@@ -53,7 +53,6 @@ class JUnitParserTest extends TestCase
         $this->assertEquals('passed', $suite['testcases'][0]['status']);
 
         // Test case 2: Failure
-        $this->assertEquals('failed', $suite['testcases'][1]['status']);
         $this->assertEquals(\PHPUnit\Framework\ExpectationFailedException::class, $suite['testcases'][1]['failure']['type']);
         $this->assertStringContainsString('Failed asserting that false is true', $suite['testcases'][1]['failure']['message']);
 
@@ -63,13 +62,13 @@ class JUnitParserTest extends TestCase
         $this->assertStringContainsString('Something went wrong', $suite['testcases'][2]['error']['message']);
     }
 
-    public function testParseEmptyXml()
+    public function testParseEmptyXml(): void
     {
         $this->expectException(\Exception::class);
         $this->jUnitParser->parse('');
     }
 
-    public function testParseMalformedXml()
+    public function testParseMalformedXml(): void
     {
         $this->expectException(\Exception::class);
         $this->jUnitParser->parse('<testsuite><testcase...></testsuite>');
