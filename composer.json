@@ -10,7 +10,7 @@
         }
     ],
     "require": {
-        "php": "^8.1",
+        "php": ">=8.2",
         "symfony/console": "^6.0",
         "symfony/process": "^6.0",
         "react/http": "^1.8",
