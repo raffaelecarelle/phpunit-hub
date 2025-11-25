@@ -1,9 +1,9 @@
 <?php
 
-namespace PHPUnitGUI\Tests\Discoverer;
+namespace PhpUnitHub\Tests\Discoverer;
 
 use PHPUnit\Framework\TestCase;
-use PHPUnitGUI\Discoverer\TestDiscoverer;
+use PhpUnitHub\Discoverer\TestDiscoverer;
 use Symfony\Component\Filesystem\Filesystem;
 
 class TestDiscovererTest extends TestCase

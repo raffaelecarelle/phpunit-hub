@@ -1,11 +1,11 @@
 <?php
 
-namespace PHPUnitGUI\Command;
+namespace PhpUnitHub\Command;
 
-use PHPUnitGUI\Discoverer\TestDiscoverer;
-use PHPUnitGUI\Parser\JUnitParser;
-use PHPUnitGUI\TestRunner\TestRunner;
-use PHPUnitGUI\WebSocket\StatusHandler;
+use PhpUnitHub\Discoverer\TestDiscoverer;
+use PhpUnitHub\Parser\JUnitParser;
+use PhpUnitHub\TestRunner\TestRunner;
+use PhpUnitHub\WebSocket\StatusHandler;
 use Ratchet\Http\HttpServer;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;

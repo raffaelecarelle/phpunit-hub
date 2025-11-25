@@ -1,6 +1,6 @@
 <?php
 
-namespace PHPUnitGUI\TestRunner;
+namespace PhpUnitHub\TestRunner;
 
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;

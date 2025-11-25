@@ -1,13 +1,13 @@
 <?php
 
-namespace PHPUnitGUI\Tests\Command;
+namespace PhpUnitHub\Tests\Command;
 
 use PHPUnit\Framework\TestCase;
-use PHPUnitGUI\Command\Router;
-use PHPUnitGUI\Parser\JUnitParser;
-use PHPUnitGUI\Discoverer\TestDiscoverer;
-use PHPUnitGUI\TestRunner\TestRunner;
-use PHPUnitGUI\WebSocket\StatusHandler;
+use PhpUnitHub\Command\Router;
+use PhpUnitHub\Parser\JUnitParser;
+use PhpUnitHub\Discoverer\TestDiscoverer;
+use PhpUnitHub\TestRunner\TestRunner;
+use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Ratchet\ConnectionInterface;

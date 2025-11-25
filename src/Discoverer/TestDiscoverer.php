@@ -1,6 +1,6 @@
 <?php
 
-namespace PHPUnitGUI\Discoverer;
+namespace PhpUnitHub\Discoverer;
 
 use Exception;
 use PHPUnit\Framework\TestCase;

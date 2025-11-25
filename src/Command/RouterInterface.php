@@ -1,6 +1,6 @@
 <?php
 
-namespace PHPUnitGUI\Command;
+namespace PhpUnitHub\Command;
 
 use Ratchet\Http\HttpServerInterface;
 

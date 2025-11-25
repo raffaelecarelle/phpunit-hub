@@ -1,6 +1,6 @@
 <?php
 
-namespace PHPUnitGUI\WebSocket;
+namespace PhpUnitHub\WebSocket;
 
 use Exception;
 use Ratchet\ConnectionInterface;

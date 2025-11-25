@@ -1,10 +1,10 @@
 <?php
 
-namespace PHPUnitGUI\Tests\Parser;
+namespace PhpUnitHub\Tests\Parser;
 
 use Exception;
 use PHPUnit\Framework\TestCase;
-use PHPUnitGUI\Parser\JUnitParser;
+use PhpUnitHub\Parser\JUnitParser;
 
 class JUnitParserTest extends TestCase
 {

@@ -1,14 +1,14 @@
 <?php
 
-namespace PHPUnitGUI\Command;
+namespace PhpUnitHub\Command;
 
 use Exception;
 use GuzzleHttp\Psr7\Message;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
-use PHPUnitGUI\Discoverer\TestDiscoverer;
-use PHPUnitGUI\Parser\JUnitParser;
-use PHPUnitGUI\TestRunner\TestRunner;
-use PHPUnitGUI\WebSocket\StatusHandler;
+use PhpUnitHub\Discoverer\TestDiscoverer;
+use PhpUnitHub\Parser\JUnitParser;
+use PhpUnitHub\TestRunner\TestRunner;
+use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
 use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;

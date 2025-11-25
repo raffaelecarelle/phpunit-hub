@@ -1,11 +1,11 @@
 <?php
 
-namespace PHPUnitGUI\Tests\WebSocket;
+namespace PhpUnitHub\Tests\WebSocket;
 
 use Exception;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use PHPUnitGUI\WebSocket\StatusHandler;
+use PhpUnitHub\WebSocket\StatusHandler;
 use Ratchet\ConnectionInterface;
 use SplObjectStorage;
 use Symfony\Component\Console\Output\OutputInterface;

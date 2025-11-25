@@ -32,13 +32,12 @@
     },
     "autoload": {
         "psr-4": {
-            "PHPUnitGUI\\": "src/"
+            "PhpUnitHub\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "PHPUnitGUI\\Tests\\": "tests/",
-            "App\\Tests\\": "vfs://testRootDir/"
+            "PhpUnitHub\\Tests\\": "tests/"
         }
     },
     "bin": ["bin/phpunit-hub"],

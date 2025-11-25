@@ -1,6 +1,6 @@
 <?php
 
-namespace PHPUnitGUI\Parser;
+namespace PhpUnitHub\Parser;
 
 use Exception;
 use SimpleXMLElement;
