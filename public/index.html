@@ -406,10 +406,12 @@
                         updateFavicon('neutral');
                         // Mark UI as running
                         isRunning.value = true;
+                        stopPending.value = false;
                         break;
                     case 'stopped':
                         output.value.push(`<span class="text-yellow-300">Test run stopped by user.</span>`);
                         isRunning.value = false;
+                        stopPending.value = false;
                         runningTestId.value = null;
                         updateFavicon('neutral');
                         break;
@@ -487,6 +489,7 @@
                             updateFavicon('neutral');
                         }
                         isRunning.value = false;
+                        stopPending.value = false;
                         runningTestId.value = null;
                         activeTab.value = 'results';
                         break;

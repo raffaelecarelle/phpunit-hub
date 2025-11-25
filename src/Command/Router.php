@@ -214,7 +214,9 @@ class Router implements RouterInterface
                 $this->output->writeln('<error>Failed to encode exit message to JSON for broadcast.</error>');
             }
 
-            $this->notify($exitCode, $parsedResults, $runId);
+            if ($exitCode) {
+                $this->notify($exitCode, $parsedResults, $runId);
+            }
 
             // Clear running process/runId state
             $this->currentProcess = null;
