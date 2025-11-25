@@ -2,40 +2,41 @@
 
 namespace PHPUnitGUI\WebSocket;
 
+use Exception;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
 use SplObjectStorage;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class StatusHandler implements MessageComponentInterface
 {
-    private SplObjectStorage $connections;
+    private readonly SplObjectStorage $connections;
 
-    public function __construct()
+    public function __construct(private readonly ?OutputInterface $output = null)
     {
         $this->connections = new SplObjectStorage();
     }
 
     public function onOpen(ConnectionInterface $conn): void
     {
-        $this->connections[$conn] = true;
-        echo "New connection! ({$conn->resourceId})\n";
+        $this->connections->attach($conn);
+        $this->output?->writeln(sprintf('New connection! (%s)', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }
 
     public function onMessage(ConnectionInterface $from, $msg): void
     {
         // For now, we don't handle incoming messages from clients
-        echo sprintf('Received message from %s: %s%s', $from->resourceId, $msg, PHP_EOL);
     }
 
     public function onClose(ConnectionInterface $conn): void
     {
-        unset($this->connections[$conn]);
-        echo "Connection {$conn->resourceId} has disconnected\n";
+        $this->connections->detach($conn);
+        $this->output?->writeln(sprintf('Connection %s has disconnected', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e): void
+    public function onError(ConnectionInterface $conn, Exception $e): void
     {
-        echo sprintf('An error has occurred: %s%s', $e->getMessage(), PHP_EOL);
+        $this->output?->writeln(sprintf('An error has occurred: %s', $e->getMessage()), OutputInterface::VERBOSITY_VERBOSE);
         $conn->close();
     }
 

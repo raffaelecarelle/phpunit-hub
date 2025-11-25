@@ -8,6 +8,34 @@ use SimpleXMLElement;
 class JUnitParser
 {
     /**
+     * @return array{
+     *     suites: array<array{
+     *         name: string,
+     *         tests: int,
+     *         assertions: int,
+     *         failures: int,
+     *         errors: int,
+     *         time: float,
+     *         testcases: array<array{
+     *             name: string,
+     *             class: string,
+     *             file: string,
+     *             line: int,
+     *             assertions: int,
+     *             time: float,
+     *             status: string,
+     *             failure: ?array{type: string, message: string},
+     *             error: ?array{type: string, message: string}
+     *         }>
+     *     }>,
+     *     summary: array{
+     *         tests: int,
+     *         assertions: int,
+     *         failures: int,
+     *         errors: int,
+     *         time: float
+     *     }
+     * }
      * @throws Exception
      */
     public function parse(string $xmlContent): array
@@ -31,6 +59,10 @@ class JUnitParser
         // Find all <testsuite> elements that contain <testcase> elements, regardless of nesting level.
         // This is a more robust way to get to the actual test suites.
         $testSuitesWithCases = $xml->xpath('//testsuite[testcase]');
+
+        if ($testSuitesWithCases === false) {
+            $testSuitesWithCases = [];
+        }
 
         foreach ($testSuitesWithCases as $testSuiteWithCase) {
             $suiteData = [

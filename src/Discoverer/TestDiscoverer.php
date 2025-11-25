@@ -2,7 +2,10 @@
 
 namespace PHPUnitGUI\Discoverer;
 
+use Exception;
+use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionMethod;
 use SimpleXMLElement;
 use Symfony\Component\Finder\Finder;
@@ -16,15 +19,33 @@ class TestDiscoverer
         $this->configFile = $this->findConfigFile();
     }
 
+    /**
+     * @return array{
+     *     suites: array<array{
+     *         id: string,
+     *         name: string,
+     *         namespace: string,
+     *         methods: array<array{
+     *             id: string,
+     *             name: string
+     *         }>
+     *     }>,
+     *     availableSuites: string[]
+     * }
+     */
     public function discover(): array
     {
         if (!$this->configFile) {
             return ['suites' => [], 'availableSuites' => []];
         }
 
-        $testDirectories = $this->parseTestDirectories($this->configFile);
-        $foundTests = $testDirectories === [] ? [] : $this->findTestsInDirectories($testDirectories);
-        $availableSuites = $this->discoverSuites();
+        try {
+            $testDirectories = $this->parseTestDirectories($this->configFile);
+            $foundTests = $testDirectories === [] ? [] : $this->findTestsInDirectories($testDirectories);
+            $availableSuites = $this->discoverSuites();
+        } catch (Exception) {
+            return ['suites' => [], 'availableSuites' => []];
+        }
 
         return [
             'suites' => $foundTests,
@@ -32,6 +53,10 @@ class TestDiscoverer
         ];
     }
 
+    /**
+     * @return string[]
+     * @throws Exception
+     */
     public function discoverSuites(): array
     {
         if (!$this->configFile) {
@@ -40,7 +65,13 @@ class TestDiscoverer
 
         $xml = new SimpleXMLElement(file_get_contents($this->configFile));
         $suites = [];
-        foreach ($xml->xpath('//testsuites/testsuite') as $suiteNode) {
+        $suiteNodes = $xml->xpath('//testsuites/testsuite');
+
+        if ($suiteNodes === false) {
+            return [];
+        }
+
+        foreach ($suiteNodes as $suiteNode) {
             $suites[] = (string) $suiteNode['name'];
         }
 
@@ -62,13 +93,22 @@ class TestDiscoverer
         return null;
     }
 
+    /**
+     * @return string[]
+     * @throws Exception
+     */
     private function parseTestDirectories(string $configFile): array
     {
         $xml = new SimpleXMLElement(file_get_contents($configFile));
         $directories = [];
-        // We look for all directories inside any testsuite to discover individual tests
-        foreach ($xml->xpath('//testsuite/directory') as $dir) {
-            $fullPath = $this->projectRoot . '/' . $dir;
+        $dirNodes = $xml->xpath('//testsuite/directory');
+
+        if ($dirNodes === false) {
+            return [];
+        }
+
+        foreach ($dirNodes as $dirNode) {
+            $fullPath = $this->projectRoot . '/' . $dirNode;
             if (is_dir($fullPath)) {
                 $directories[] = $fullPath;
             }
@@ -77,6 +117,18 @@ class TestDiscoverer
         return array_unique($directories);
     }
 
+    /**
+     * @param string[] $directories
+     * @return array<array{
+     *      id: string,
+     *      name: string,
+     *      namespace: string,
+     *      methods: array<array{
+     *          id: string,
+     *          name: string
+     *      }>
+     *  }>
+     */
     private function findTestsInDirectories(array $directories): array
     {
         $finder = new Finder();
@@ -94,8 +146,7 @@ class TestDiscoverer
                 if (!$reflection->isInstantiable()) {
                     continue;
                 }
-
-                if (!$reflection->isSubclassOf(\PHPUnit\Framework\TestCase::class)) {
+                if (!$reflection->isSubclassOf(TestCase::class)) {
                     continue;
                 }
 
@@ -117,7 +168,7 @@ class TestDiscoverer
                         'methods' => $methods,
                     ];
                 }
-            } catch (\ReflectionException) {
+            } catch (ReflectionException) {
                 // Could not autoload the class, skip it.
                 continue;
             }
@@ -128,41 +179,14 @@ class TestDiscoverer
 
     private function getClassNameFromFile(string $filePath): ?string
     {
-        $tokens = token_get_all(file_get_contents($filePath));
-        $namespace = '';
-        $class = '';
-        $counter = count($tokens);
-
-        for ($i = 0; $i < $counter; $i++) {
-            if ($tokens[$i][0] === T_NAMESPACE) {
-                $namespace = ''; // Reset for each namespace statement
-                for ($j = $i + 1; $j < count($tokens); $j++) {
-                    if ($tokens[$j] === ';') {
-                        break;
-                    }
-
-                    if (is_array($tokens[$j])) {
-                        $namespace .= $tokens[$j][1];
-                    }
-                }
-            }
-
-            if ($tokens[$i][0] === T_CLASS) {
-                for ($j = $i + 1; $j < count($tokens); $j++) {
-                    if ($tokens[$j] === '{') {
-                        $class = $tokens[$i + 2][1];
-                        break 2;
-                    }
-                }
-            }
+        $content = file_get_contents($filePath);
+        if (preg_match('/^namespace\s+([^;]+);/m', $content, $namespaceMatches) &&
+            preg_match('/^class\s+([^{\s]+)/m', $content, $classMatches)) {
+            return trim($namespaceMatches[1]) . '\\' . $classMatches[1];
         }
 
-        if ($namespace && $class) {
-            return trim($namespace) . '\\' . $class;
-        }
-
-        if ($class !== '' && $class !== '0') {
-            return $class;
+        if (preg_match('/^class\s+([^{\s]+)/m', $content, $classMatches)) {
+            return $classMatches[1];
         }
 
         return null;
