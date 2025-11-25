@@ -31,7 +31,7 @@ function phpstan(): int
 #[\Castor\Attribute\AsTask]
 function rector(): int
 {
-        return exit_code(dockerize('vendor/bin/rector process src --dry-run --clear-cache'));
+        return exit_code(dockerize('vendor/bin/rector'));
 }
 
 #[\Castor\Attribute\AsTask]
