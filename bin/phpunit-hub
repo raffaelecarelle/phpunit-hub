@@ -1,7 +1,23 @@
 #!/usr/bin/env php
 <?php
 
-require __DIR__.'/../vendor/autoload.php';
+// Autoloader for standalone or composer dependency
+(static function () {
+    $autoloadPaths = [
+        __DIR__.'/../vendor/autoload.php', // Standalone
+        __DIR__.'/../../../autoload.php',   // Composer dependency
+    ];
+
+    foreach ($autoloadPaths as $file) {
+        if (file_exists($file)) {
+            require $file;
+            return;
+        }
+    }
+
+    fwrite(STDERR, 'Install dependencies using Composer.'.PHP_EOL);
+    exit(1);
+})();
 
 use PHPUnitGUI\Command\ServeCommand;
 use Symfony\Component\Console\Application;
