@@ -29,6 +29,12 @@ class Router implements RouterInterface
     /** @var string[] */
     private array $lastFilters = [];
 
+    // Track the currently running process so we can terminate it
+    private ?Process $currentProcess = null;
+
+    // Current run id for broadcasting stop events
+    private ?string $currentRunId = null;
+
     public function __construct(
         private readonly HttpServerInterface $httpServer,
         private readonly OutputInterface $output,
@@ -109,6 +115,9 @@ class Router implements RouterInterface
                     $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
                 }
             }
+        } elseif ($path === '/api/stop' && $method === 'POST') {
+            // Handle stop requests
+            $response = $this->stopTests();
         } else {
             $filePath = $this->publicPath . $path;
             if ($path === '/') {
@@ -139,6 +148,7 @@ class Router implements RouterInterface
 
         $this->isTestRunning = true;
         $runId = Uuid::uuid4()->toString();
+        $this->currentRunId = $runId;
         $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
         $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
 
@@ -150,6 +160,9 @@ class Router implements RouterInterface
         }
 
         $process = $this->testRunner->run($junitLogfile, $filters);
+
+        // Keep a reference so we can terminate later
+        $this->currentProcess = $process;
 
         $process->stdout->on('data', function ($chunk) {
             $jsonBroadcast = json_encode(['type' => 'stdout', 'data' => $chunk]);
@@ -203,6 +216,9 @@ class Router implements RouterInterface
 
             $this->notify($exitCode, $parsedResults, $runId);
 
+            // Clear running process/runId state
+            $this->currentProcess = null;
+            $this->currentRunId = null;
             $this->isTestRunning = false;
         });
     }
@@ -213,6 +229,69 @@ class Router implements RouterInterface
     public function getLastFilters(): array
     {
         return $this->lastFilters;
+    }
+
+    /**
+     * Attempt to stop the currently running test process.
+     */
+    private function stopTests(): GuzzleResponse
+    {
+        if (!$this->isTestRunning || !$this->currentProcess instanceof \React\ChildProcess\Process) {
+            $json = json_encode(['error' => 'No test run in progress.']);
+            if ($json === false) {
+                return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
+            }
+
+            return new GuzzleResponse(400, ['Content-Type' => 'application/json'], $json);
+        }
+
+        try {
+            $this->currentProcess->terminate();
+        } catch (Exception $exception) {
+            $this->output->writeln(sprintf('<error>Failed to terminate process: %s</error>', $exception->getMessage()));
+            $json = json_encode(['error' => 'Failed to terminate running tests.']);
+            if ($json === false) {
+                return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
+            }
+
+            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], $json);
+        }
+
+        // Broadcast a stopped message immediately so the UI can react quickly
+        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $this->currentRunId]);
+        if ($jsonBroadcast !== false) {
+            $this->statusHandler->broadcast($jsonBroadcast);
+        }
+
+        // If the process doesn't exit within a short timeout, force-kill it (SIGKILL)
+        try {
+            $timeoutSeconds = 2.0;
+            Loop::get()->addTimer($timeoutSeconds, function () {
+                // If still running, force kill
+                if ($this->currentProcess instanceof \React\ChildProcess\Process && $this->currentProcess->isRunning()) {
+                    $sigkill = defined('SIGKILL') ? SIGKILL : 9;
+                    try {
+                        $this->currentProcess->terminate($sigkill);
+                        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $this->currentRunId, 'forced' => true]);
+                        if ($jsonBroadcast !== false) {
+                            $this->statusHandler->broadcast($jsonBroadcast);
+                        }
+                    } catch (Exception $e) {
+                        $this->output->writeln(sprintf('<error>Failed to force-kill process: %s</error>', $e->getMessage()));
+                    }
+                }
+            });
+        } catch (Exception $exception) {
+            // If scheduling the timer fails for any reason, just log it and continue
+            $this->output->writeln(sprintf('<error>Failed to schedule force-kill timer: %s</error>', $exception->getMessage()));
+        }
+
+        $json = json_encode(['message' => 'Stop requested.']);
+        if ($json === false) {
+            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
+        }
+
+        return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
     }
 
     private function sendResponse(ConnectionInterface $connection, GuzzleResponse $guzzleResponse): void

@@ -73,6 +73,7 @@ class ServeCommand extends Command
         $output->writeln("API endpoint available at GET /api/tests");
         $output->writeln("API endpoint available at POST /api/run");
         $output->writeln("API endpoint available at POST /api/run-failed");
+        $output->writeln("API endpoint available at POST /api/stop");
         $output->writeln("WebSocket server listening on /ws/status");
         $output->writeln("Serving static files from 'public' directory");
 

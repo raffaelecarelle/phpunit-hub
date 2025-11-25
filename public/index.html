@@ -24,6 +24,12 @@
         .status-failed, .status-error { background-color: #EF4444; }
         .test-name { color: #d1d5db; }
         .test-time { font-size: 0.8em; color: #9ca3af; }
+        /* Sort arrow animation */
+        .sort-arrow { display: inline-block; transition: transform 220ms cubic-bezier(.4,0,.2,1), opacity 220ms ease; transform-origin: center; }
+        .sort-arrow.none { opacity: 0.7; transform: rotate(0deg) scale(1); }
+        /* asc: arrow up (no rotation), desc: arrow down (rotated 180deg) */
+        .sort-arrow.asc { opacity: 1; transform: rotate(0deg) scale(1); }
+        .sort-arrow.desc { opacity: 1; transform: rotate(180deg) scale(1); }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
@@ -72,9 +78,24 @@
             <button @click="runFailedTests" :disabled="isRunning || !hasFailedTests" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
                 Run Failed
             </button>
-            <button @click="runAllTests" :disabled="isRunning" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
-                <span v-if="isRunning">Running...</span>
-                <span v-else>Run All Tests</span>
+            <button @click="togglePlayStop" :title="isRunning ? 'Stop test run' : 'Run all tests'" :disabled="stopPending" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-60">
+                <span v-if="stopPending">Stopping...</span>
+                <template v-else>
+                    <span v-if="!isRunning">
+                        <!-- Play icon -->
+                        <svg v-if="!isRunning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
+                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                        </svg>
+                        <span v-if="!isRunning" class="ml-2 align-middle">Run</span>
+                    </span>
+                    <span v-else>
+                        <!-- Stop icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
+                            <path d="M6 6h8v8H6z" />
+                        </svg>
+                        <span class="ml-2 align-middle">Stop</span>
+                    </span>
+                </template>
             </button>
         </div>
     </header>
@@ -163,11 +184,44 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
+                                <th @click="toggleSortTime" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer select-none">
+                                    <div class="flex items-center space-x-2">
+                                        <span>Time</span>
+                                        <span class="inline-block w-4 h-4 text-gray-300">
+                                            <span :class="['sort-arrow', sortOrder === null ? 'none' : (sortOrder === 'asc' ? 'asc' : 'desc') ]">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M5 12l5-5 5 5H5z"/></svg>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </th>
+                             </tr>
+                             </thead>
+                             <tbody class="divide-y divide-gray-700">
+                            <!-- Toolbar: status filter pills + global view toggle -->
+                            <tr class="bg-gray-800">
+                                <td colspan="3" class="px-6 py-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <button @click="statusFilters.passed = !statusFilters.passed" :class="['px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2', statusFilters.passed ? 'bg-green-600 text-white shadow' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
+                                                <span class="w-2 h-2 rounded-full bg-green-300 inline-block"></span>
+                                                <span>Passed</span>
+                                                <span class="ml-2 text-xs opacity-80">({{ statusCounts.passed }})</span>
+                                            </button>
+                                            <button @click="statusFilters.failed = !statusFilters.failed" :class="['px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2', statusFilters.failed ? 'bg-red-600 text-white shadow' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
+                                                <span class="w-2 h-2 rounded-full bg-red-300 inline-block"></span>
+                                                <span>Failed</span>
+                                                <span class="ml-2 text-xs opacity-80">({{ statusCounts.failed }})</span>
+                                            </button>
+                                            <button @click="statusFilters.error = !statusFilters.error" :class="['px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2', statusFilters.error ? 'bg-yellow-500 text-black shadow' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
+                                                <span class="w-2 h-2 rounded-full bg-yellow-300 inline-block"></span>
+                                                <span>Error</span>
+                                                <span class="ml-2 text-xs opacity-80">({{ statusCounts.error }})</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                            <template v-for="suite in results.suites">
+                            <template v-for="suite in resultsView">
                                 <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
                                     <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
                                         <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
@@ -195,6 +249,7 @@
     createApp({
         setup() {
             const isRunning = ref(false);
+            const stopPending = ref(false);
             const activeTab = ref('results');
             const output = ref([]);
             const results = ref(null);
@@ -213,6 +268,9 @@
             const expandedSuites = ref(new Set());
             const runningTestId = ref(null);
             const expandedTestId = ref(null);
+            const statusFilters = reactive({ passed: true, failed: true, error: true });
+            const sortOrder = ref(null); // null | 'asc' | 'desc'
+            const globalView = ref(true);
             let ws = null;
 
             const favicons = {
@@ -220,6 +278,19 @@
                 success: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#10B981"/><polyline points="9 16, 14 21, 23 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
                 failure: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#EF4444"/><line x1="11" y1="11" x2="21" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="21" y1="11" x2="11" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`
             };
+
+            // counts for status pills
+            const statusCounts = computed(() => {
+                const counts = { passed: 0, failed: 0, error: 0 };
+                if (!results.value) return counts;
+                results.value.suites.forEach(s => s.testcases.forEach(tc => {
+                    const st = tc.status || 'passed';
+                    if (st === 'passed') counts.passed++;
+                    else if (st === 'failed') counts.failed++;
+                    else if (st === 'error') counts.error++;
+                }));
+                return counts;
+            });
 
             const totalTestsCount = computed(() => testSuites.value.flatMap(s => s.methods).length);
             const hasFailedTests = computed(() => results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0));
@@ -272,10 +343,37 @@
                 runningTestId.value = 'all';
                 runTests({ filters: searchQuery.value ? [searchQuery.value] : [] });
             };
+
             const runFailedTests = () => {
                 runningTestId.value = 'failed';
                 runTests({ endpoint: '/api/run-failed' });
             };
+
+            const stopTests = async () => {
+                stopPending.value = true;
+                 try {
+                     const res = await fetch('/api/stop', { method: 'POST' });
+                     if (!res.ok) {
+                         const text = await res.text();
+                         output.value.push(`<span class="text-red-400">Failed to stop: ${text}</span>`);
+                         stopPending.value = false;
+                     } else {
+                         output.value.push(`<span class="text-yellow-300">Stop requested...</span>`);
+                         // The websocket 'stopped' or 'exit' event will set isRunning=false
+                     }
+                 } catch (e) {
+                     output.value.push(`<span class="text-red-400">Failed to send stop request: ${e.message}</span>`);
+                     stopPending.value = false;
+                 }
+             };
+
+             const togglePlayStop = () => {
+                 if (isRunning.value) {
+                     stopTests();
+                 } else {
+                     runAllTests();
+                 }
+             };
 
             const fetchTests = async () => {
                 try {
@@ -306,10 +404,34 @@
                         expandedTestId.value = null;
                         testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
                         updateFavicon('neutral');
+                        // Mark UI as running
+                        isRunning.value = true;
+                        break;
+                    case 'stopped':
+                        output.value.push(`<span class="text-yellow-300">Test run stopped by user.</span>`);
+                        isRunning.value = false;
+                        runningTestId.value = null;
+                        updateFavicon('neutral');
                         break;
                     case 'stdout': {
                         // Escape HTML special chars
                         const escaped = message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                        // If the chunk starts with a test-number like "3)" (possibly preceded by whitespace),
+                        // force it onto a new line so it doesn't get appended to previous output.
+                        if (/^\s*\d+\)/.test(escaped)) {
+                            // Ensure we have an explicit newline/carriage-return before the numbered line.
+                            const newline = '\n\r';
+                            if (output.value.length === 0) {
+                                // Prepend newline to the line we're about to add so the buffer contains it
+                                output.value.push(newline + escaped);
+                            } else {
+                                // Append newline to the current last line, then push the numbered line as a new entry
+                                output.value[output.value.length - 1] += newline;
+                                output.value.push(escaped);
+                            }
+                            break;
+                        }
 
                         // If the chunk contains carriage return (\r), PHPUnit or other tools may be updating the same line.
                         // In that case, replace the current last line with the content after the last \r.
@@ -370,6 +492,57 @@
                         break;
                 }
             };
+
+            // Filter & sort helpers for the results table
+            const toggleSortTime = () => {
+                if (sortOrder.value === null) sortOrder.value = 'desc';
+                else if (sortOrder.value === 'desc') sortOrder.value = 'asc';
+                else sortOrder.value = null;
+            };
+
+            const passesStatusFilter = (testcase) => {
+                // If testcase.status is falsy, treat as 'passed' neutral? keep it visible only if passed filter enabled
+                const st = testcase.status || 'passed';
+                if (st === 'passed') return statusFilters.passed;
+                if (st === 'failed') return statusFilters.failed;
+                if (st === 'error') return statusFilters.error;
+                return true;
+            };
+
+            const filteredBySuite = (suite) => {
+                if (!results.value) return [];
+                // return array of objects { key: 'class::name', testcase }
+                let items = suite.testcases.map(tc => ({ key: tc.class + '::' + tc.name, tc }));
+                items = items.filter(i => passesStatusFilter(i.tc));
+                return items;
+            };
+
+            const resultsView = computed(() => {
+                if (!results.value) return [];
+                // If globalView is on, flatten all testcases, filter and sort globally and return a single pseudo-suite
+                if (globalView.value) {
+                    let items = [];
+                    results.value.suites.forEach(suite => {
+                        suite.testcases.forEach(tc => {
+                            if (passesStatusFilter(tc)) items.push({ suite, tc });
+                        });
+                    });
+                    if (sortOrder.value) {
+                        items.sort((a, b) => {
+                            const ta = Number(a.tc.time ?? Infinity);
+                            const tb = Number(b.tc.time ?? Infinity);
+                            if (isNaN(ta)) return 1;
+                            if (isNaN(tb)) return -1;
+                            return sortOrder.value === 'asc' ? ta - tb : tb - ta;
+                        });
+                    }
+                    // Map to single suite object
+                    return [{ id: 'all', name: 'All Tests', testcases: items.map(i => i.tc) }];
+                }
+
+                // per-suite: keep suites but filter testcases (no per-suite sort)
+                return results.value.suites.map(suite => ({ ...suite, testcases: filteredBySuite(suite).map(i => i.tc) })).filter(s => s.testcases.length > 0);
+            });
 
             const runTests = async (runOptions = {}) => {
                 if (isRunning.value) return;
@@ -448,10 +621,12 @@
             return {
                 isRunning, activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
                 showFilterPanel, expandedSuites, runningTestId, totalTestsCount, expandedTestId, hasFailedTests,
-                runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded
-            };
-        }
-    }).mount('#app');
-</script>
-</body>
-</html>
+                runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
+                statusFilters, sortOrder, toggleSortTime, resultsView, filteredBySuite, statusCounts, globalView,
+                stopTests, togglePlayStop, stopPending
+              };
+          }
+      }).mount('#app');
+ </script>
+ </body>
+ </html>
