@@ -10,6 +10,15 @@ use ReflectionMethod;
 use SimpleXMLElement;
 use Symfony\Component\Finder\Finder;
 
+use function array_unique;
+use function defined;
+use function file_get_contents;
+use function glob;
+use function is_array;
+use function is_dir;
+use function realpath;
+use function sprintf;
+
 class TestDiscoverer
 {
     private readonly ?string $configFile;
@@ -113,15 +122,24 @@ class TestDiscoverer
         $directories = [];
         $dirNodes = $xml->xpath('//testsuite/directory');
 
-        if (!is_array($dirNodes)) { // Changed from === false
+        if (!is_array($dirNodes)) {
             return [];
         }
 
         foreach ($dirNodes as $dirNode) {
-            $fullPath = $this->projectRoot . '/' . $dirNode;
-            $normalizedPath = realpath($fullPath); // Normalize the path
-            if ($normalizedPath !== false && is_dir($normalizedPath)) {
-                $directories[] = $normalizedPath;
+            $pattern = $this->projectRoot . '/' . $dirNode;
+            $globFlag = defined('GLOB_BRACE') ? \GLOB_BRACE : 0;
+            $expandedPaths = glob($pattern, $globFlag);
+
+            if ($expandedPaths === false) {
+                continue;
+            }
+
+            foreach ($expandedPaths as $expandedPath) {
+                $normalizedPath = realpath($expandedPath);
+                if ($normalizedPath !== false && is_dir($normalizedPath)) {
+                    $directories[] = $normalizedPath;
+                }
             }
         }
 

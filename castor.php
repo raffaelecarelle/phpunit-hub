@@ -6,6 +6,13 @@ use function Castor\exit_code;
 use function Castor\load_dot_env;
 
 #[\Castor\Attribute\AsTask]
+function install(): int
+{
+    return exit_code(dockerize('composer instal'));
+
+}
+
+#[\Castor\Attribute\AsTask]
 function phpunit(): int
 {
     return exit_code(dockerize('vendor/bin/phpunit'));
