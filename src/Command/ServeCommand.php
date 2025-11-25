@@ -92,17 +92,14 @@ class ServeCommand extends Command
                         $body = $request->getBody()->getContents();
                         $payload = json_decode($body, true) ?? [];
                         $filters = $payload['filters'] ?? [];
-                        $group = $payload['group'] ?? ''; // New: --group filter
-                        $suites = $payload['suites'] ?? [];
-                        $options = $payload['options'] ?? [];
 
                         $this->isTestRunning = true;
                         $runId = Uuid::uuid4()->toString();
                         $junitLogfile = sys_get_temp_dir() . "/phpunit-gui-{$runId}.xml";
-                        $this->output->writeln("Starting test run #{$runId}...");
+                        $this->output->writeln("Starting test run #{$runId} with filters: " . implode(', ', $filters));
 
                         $this->statusHandler->broadcast(json_encode(['type' => 'start', 'runId' => $runId]));
-                        $process = $this->testRunner->run($junitLogfile, $filters, $group, $suites, $options);
+                        $process = $this->testRunner->run($junitLogfile, $filters);
 
                         $process->stdout->on('data', function ($chunk) {
                             $this->statusHandler->broadcast(json_encode(['type' => 'stdout', 'data' => $chunk]));

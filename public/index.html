@@ -8,14 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .filter-panel-dropdown { position: absolute; top: 100%; right: 0; z-index: 20; min-width: 350px; }
-        .suite-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 8px 4px; border-radius: 4px; transition: background-color 0.2s; }
+        .suite-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-radius: 4px; transition: background-color 0.2s; }
         .suite-header:hover { background-color: #374151; } /* gray-700 */
         .suite-arrow { transition: transform 0.2s ease-in-out; margin-right: 8px; }
         .suite-arrow.rotated { transform: rotate(90deg); }
         .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; margin-left: 8px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Cypress-like look styles */
         .test-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-radius: 4px; transition: background-color 0.2s; }
         .test-item:hover { background-color: #374151; }
         .test-item-left { display: flex; align-items: center; }
@@ -37,7 +35,37 @@
                     Filters
                 </button>
                 <div v-show="showFilterPanel" @click.stop class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                    <!-- Advanced filters content will be here -->
+                    <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
+                    <div class="form-group mb-4">
+                        <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Group Filter (--group)</label>
+                        <input type="text" id="group-filter" v-model="groupFilter" placeholder="e.g., @fast, @integration"
+                               class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
+                        <select id="filter-suite" v-model="selectedSuites" multiple
+                                class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
+                            <option v-for="suite in availableSuites" :value="suite">{{ suite }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayWarnings" class="mr-2"> Show Warnings</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayDeprecations" class="mr-2"> Show Deprecations</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displaySkipped" class="mr-2"> Show Skipped</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayIncomplete" class="mr-2"> Show Incomplete</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Stop On Options</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnDefect" class="mr-2"> Defect</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnError" class="mr-2"> Error</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnFailure" class="mr-2"> Failure</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnWarning" class="mr-2"> Warning</label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <button @click="runAllTests" :disabled="isRunning" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
@@ -108,7 +136,47 @@
 
         <!-- Main Content -->
         <main class="w-2/3 p-4 flex flex-col">
-            <!-- Tabs and content here -->
+            <div class="flex-shrink-0 border-b border-gray-700">
+                <nav class="-mb-px flex space-x-4">
+                    <button @click="activeTab = 'results'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
+                        Results
+                    </button>
+                    <button @click="activeTab = 'output'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'output' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
+                        Output
+                    </button>
+                </nav>
+            </div>
+            <div class="flex-grow overflow-y-auto pt-4">
+                <div v-show="activeTab === 'results'">
+                    <div v-if="!results" class="text-gray-500 text-center pt-10">Run tests to see the results.</div>
+                    <div v-else class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-700">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <template v-for="suite in results.suites">
+                                    <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
+                                        <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
+                                            <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
+                                            <td class="px-6 py-4"><div class="text-sm text-white">{{ testcase.name }}</div><div class="text-xs text-gray-400">{{ testcase.class }}</div></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</td>
+                                        </tr>
+                                        <tr v-if="isExpanded(testcase)"><td colspan="3" class="bg-gray-900 p-4"><h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4><pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre></td></tr>
+                                    </template>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
+                    <div v-for="(line, index) in output" :key="index" v-html="line" class="whitespace-pre-wrap"></div>
+                </div>
+            </div>
         </main>
     </div>
 </div>
@@ -123,54 +191,62 @@
             const output = ref([]);
             const results = ref(null);
             const searchQuery = ref('');
+            const groupFilter = ref('');
             const testSuites = ref([]);
+            const availableSuites = ref([]);
+            const selectedSuites = ref([]);
+            const options = reactive({
+                stopOnDefect: false,
+                stopOnError: false,
+                stopOnFailure: false,
+                stopOnWarning: false,
+            });
             const showFilterPanel = ref(false);
             const expandedSuites = ref(new Set());
             const runningTestId = ref(null);
+            const expandedTestId = ref(null);
             let ws = null;
 
             const totalTestsCount = computed(() => testSuites.value.flatMap(s => s.methods).length);
 
             const filteredTestSuites = computed(() => {
-                if (!searchQuery.value) {
-                    return testSuites.value;
-                }
-                const lowerCaseFilter = searchQuery.value.toLowerCase();
-                const filtered = [];
-                for (const suite of testSuites.value) {
-                    const matchingMethods = suite.methods.filter(method =>
-                        method.name.toLowerCase().includes(lowerCaseFilter)
-                    );
-                    if (suite.name.toLowerCase().includes(lowerCaseFilter)) {
-                        filtered.push(suite);
-                    } else if (matchingMethods.length > 0) {
-                        filtered.push({ ...suite, methods: matchingMethods });
+                if (!searchQuery.value) return testSuites.value;
+                const lower = searchQuery.value.toLowerCase();
+                return testSuites.value.map(suite => {
+                    const methods = suite.methods.filter(m => m.name.toLowerCase().includes(lower));
+                    if (suite.name.toLowerCase().includes(lower)) {
+                        return { ...suite, methods: suite.methods };
                     }
-                }
-                return filtered;
+                    if (methods.length > 0) {
+                        return { ...suite, methods };
+                    }
+                    return null;
+                }).filter(Boolean);
             });
 
+            const toggleFilterPanel = () => { showFilterPanel.value = !showFilterPanel.value; };
             const toggleSuite = (suiteId) => {
-                if (expandedSuites.value.has(suiteId)) {
-                    expandedSuites.value.delete(suiteId);
-                } else {
-                    expandedSuites.value.add(suiteId);
-                }
+                if (expandedSuites.value.has(suiteId)) expandedSuites.value.delete(suiteId);
+                else expandedSuites.value.add(suiteId);
             };
+            const toggleDetails = (testcase) => {
+                if (testcase.status === 'passed') return;
+                const id = `${testcase.class}::${testcase.name}`;
+                expandedTestId.value = expandedTestId.value === id ? null : id;
+            };
+            const isExpanded = (testcase) => `${testcase.class}::${testcase.name}` === expandedTestId.value;
 
             const runSingleTest = (testId) => {
                 runningTestId.value = testId;
                 runTests({ filters: [testId] });
             };
-
             const runSuiteTests = (suiteId) => {
                 runningTestId.value = suiteId;
                 runTests({ filters: [suiteId] });
             };
-
             const runAllTests = () => {
                 runningTestId.value = 'all';
-                runTests({});
+                runTests({ filters: searchQuery.value ? [searchQuery.value] : [] });
             };
 
             const fetchTests = async () => {
@@ -184,9 +260,8 @@
                         });
                     });
                     testSuites.value = data.suites;
-                } catch (e) {
-                    console.error("Failed to fetch tests:", e);
-                }
+                    if(data.availableSuites) availableSuites.value = data.availableSuites;
+                } catch (e) { console.error("Failed to fetch tests:", e); }
             };
 
             const connectWebSocket = () => {
@@ -198,30 +273,27 @@
             const handleWebSocketMessage = (message) => {
                 switch (message.type) {
                     case 'start':
+                        output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...</span>`];
                         results.value = null;
-                        testSuites.value.forEach(s => s.methods.forEach(m => {
-                            m.time = null;
-                            m.status = null;
-                        }));
+                        expandedTestId.value = null;
+                        testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
+                        break;
+                    case 'stdout':
+                        output.value.push(message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
                         break;
                     case 'exit':
+                        output.value.push(`<span class="text-yellow-400">Test run finished with exit code: ${message.exitCode}.</span>`);
                         if (message.results) {
                             results.value = message.results;
                             const resultsMap = new Map();
-                            message.results.suites.forEach(suite => {
-                                suite.testcases.forEach(tc => {
-                                    resultsMap.set(`${tc.class}::${tc.name}`, { time: tc.time, status: tc.status });
-                                });
-                            });
-                            testSuites.value.forEach(suite => {
-                                suite.methods.forEach(method => {
-                                    if (resultsMap.has(method.id)) {
-                                        const res = resultsMap.get(method.id);
-                                        method.time = res.time;
-                                        method.status = res.status;
-                                    }
-                                });
-                            });
+                            message.results.suites.forEach(s => s.testcases.forEach(tc => resultsMap.set(`${tc.class}::${tc.name}`, { time: tc.time, status: tc.status })));
+                            testSuites.value.forEach(s => s.methods.forEach(m => {
+                                if (resultsMap.has(m.id)) {
+                                    const res = resultsMap.get(m.id);
+                                    m.time = res.time;
+                                    m.status = res.status;
+                                }
+                            }));
                         }
                         isRunning.value = false;
                         runningTestId.value = null;
@@ -238,7 +310,9 @@
                 
                 const payload = {
                     filters: runOptions.filters || [],
-                    // ... other options from filter panel can be added here
+                    group: groupFilter.value,
+                    suites: selectedSuites.value,
+                    options: { ...options },
                 };
 
                 try {
@@ -262,9 +336,9 @@
             });
 
             return {
-                isRunning, activeTab, output, results, searchQuery, testSuites,
-                showFilterPanel, expandedSuites, runningTestId, totalTestsCount,
-                runAllTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites
+                isRunning, activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
+                showFilterPanel, expandedSuites, runningTestId, totalTestsCount, expandedTestId,
+                runAllTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded
             };
         }
     }).mount('#app');
