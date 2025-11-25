@@ -118,8 +118,6 @@ class StatusHandlerTest extends TestCase
 
         $statusHandler->onOpen($testConnection); // Attach first
 
-        // Removed: $this->output->expects($this->never())->method('writeln');
-
         $statusHandler->onClose($testConnection);
 
         $reflectionClass = new \ReflectionClass($statusHandler);
