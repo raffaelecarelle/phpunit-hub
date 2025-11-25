@@ -17,7 +17,10 @@ use function is_string;
 use function json_decode;
 use function preg_match;
 use function preg_quote;
+use function preg_replace;
 use function rtrim;
+use function strtolower;
+use function trim;
 use function var_dump;
 
 class TestRunner
@@ -63,6 +66,7 @@ class TestRunner
         // Add boolean command-line options
         foreach ($options as $option => $isEnabled) {
             if ($isEnabled) {
+                $option = '--'.$this->camelToKebab($option);
                 // Assuming the option name from the frontend matches the PHPUnit CLI flag
                 $command .= ' ' . escapeshellarg($option);
             }
@@ -72,6 +76,23 @@ class TestRunner
         $process->start($this->loop);
 
         return $process;
+    }
+
+    private function camelToKebab(string $input): string
+    {
+        // normalizza spazi/underscore -> trattino
+        $s = preg_replace('/[_\s]+/', '-', $input);
+
+        // separa sequenze tipo "aA" => "a-A"
+        $s = preg_replace('/([a-z\d])([A-Z])/', '$1-$2', (string) $s);
+
+        // separa confini fra acronimi e parole tipo "XMLHttp" => "XML-Http"
+        $s = preg_replace('/([A-Z]+)([A-Z][a-z])/', '$1-$2', (string) $s);
+
+        // riduce più trattini e porta tutto a minuscolo
+        $s = strtolower((string) preg_replace('/-+/', '-', (string) $s));
+
+        return trim($s, '-');
     }
 
     public function getComposerBinDir(string $projectDir = null): string

@@ -17,6 +17,22 @@ use Symfony\Component\Console\Output\OutputInterface;
 use React\ChildProcess\Process;
 use React\EventLoop\Loop;
 
+use function defined;
+use function dirname;
+use function file_exists;
+use function file_get_contents;
+use function implode;
+use function in_array;
+use function is_file;
+use function json_decode;
+use function json_encode;
+use function pathinfo;
+use function property_exists;
+use function realpath;
+use function sprintf;
+use function sys_get_temp_dir;
+use function unlink;
+
 class Router implements RouterInterface
 {
     private readonly string $publicPath;
@@ -84,11 +100,17 @@ class Router implements RouterInterface
             } else {
                 /** @var string[] $filters */
                 $filters = [];
+                $group = [];
+                $suites = [];
+                $options = [];
                 $isRerun = false;
                 if ($path === '/api/run') {
                     $body = $request?->getBody()->getContents();
                     $payload = json_decode((string) $body, true) ?? [];
                     $filters = $payload['filters'] ?? [];
+                    $group = $payload['group'] ?? '';
+                    $suites = $payload['suites'] ?? [];
+                    $options = $payload['options'] ?? [];
                     $this->lastFilters = $filters;
                 } else { // /api/run-failed
                     $isRerun = true;
@@ -107,7 +129,7 @@ class Router implements RouterInterface
                     $filters = $this->failedTests;
                 }
 
-                $this->runTests($filters, $isRerun);
+                $this->runTests($filters, $suites, $group, $options, $isRerun);
                 $jsonResponse = json_encode(['message' => 'Test run started.']);
                 if ($jsonResponse === false) {
                     $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
@@ -139,7 +161,7 @@ class Router implements RouterInterface
     /**
      * @param string[] $filters
      */
-    public function runTests(array $filters, bool $isRerun = false): void
+    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false): void
     {
         if ($this->isTestRunning) {
             $this->output->writeln("<comment>Skipping test run: another is already in progress.</comment>");
@@ -159,7 +181,7 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($junitLogfile, $filters);
+        $process = $this->testRunner->run($junitLogfile, $filters, $group, $suites, $options);
 
         // Keep a reference so we can terminate later
         $this->currentProcess = $process;
