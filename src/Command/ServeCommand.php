@@ -22,8 +22,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'serve', description: 'Starts the PHPUnit GUI server.')]
 class ServeCommand extends Command
 {
-    protected static $defaultName = 'serve';
-
     public function __construct(
         private ?LoopInterface        $loop = null,
         private ?TestDiscoverer       $testDiscoverer = null,
