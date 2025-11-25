@@ -22,6 +22,24 @@ class ServeCommand extends Command
 {
     protected static $defaultName = 'serve';
 
+    public function __construct(
+        private ?LoopInterface        $loop = null,
+        private ?TestDiscoverer       $testDiscoverer = null,
+        private ?StatusHandler        $statusHandler = null,
+        private ?WsServer             $wsServer = null,
+        private readonly ?JUnitParser $jUnitParser = new JUnitParser(),
+        private ?TestRunner           $testRunner = null,
+
+    )
+    {
+        parent::__construct();
+
+        $this->loop ??= Loop::get();
+        $this->testDiscoverer ??= new TestDiscoverer(getcwd());
+        $this->testRunner ??= new TestRunner($this->loop);
+    }
+
+
     protected function configure(): void
     {
         $this->setDescription('Starts the PHPUnit GUI server.')
@@ -33,23 +51,24 @@ class ServeCommand extends Command
         $port = 8080;
         $watch = $input->getOption('watch');
 
-        $loop = Loop::get();
-        $statusHandler = new StatusHandler($output); // Pass $output here
+        $this->statusHandler ??= new StatusHandler($output);
+        $this->wsServer ??= new WsServer($this->statusHandler);
+
         $router = new Router(
-            new WsServer($statusHandler),
+            $this->wsServer,
             $output,
-            $statusHandler,
-            new TestRunner($loop),
-            new JUnitParser(),
-            new TestDiscoverer(getcwd())
+            $this->statusHandler,
+            $this->testRunner,
+            $this->jUnitParser,
+           $this->testDiscoverer
         );
 
         $httpServer = new HttpServer($router);
-        $socketServer = new SocketServer('127.0.0.1:' . $port, [], $loop);
-        $ioServer = new IoServer($httpServer, $socketServer, $loop);
+        $socketServer = new SocketServer('127.0.0.1:' . $port, [], $this->loop);
+        $ioServer = new IoServer($httpServer, $socketServer, $this->loop);
 
         if ($watch) {
-            $this->startFileWatcher($loop, $output, $router);
+            $this->startFileWatcher($this->loop, $output, $router);
         }
 
         $output->writeln(sprintf('<info>Starting server on http://127.0.0.1:%d</info>', $port));

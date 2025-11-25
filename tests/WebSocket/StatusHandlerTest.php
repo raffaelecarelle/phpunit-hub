@@ -1,0 +1,180 @@
+<?php
+
+namespace PHPUnitGUI\Tests\WebSocket;
+
+use Exception;
+use PHPUnit\Framework\TestCase;
+use PHPUnitGUI\WebSocket\StatusHandler;
+use Ratchet\ConnectionInterface;
+use SplObjectStorage;
+use Symfony\Component\Console\Output\OutputInterface;
+
+class StatusHandlerTest extends TestCase
+{
+    private ?OutputInterface $output;
+    private StatusHandler $statusHandler;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->output = $this->createMock(OutputInterface::class);
+        $this->statusHandler = new StatusHandler($this->output);
+    }
+
+    public function testOnOpenAttachesConnectionAndWritesToOutput(): void
+    {
+        $conn = $this->createMock(ConnectionInterface::class);
+        // Simulate resourceId property for WsConnection
+        $conn->resourceId = 123;
+
+        $this->output->expects($this->once())
+            ->method('writeln')
+            ->with('New connection! (123)', OutputInterface::VERBOSITY_VERBOSE);
+
+        $this->statusHandler->onOpen($conn);
+
+        // Use reflection to access the private connections property
+        $reflection = new \ReflectionClass($this->statusHandler);
+        $connectionsProperty = $reflection->getProperty('connections');
+        $connectionsProperty->setAccessible(true);
+        /** @var SplObjectStorage $connections */
+        $connections = $connectionsProperty->getValue($this->statusHandler);
+
+        $this->assertTrue($connections->contains($conn));
+    }
+
+    public function testOnOpenWithoutOutputDoesNotWrite(): void
+    {
+        $statusHandler = new StatusHandler(null); // No output interface
+        $conn = $this->createMock(ConnectionInterface::class);
+        $conn->resourceId = 123;
+
+        $this->output->expects($this->never())->method('writeln');
+
+        $statusHandler->onOpen($conn);
+
+        $reflection = new \ReflectionClass($statusHandler);
+        $connectionsProperty = $reflection->getProperty('connections');
+        $connectionsProperty->setAccessible(true);
+        /** @var SplObjectStorage $connections */
+        $connections = $connectionsProperty->getValue($statusHandler);
+
+        $this->assertTrue($connections->contains($conn));
+    }
+
+    public function testOnMessageDoesNothing(): void
+    {
+        $from = $this->createMock(ConnectionInterface::class);
+        $msg = 'test message';
+
+        // Expect no interactions with the output or connection
+        $this->output->expects($this->never())->method('writeln');
+        $from->expects($this->never())->method('send');
+
+        $this->statusHandler->onMessage($from, $msg);
+        $this->assertTrue(true); // Assert that no exception was thrown
+    }
+
+    public function testOnCloseDetachesConnectionAndWritesToOutput(): void
+    {
+        $conn = $this->createMock(ConnectionInterface::class);
+        $conn->resourceId = 123;
+
+        // First, attach the connection
+        $this->statusHandler->onOpen($conn);
+
+        $this->output->expects($this->once())
+            ->method('writeln')
+            ->with('Connection 123 has disconnected', OutputInterface::VERBOSITY_VERBOSE);
+
+        $this->statusHandler->onClose($conn);
+
+        $reflection = new \ReflectionClass($this->statusHandler);
+        $connectionsProperty = $reflection->getProperty('connections');
+        $connectionsProperty->setAccessible(true);
+        /** @var SplObjectStorage $connections */
+        $connections = $connectionsProperty->getValue($this->statusHandler);
+
+        $this->assertFalse($connections->contains($conn));
+    }
+
+    public function testOnCloseWithoutOutputDoesNotWrite(): void
+    {
+        $statusHandler = new StatusHandler(null);
+        $conn = $this->createMock(ConnectionInterface::class);
+        $conn->resourceId = 123;
+
+        $statusHandler->onOpen($conn); // Attach first
+
+        $this->output->expects($this->never())->method('writeln');
+
+        $statusHandler->onClose($conn);
+
+        $reflection = new \ReflectionClass($statusHandler);
+        $connectionsProperty = $reflection->getProperty('connections');
+        $connectionsProperty->setAccessible(true);
+        /** @var SplObjectStorage $connections */
+        $connections = $connectionsProperty->getValue($statusHandler);
+
+        $this->assertFalse($connections->contains($conn));
+    }
+
+    public function testOnErrorWritesToOutputAndClosesConnection(): void
+    {
+        $conn = $this->createMock(ConnectionInterface::class);
+        $exception = new Exception('Test error message');
+
+        $this->output->expects($this->once())
+            ->method('writeln')
+            ->with('An error has occurred: Test error message', OutputInterface::VERBOSITY_VERBOSE);
+
+        $conn->expects($this->once())->method('close');
+
+        $this->statusHandler->onError($conn, $exception);
+    }
+
+    public function testOnErrorWithoutOutputDoesNotWrite(): void
+    {
+        $statusHandler = new StatusHandler(null);
+        $conn = $this->createMock(ConnectionInterface::class);
+        $exception = new Exception('Test error message');
+
+        $this->output->expects($this->never())->method('writeln');
+        $conn->expects($this->once())->method('close');
+
+        $statusHandler->onError($conn, $exception);
+    }
+
+    public function testBroadcastSendsMessageToAllConnections(): void
+    {
+        $conn1 = $this->createMock(ConnectionInterface::class);
+        $conn2 = $this->createMock(ConnectionInterface::class);
+
+        // Attach connections
+        $this->statusHandler->onOpen($conn1);
+        $this->statusHandler->onOpen($conn2);
+
+        $message = '{"type": "status", "data": "running"}';
+
+        $conn1->expects($this->once())
+            ->method('send')
+            ->with($message);
+        $conn2->expects($this->once())
+            ->method('send')
+            ->with($message);
+
+        $this->statusHandler->broadcast($message);
+    }
+
+    public function testBroadcastWithNoConnectionsDoesNothing(): void
+    {
+        // No connections are attached by default in a fresh setup
+        $message = '{"type": "status", "data": "running"}';
+
+        // Ensure no connections are sent messages
+        $this->output->expects($this->never())->method('writeln'); // No output expected for broadcast itself
+
+        $this->statusHandler->broadcast($message);
+        $this->assertTrue(true); // Assert no exceptions and no calls to send
+    }
+}

@@ -92,7 +92,7 @@ class JUnitParser
                     $caseData['status'] = 'failed';
                     $caseData['failure'] = [
                         'type' => (string) $testcase->failure['type'],
-                        'message' => trim((string) $testcase->failure),
+                        'message' => (string) $testcase->failure['message'], // Corrected
                     ];
                 }
 
@@ -100,7 +100,7 @@ class JUnitParser
                     $caseData['status'] = 'error';
                     $caseData['error'] = [
                         'type' => (string) $testcase->error['type'],
-                        'message' => trim((string) $testcase->error),
+                        'message' => (string) $testcase->error['message'], // Corrected
                     ];
                 }
 

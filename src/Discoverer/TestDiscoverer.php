@@ -118,9 +118,10 @@ class TestDiscoverer
         }
 
         foreach ($dirNodes as $dirNode) {
-            $fullPath = $this->projectRoot . '/' . $dirNode; // Corrected variable name
-            if (is_dir($fullPath)) {
-                $directories[] = $fullPath;
+            $fullPath = $this->projectRoot . '/' . $dirNode;
+            $normalizedPath = realpath($fullPath); // Normalize the path
+            if ($normalizedPath !== false && is_dir($normalizedPath)) {
+                $directories[] = $normalizedPath;
             }
         }
 
