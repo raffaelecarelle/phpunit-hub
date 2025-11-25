@@ -134,7 +134,7 @@ class JUnitParserTest extends TestCase
                             'status' => 'failed',
                             'failure' => [
                                 'type' => \PHPUnit\Framework\ExpectationFailedException::class,
-                                'message' => 'Failed asserting that false is true.',
+                                'message' => 'Failed asserting that false is true.' . "\n" . '/path/to/FailedTest.php:12',
                             ],
                             'error' => null,
                         ],
@@ -189,7 +189,7 @@ class JUnitParserTest extends TestCase
                             'failure' => null,
                             'error' => [
                                 'type' => 'TypeError',
-                                'message' => 'Return value must be of type string, null returned',
+                                'message' => 'Return value must be of type string, null returned' . "\n" . '/path/to/ErrorTest.php:12',
                             ],
                         ],
                     ],
@@ -259,7 +259,7 @@ class JUnitParserTest extends TestCase
                             'status' => 'failed',
                             'failure' => [
                                 'type' => \PHPUnit\Framework\ExpectationFailedException::class,
-                                'message' => 'Failed.',
+                                'message' => 'Failed.' . "\n" . '/path/to/MixedTest.php:17',
                             ],
                             'error' => null,
                         ],
@@ -274,7 +274,7 @@ class JUnitParserTest extends TestCase
                             'failure' => null,
                             'error' => [
                                 'type' => 'RuntimeException',
-                                'message' => 'Something went wrong.',
+                                'message' => 'Something went wrong.' . "\n" . '/path/to/MixedTest.php:22',
                             ],
                         ],
                     ],

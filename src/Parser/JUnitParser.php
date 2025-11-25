@@ -90,17 +90,29 @@ class JUnitParser
 
                 if (property_exists($testcase, 'failure') && $testcase->failure !== null) {
                     $caseData['status'] = 'failed';
+                    $failureMessage = (string) $testcase->failure['message'];
+                    $failureContent = trim((string) $testcase->failure);
+                    // If there's additional content (like a stack trace), append it after the message
+                    if ($failureContent && $failureContent !== $failureMessage) {
+                        $failureMessage = $failureMessage ? $failureMessage . "\n" . $failureContent : $failureContent;
+                    }
                     $caseData['failure'] = [
                         'type' => (string) $testcase->failure['type'],
-                        'message' => (string) $testcase->failure['message'], // Corrected
+                        'message' => $failureMessage,
                     ];
                 }
 
                 if (property_exists($testcase, 'error') && $testcase->error !== null) {
                     $caseData['status'] = 'error';
+                    $errorMessage = (string) $testcase->error['message'];
+                    $errorContent = trim((string) $testcase->error);
+                    // If there's additional content (like a stack trace), append it after the message
+                    if ($errorContent && $errorContent !== $errorMessage) {
+                        $errorMessage = $errorMessage ? $errorMessage . "\n" . $errorContent : $errorContent;
+                    }
                     $caseData['error'] = [
                         'type' => (string) $testcase->error['type'],
-                        'message' => (string) $testcase->error['message'], // Corrected
+                        'message' => $errorMessage,
                     ];
                 }
 
