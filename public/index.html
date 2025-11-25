@@ -268,7 +268,7 @@
             const expandedSuites = ref(new Set());
             const runningTestId = ref(null);
             const expandedTestId = ref(null);
-            const statusFilters = reactive({ passed: true, failed: true, error: true });
+            const statusFilters = reactive({ passed: false, failed: true, error: true });
             const sortOrder = ref(null); // null | 'asc' | 'desc'
             const globalView = ref(true);
             let ws = null;
