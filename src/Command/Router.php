@@ -14,6 +14,8 @@ use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;
 use Ratchet\Http\HttpServerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use React\ChildProcess\Process;
+use React\EventLoop\Loop;
 
 class Router implements RouterInterface
 {
@@ -199,6 +201,8 @@ class Router implements RouterInterface
                 $this->output->writeln('<error>Failed to encode exit message to JSON for broadcast.</error>');
             }
 
+            $this->notify($exitCode, $parsedResults, $runId);
+
             $this->isTestRunning = false;
         });
     }
@@ -248,5 +252,73 @@ class Router implements RouterInterface
             $this->output->writeln(sprintf('<error>HTTP Server error: %s</error>', $e->getMessage()));
             $conn->close();
         }
+    }
+
+    /**
+     * @param array{
+     *      suites: array<array{
+     *          name: string,
+     *          tests: int,
+     *          assertions: int,
+     *          failures: int,
+     *          errors: int,
+     *          time: float,
+     *          testcases: array<array{
+     *              name: string,
+     *              class: string,
+     *              file: string,
+     *              line: int,
+     *              assertions: int,
+     *              time: float,
+     *              status: string,
+     *              failure: ?array{type: string, message: string},
+     *              error: ?array{type: string, message: string}
+     *          }>
+     *      }>,
+     *      summary: array{
+     *          tests: int,
+     *          assertions: int,
+     *          failures: int,
+     *          errors: int,
+     *          time: float
+     *      }
+     *  } $parsedResults
+     */
+    private function notify(int $exitCode, ?array $parsedResults, string $runId): void
+    {
+        $notificationTitle = 'PHPUnit Hub Test Results';
+
+        if ($exitCode === 0) {
+            $notificationMessage = 'All tests passed successfully!';
+        } else {
+            $failures = 0;
+            $errors = 0;
+            if ($parsedResults !== null) {
+                foreach ($parsedResults['suites'] as $suite) {
+                    foreach ($suite['testcases'] as $testcase) {
+                        if ($testcase['status'] === 'failed') {
+                            $failures++;
+                        } elseif ($testcase['status'] === 'error') {
+                            $errors++;
+                        }
+                    }
+                }
+            }
+
+            $notificationMessage = sprintf('Tests finished with %d failures and %d errors.', $failures, $errors);
+        }
+
+        $command = sprintf('notify-send "%s" "%s"', $notificationTitle, $notificationMessage);
+
+        $notificationProcess = new Process($command);
+        $notificationProcess->start(Loop::get()); // Usa il loop di eventi predefinito
+
+        $notificationProcess->on('exit', function ($code) use ($runId, $notificationTitle, $notificationMessage, $command) {
+            if ($code !== 0) {
+                $this->output->writeln(sprintf('<error>Failed to send notification for run #%s. Command: "%s", Exit Code: %s</error>', $runId, $command, $code));
+            } else {
+                $this->output->writeln(sprintf('<info>Notification sent for run #%s: "%s - %s"</info>', $runId, $notificationTitle, $notificationMessage));
+            }
+        });
     }
 }
