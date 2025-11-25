@@ -19,7 +19,7 @@
     exit(1);
 })();
 
-use PHPUnitHub\Command\ServeCommand;
+use PhpUnitHub\Command\ServeCommand;
 use Symfony\Component\Console\Application;
 
 $application = new Application();
