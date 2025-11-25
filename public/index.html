@@ -69,6 +69,9 @@
                     </div>
                 </div>
             </div>
+            <button @click="runFailedTests" :disabled="isRunning || !hasFailedTests" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
+                Run Failed
+            </button>
             <button @click="runAllTests" :disabled="isRunning" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
                 <span v-if="isRunning">Running...</span>
                 <span v-else>Run All Tests</span>
@@ -219,6 +222,7 @@
             };
 
             const totalTestsCount = computed(() => testSuites.value.flatMap(s => s.methods).length);
+            const hasFailedTests = computed(() => results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0));
 
             const filteredTestSuites = computed(() => {
                 if (!searchQuery.value) return testSuites.value;
@@ -267,6 +271,10 @@
             const runAllTests = () => {
                 runningTestId.value = 'all';
                 runTests({ filters: searchQuery.value ? [searchQuery.value] : [] });
+            };
+            const runFailedTests = () => {
+                runningTestId.value = 'failed';
+                runTests({ endpoint: '/api/run-failed' });
             };
 
             const fetchTests = async () => {
@@ -331,11 +339,12 @@
                 }
             };
 
-            const runTests = async (runOptions) => {
+            const runTests = async (runOptions = {}) => {
                 if (isRunning.value) return;
                 isRunning.value = true;
                 activeTab.value = 'output';
-                output.value = ['<span class="text-gray-400">Sending request to /api/run...</span>'];
+                const endpoint = runOptions.endpoint || '/api/run';
+                output.value = [`<span class="text-gray-400">Sending request to ${endpoint}...</span>`];
                 
                 const payload = {
                     filters: runOptions.filters || [],
@@ -345,10 +354,17 @@
                 };
 
                 try {
-                    const response = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
-                        const data = await response.json();
-                        output.value.push(`<span class="text-red-400">Error: ${data.error || response.statusText}</span>`);
+                        let errorMessage;
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const data = await response.json();
+                            errorMessage = data.error || response.statusText;
+                        } else {
+                            errorMessage = await response.text();
+                        }
+                        output.value.push(`<span class="text-red-400">Error: ${errorMessage}</span>`);
                         isRunning.value = false;
                         runningTestId.value = null;
                         updateFavicon('failure');
@@ -399,8 +415,8 @@
 
             return {
                 isRunning, activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
-                showFilterPanel, expandedSuites, runningTestId, totalTestsCount, expandedTestId,
-                runAllTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded
+                showFilterPanel, expandedSuites, runningTestId, totalTestsCount, expandedTestId, hasFailedTests,
+                runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded
             };
         }
     }).mount('#app');

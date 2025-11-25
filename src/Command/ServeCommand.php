@@ -51,6 +51,7 @@ class ServeCommand extends Command
             private TestDiscoverer $discoverer;
             private string $publicPath;
             private bool $isTestRunning = false;
+            private array $failedTests = [];
 
             public function __construct(HttpServerInterface $wsServer, OutputInterface $output, StatusHandler $statusHandler, TestRunner $testRunner, JUnitParser $parser, TestDiscoverer $discoverer)
             {
@@ -85,13 +86,25 @@ class ServeCommand extends Command
                 if ($path === '/api/tests' && $method === 'GET') {
                     $tests = $this->discoverer->discover();
                     $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($tests));
-                } elseif ($path === '/api/run' && $method === 'POST') {
+                } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
                     if ($this->isTestRunning) {
                         $response = new GuzzleResponse(429, ['Content-Type' => 'application/json'], json_encode(['error' => 'A test run is already in progress.']));
                     } else {
-                        $body = $request->getBody()->getContents();
-                        $payload = json_decode($body, true) ?? [];
-                        $filters = $payload['filters'] ?? [];
+                        $filters = [];
+                        $isRerun = false;
+                        if ($path === '/api/run') {
+                            $body = $request->getBody()->getContents();
+                            $payload = json_decode($body, true) ?? [];
+                            $filters = $payload['filters'] ?? [];
+                        } else { // /api/run-failed
+                            $isRerun = true;
+                            if (empty($this->failedTests)) {
+                                $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'No failed tests to run.']));
+                                $this->sendResponse($conn, $response);
+                                return;
+                            }
+                            $filters = $this->failedTests;
+                        }
 
                         $this->isTestRunning = true;
                         $runId = Uuid::uuid4()->toString();
@@ -105,12 +118,29 @@ class ServeCommand extends Command
                             $this->statusHandler->broadcast(json_encode(['type' => 'stdout', 'data' => $chunk]));
                         });
 
-                        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile) {
+                        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
                             $this->output->writeln("Test run #{$runId} finished with code {$exitCode}.");
                             $parsedResults = null;
                             if (file_exists($junitLogfile)) {
                                 $xmlContent = file_get_contents($junitLogfile);
                                 $parsedResults = $this->parser->parse($xmlContent);
+
+                                // Only repopulate the failed tests list on a full run
+                                if (!$isRerun) {
+                                    $currentRunFailedTests = [];
+                                    if (isset($parsedResults['suites'])) {
+                                        foreach ($parsedResults['suites'] as $suite) {
+                                            if (isset($suite['testcases'])) {
+                                                foreach ($suite['testcases'] as $testcase) {
+                                                    if (in_array($testcase['status'], ['failed', 'error'])) {
+                                                        $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    $this->failedTests = $currentRunFailedTests;
+                                }
                                 unlink($junitLogfile);
                             }
 
@@ -191,6 +221,7 @@ class ServeCommand extends Command
         $output->writeln("<info>Starting server on http://127.0.0.1:{$port}</info>");
         $output->writeln("API endpoint available at GET /api/tests");
         $output->writeln("API endpoint available at POST /api/run");
+        $output->writeln("API endpoint available at POST /api/run-failed");
         $output->writeln("WebSocket server listening on /ws/status");
         $output->writeln("Serving static files from 'public' directory");
 
