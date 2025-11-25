@@ -131,10 +131,10 @@
                             </span>
                             </div>
                         </div>
-<!--                        <div class="flex items-center">-->
-<!--                            <div v-if="runningTestId === method.id" class="spinner !w-4 !h-4"></div>-->
-<!--                            <span v-if="method.time !== null" class="test-time">{{ method.time.toFixed(2) }}s</span>-->
-<!--                        </div>-->
+                        <!--                        <div class="flex items-center">-->
+                        <!--                            <div v-if="runningTestId === method.id" class="spinner !w-4 !h-4"></div>-->
+                        <!--                            <span v-if="method.time !== null" class="test-time">{{ method.time.toFixed(2) }}s</span>-->
+                        <!--                        </div>-->
                     </li>
                 </ul>
             </div>
@@ -160,23 +160,23 @@
                     <div v-else class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                         <table class="min-w-full divide-y divide-gray-700">
                             <thead class="bg-gray-700">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
-                                </tr>
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
+                            </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-700">
-                                <template v-for="suite in results.suites">
-                                    <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
-                                        <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
-                                            <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
-                                            <td class="px-6 py-4"><div class="text-sm text-white">{{ testcase.name }}</div><div class="text-xs text-gray-400">{{ testcase.class }}</div></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</td>
-                                        </tr>
-                                        <tr v-if="isExpanded(testcase)"><td colspan="3" class="bg-gray-900 p-4"><h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4><pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre></td></tr>
-                                    </template>
+                            <template v-for="suite in results.suites">
+                                <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
+                                    <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
+                                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
+                                        <td class="px-6 py-4"><div class="text-sm text-white">{{ testcase.name }}</div><div class="text-xs text-gray-400">{{ testcase.class }}</div></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</td>
+                                    </tr>
+                                    <tr v-if="isExpanded(testcase)"><td colspan="3" class="bg-gray-900 p-4"><h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4><pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre></td></tr>
                                 </template>
+                            </template>
                             </tbody>
                         </table>
                     </div>
@@ -301,15 +301,47 @@
             const handleWebSocketMessage = (message) => {
                 switch (message.type) {
                     case 'start':
-                        output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...</span>`];
+                        output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...\n\r</span>`];
                         results.value = null;
                         expandedTestId.value = null;
                         testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
                         updateFavicon('neutral');
                         break;
-                    case 'stdout':
-                        output.value.push(message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                    case 'stdout': {
+                        // Escape HTML special chars
+                        const escaped = message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                        // If the chunk contains carriage return (\r), PHPUnit or other tools may be updating the same line.
+                        // In that case, replace the current last line with the content after the last \r.
+                        if (escaped.includes('\r')) {
+                            const crParts = escaped.split('\r');
+                            const lastPart = crParts[crParts.length - 1];
+                            if (output.value.length === 0) {
+                                output.value.push(lastPart);
+                            } else {
+                                // Overwrite the last line (simulate carriage-return behaviour)
+                                output.value[output.value.length - 1] = output.value[output.value.length - 1] + lastPart;
+                            }
+                        }
+                        // If the chunk contains newline(s), split them and distribute across lines.
+                        else if (escaped.includes('\n')) {
+                            const parts = escaped.split('\n');
+                            // Append first part to the existing last line (or create one)
+                            if (output.value.length === 0) output.value.push(parts[0]);
+                            else output.value[output.value.length - 1] += parts[0];
+
+                            // Push remaining parts as new lines
+                            for (let i = 1; i < parts.length; i++) {
+                                output.value.push(parts[i]);
+                            }
+                        } else {
+                            // Normal case: no newline/carriage return — append to the last line so dots stay horizontal
+                            if (output.value.length === 0) output.value.push(escaped);
+                            else output.value[output.value.length - 1] += escaped;
+                        }
+
                         break;
+                    }
                     case 'exit':
                         output.value.push(`<span class="text-yellow-400">Test run finished with exit code: ${message.exitCode}.</span>`);
                         if (message.results) {
@@ -323,7 +355,7 @@
                                     m.status = res.status;
                                 }
                             }));
-                            
+
                             if (results.value.summary.failures > 0 || results.value.summary.errors > 0) {
                                 updateFavicon('failure');
                             } else {
@@ -345,7 +377,7 @@
                 activeTab.value = 'output';
                 const endpoint = runOptions.endpoint || '/api/run';
                 output.value = [`<span class="text-gray-400">Sending request to ${endpoint}...</span>`];
-                
+
                 const payload = {
                     filters: runOptions.filters || [],
                     group: groupFilter.value,
