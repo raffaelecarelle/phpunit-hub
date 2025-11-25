@@ -269,16 +269,42 @@ class ServeCommand extends Command
 
             $output->writeln('<info>Event-based file watcher enabled (inotify).</info>');
 
-            $watchPaths = [getcwd() . '/src', getcwd() . '/tests'];
-            $existingWatchPaths = array_filter($watchPaths, 'is_dir');
+            // Dynamically find paths from composer.json
+            $watchPaths = [];
+            $composerJsonPath = getcwd() . '/composer.json';
+
+            if (file_exists($composerJsonPath)) {
+                $composerConfig = json_decode(file_get_contents($composerJsonPath), true);
+                $psr4Paths = array_merge(
+                    $composerConfig['autoload']['psr-4'] ?? [],
+                    $composerConfig['autoload-dev']['psr-4'] ?? []
+                );
+
+                foreach ($psr4Paths as $paths) {
+                    if (is_array($paths)) {
+                        $watchPaths = array_merge($watchPaths, $paths);
+                    } else {
+                        $watchPaths[] = $paths;
+                    }
+                }
+            }
+
+            // Fallback to default if composer.json is not found or doesn't have paths
+            if (empty($watchPaths)) {
+                $watchPaths = ['src', 'tests'];
+            }
+
+            $absolutePaths = array_map(fn ($path) => getcwd() . '/' . trim($path, '/\\'), $watchPaths);
+            $uniquePaths = array_unique($absolutePaths);
+            $existingWatchPaths = array_filter($uniquePaths, 'is_dir');
 
             if (empty($existingWatchPaths)) {
-                $output->writeln('<warning>No directories to watch (src/ or tests/ not found).</warning>');
+                $output->writeln('<warning>Could not find any valid directories to watch from composer.json or defaults.</warning>');
                 return;
             }
 
             $command = sprintf(
-                'inotifywait -m -r -e modify,create,delete,move --format "%%e %%w%%f" %s',
+                'inotifywait -q -m -r -e modify,create,delete,move --format "%%e %%w%%f" %s',
                 implode(' ', array_map('escapeshellarg', $existingWatchPaths))
             );
 
