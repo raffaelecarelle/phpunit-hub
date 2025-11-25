@@ -19,21 +19,19 @@ class TestRunner
             . ' --log-junit ' . escapeshellarg($junitLogfile);
 
         // Add test suite filters if provided
-        if (!empty($suites)) {
-            foreach ($suites as $suite) {
-                $command .= ' --testsuite ' . escapeshellarg($suite);
-            }
+        foreach ($suites as $suite) {
+            $command .= ' --testsuite ' . escapeshellarg((string) $suite);
         }
 
         // Add name/group filters if provided
-        if (!empty($filters)) {
-            $escapedFilters = array_map(fn($filter) => preg_quote($filter, '/'), $filters);
+        if ($filters !== []) {
+            $escapedFilters = array_map(fn ($filter) => preg_quote((string) $filter, '/'), $filters);
             $filterPattern = implode('|', $escapedFilters);
             $command .= ' --filter ' . escapeshellarg($filterPattern);
         }
 
         // Add --group filter if provided
-        if (!empty($group)) {
+        if ($group !== '' && $group !== '0') {
             $command .= ' --group ' . escapeshellarg($group);
         }
 
@@ -41,10 +39,10 @@ class TestRunner
         foreach ($options as $option => $isEnabled) {
             if ($isEnabled) {
                 // Assuming the option name from the frontend matches the PHPUnit CLI flag
-                $command .= ' ' . escapeshellarg($option);
+                $command .= ' ' . escapeshellarg((string) $option);
             }
         }
-        
+
         $process = new Process($command);
         $process->start($this->loop);
 

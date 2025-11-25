@@ -12,7 +12,7 @@ class JUnitParser
      */
     public function parse(string $xmlContent): array
     {
-        if (empty(trim($xmlContent))) {
+        if (in_array(trim($xmlContent), ['', '0'], true)) {
             throw new Exception('Cannot parse empty XML content.');
         }
 
@@ -22,7 +22,7 @@ class JUnitParser
         if ($xml === false) {
             $errors = libxml_get_errors();
             libxml_clear_errors();
-            $errorMessages = array_map(fn($e) => trim($e->message), $errors);
+            $errorMessages = array_map(fn ($e) => trim($e->message), $errors);
             throw new Exception('Failed to parse XML: ' . implode(', ', $errorMessages));
         }
 
@@ -32,18 +32,18 @@ class JUnitParser
         // This is a more robust way to get to the actual test suites.
         $testSuitesWithCases = $xml->xpath('//testsuite[testcase]');
 
-        foreach ($testSuitesWithCases as $element) {
+        foreach ($testSuitesWithCases as $testSuiteWithCase) {
             $suiteData = [
-                'name' => (string) $element['name'],
-                'tests' => (int) $element['tests'],
-                'assertions' => (int) $element['assertions'],
-                'failures' => (int) $element['failures'],
-                'errors' => (int) $element['errors'],
-                'time' => (float) $element['time'],
+                'name' => (string) $testSuiteWithCase['name'],
+                'tests' => (int) $testSuiteWithCase['tests'],
+                'assertions' => (int) $testSuiteWithCase['assertions'],
+                'failures' => (int) $testSuiteWithCase['failures'],
+                'errors' => (int) $testSuiteWithCase['errors'],
+                'time' => (float) $testSuiteWithCase['time'],
                 'testcases' => [],
             ];
 
-            foreach ($element->testcase as $testcase) {
+            foreach ($testSuiteWithCase->testcase as $testcase) {
                 $caseData = [
                     'name' => (string) $testcase['name'],
                     'class' => (string) $testcase['class'],
@@ -56,7 +56,7 @@ class JUnitParser
                     'error' => null,
                 ];
 
-                if (isset($testcase->failure)) {
+                if (property_exists($testcase, 'failure') && $testcase->failure !== null) {
                     $caseData['status'] = 'failed';
                     $caseData['failure'] = [
                         'type' => (string) $testcase->failure['type'],
@@ -64,7 +64,7 @@ class JUnitParser
                     ];
                 }
 
-                if (isset($testcase->error)) {
+                if (property_exists($testcase, 'error') && $testcase->error !== null) {
                     $caseData['status'] = 'error';
                     $caseData['error'] = [
                         'type' => (string) $testcase->error['type'],
@@ -74,6 +74,7 @@ class JUnitParser
 
                 $suiteData['testcases'][] = $caseData;
             }
+
             $results['suites'][] = $suiteData;
         }
 

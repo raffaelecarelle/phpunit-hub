@@ -9,12 +9,10 @@ use Symfony\Component\Finder\Finder;
 
 class TestDiscoverer
 {
-    private string $projectRoot;
-    private ?string $configFile;
+    private readonly ?string $configFile;
 
-    public function __construct(string $projectRoot)
+    public function __construct(private readonly string $projectRoot)
     {
-        $this->projectRoot = $projectRoot;
         $this->configFile = $this->findConfigFile();
     }
 
@@ -25,7 +23,7 @@ class TestDiscoverer
         }
 
         $testDirectories = $this->parseTestDirectories($this->configFile);
-        $foundTests = empty($testDirectories) ? [] : $this->findTestsInDirectories($testDirectories);
+        $foundTests = $testDirectories === [] ? [] : $this->findTestsInDirectories($testDirectories);
         $availableSuites = $this->discoverSuites();
 
         return [
@@ -45,6 +43,7 @@ class TestDiscoverer
         foreach ($xml->xpath('//testsuites/testsuite') as $suiteNode) {
             $suites[] = (string) $suiteNode['name'];
         }
+
         return $suites;
     }
 
@@ -69,11 +68,12 @@ class TestDiscoverer
         $directories = [];
         // We look for all directories inside any testsuite to discover individual tests
         foreach ($xml->xpath('//testsuite/directory') as $dir) {
-            $fullPath = $this->projectRoot . '/' . (string) $dir;
+            $fullPath = $this->projectRoot . '/' . $dir;
             if (is_dir($fullPath)) {
                 $directories[] = $fullPath;
             }
         }
+
         return array_unique($directories);
     }
 
@@ -91,7 +91,11 @@ class TestDiscoverer
 
             try {
                 $reflection = new ReflectionClass($className);
-                if (!$reflection->isInstantiable() || !$reflection->isSubclassOf('PHPUnit\\Framework\\TestCase')) {
+                if (!$reflection->isInstantiable()) {
+                    continue;
+                }
+
+                if (!$reflection->isSubclassOf(\PHPUnit\Framework\TestCase::class)) {
                     continue;
                 }
 
@@ -105,7 +109,7 @@ class TestDiscoverer
                     }
                 }
 
-                if (!empty($methods)) {
+                if ($methods !== []) {
                     $suites[] = [
                         'id' => $className,
                         'name' => $reflection->getShortName(),
@@ -113,11 +117,12 @@ class TestDiscoverer
                         'methods' => $methods,
                     ];
                 }
-            } catch (\ReflectionException $e) {
+            } catch (\ReflectionException) {
                 // Could not autoload the class, skip it.
                 continue;
             }
         }
+
         return $suites;
     }
 
@@ -126,14 +131,16 @@ class TestDiscoverer
         $tokens = token_get_all(file_get_contents($filePath));
         $namespace = '';
         $class = '';
+        $counter = count($tokens);
 
-        for ($i = 0; $i < count($tokens); $i++) {
+        for ($i = 0; $i < $counter; $i++) {
             if ($tokens[$i][0] === T_NAMESPACE) {
                 $namespace = ''; // Reset for each namespace statement
                 for ($j = $i + 1; $j < count($tokens); $j++) {
                     if ($tokens[$j] === ';') {
                         break;
                     }
+
                     if (is_array($tokens[$j])) {
                         $namespace .= $tokens[$j][1];
                     }
@@ -153,8 +160,8 @@ class TestDiscoverer
         if ($namespace && $class) {
             return trim($namespace) . '\\' . $class;
         }
-        
-        if ($class) {
+
+        if ($class !== '' && $class !== '0') {
             return $class;
         }
 

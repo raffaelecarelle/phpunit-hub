@@ -9,43 +9,43 @@ use PHPUnitGUI\Discoverer\TestDiscoverer;
 
 class TestDiscovererTest extends TestCase
 {
-    private vfsStreamDirectory $root;
+    private vfsStreamDirectory $vfsStreamDirectory;
 
     protected function setUp(): void
     {
-        $this->root = vfsStream::setup('testRootDir');
+        $this->vfsStreamDirectory = vfsStream::setup('testRootDir');
     }
 
     public function testDiscoverFindsTests()
     {
         // 1. Create virtual file system respecting PSR-4
-        $testContent = <<<PHP
-<?php
-namespace App\Tests;
-use PHPUnit\Framework\TestCase;
-class MyFirstTest extends TestCase 
-{
-    public function testSomething() {}
-    public function testAnotherThing() {}
-}
-PHP;
-        vfsStream::newDirectory('Tests')->at($this->root);
-        vfsStream::newFile('Tests/MyFirstTest.php')->withContent($testContent)->at($this->root);
+        $testContent = <<<PHP_WRAP
+            <?php
+            namespace App\\Tests;
+            use PHPUnit\\Framework\\TestCase;
+            class MyFirstTest extends TestCase 
+            {
+                public function testSomething() {}
+                public function testAnotherThing() {}
+            }
+            PHP_WRAP;
+        vfsStream::newDirectory('Tests')->at($this->vfsStreamDirectory);
+        vfsStream::newFile('Tests/MyFirstTest.php')->withContent($testContent)->at($this->vfsStreamDirectory);
 
         $phpunitConfig = <<<XML
-<phpunit>
-    <testsuites>
-        <testsuite name="default">
-            <directory>./Tests</directory>
-        </testsuite>
-    </testsuites>
-</phpunit>
-XML;
-        vfsStream::newFile('phpunit.xml.dist')->withContent($phpunitConfig)->at($this->root);
+            <phpunit>
+                <testsuites>
+                    <testsuite name="default">
+                        <directory>./Tests</directory>
+                    </testsuite>
+                </testsuites>
+            </phpunit>
+            XML;
+        vfsStream::newFile('phpunit.xml.dist')->withContent($phpunitConfig)->at($this->vfsStreamDirectory);
 
         // 2. Run the discoverer
-        $discoverer = new TestDiscoverer($this->root->url());
-        $results = $discoverer->discover();
+        $testDiscoverer = new TestDiscoverer($this->vfsStreamDirectory->url());
+        $results = $testDiscoverer->discover();
 
         // 3. Assert results
         $this->assertCount(1, $results, 'Should discover exactly one test suite.');
@@ -59,28 +59,28 @@ XML;
 
     public function testDiscoverHandlesNoConfigFile()
     {
-        $discoverer = new TestDiscoverer($this->root->url());
-        $results = $discoverer->discover();
+        $testDiscoverer = new TestDiscoverer($this->vfsStreamDirectory->url());
+        $results = $testDiscoverer->discover();
         $this->assertEmpty($results);
     }
 
     public function testDiscoverIgnoresNonTestClasses()
     {
         $nonTestContent = <<<PHP
-<?php
-namespace App;
-class ThisIsATestCase {}
-PHP;
-        vfsStream::newDirectory('Tests')->at($this->root);
-        vfsStream::newFile('Tests/ThisIsATestCase.php')->withContent($nonTestContent)->at($this->root);
+            <?php
+            namespace App;
+            class ThisIsATestCase {}
+            PHP;
+        vfsStream::newDirectory('Tests')->at($this->vfsStreamDirectory);
+        vfsStream::newFile('Tests/ThisIsATestCase.php')->withContent($nonTestContent)->at($this->vfsStreamDirectory);
 
         $phpunitConfig = <<<XML
-<phpunit><testsuites><testsuite name="default"><directory>./Tests</directory></testsuite></testsuites></phpunit>
-XML;
-        vfsStream::newFile('phpunit.xml.dist')->withContent($phpunitConfig)->at($this->root);
+            <phpunit><testsuites><testsuite name="default"><directory>./Tests</directory></testsuite></testsuites></phpunit>
+            XML;
+        vfsStream::newFile('phpunit.xml.dist')->withContent($phpunitConfig)->at($this->vfsStreamDirectory);
 
-        $discoverer = new TestDiscoverer($this->root->url());
-        $results = $discoverer->discover();
+        $testDiscoverer = new TestDiscoverer($this->vfsStreamDirectory->url());
+        $results = $testDiscoverer->discover();
 
         $this->assertEmpty($results);
     }

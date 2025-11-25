@@ -18,9 +18,9 @@ class StatusHandlerTest extends TestCase
 
     private function getConnections(): \SplObjectStorage
     {
-        $reflection = new ReflectionClass($this->statusHandler);
-        $connectionsProp = $reflection->getProperty('connections');
-        return $connectionsProp->getValue($this->statusHandler);
+        $reflectionClass = new ReflectionClass($this->statusHandler);
+        $reflectionProperty = $reflectionClass->getProperty('connections');
+        return $reflectionProperty->getValue($this->statusHandler);
     }
 
     public function testOnOpenAttachesConnection()

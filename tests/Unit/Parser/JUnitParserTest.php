@@ -7,35 +7,35 @@ use PHPUnitGUI\Parser\JUnitParser;
 
 class JUnitParserTest extends TestCase
 {
-    private JUnitParser $parser;
+    private JUnitParser $jUnitParser;
 
     protected function setUp(): void
     {
-        $this->parser = new JUnitParser();
+        $this->jUnitParser = new JUnitParser();
     }
 
     public function testParseValidXml()
     {
         $xmlContent = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites>
-    <testsuite name="My\App\Tests\ExampleTest" tests="3" assertions="3" failures="1" errors="1" time="0.1">
-        <testcase name="testSuccess" class="My\App\Tests\ExampleTest" assertions="1" time="0.05" />
-        <testcase name="testFailure" class="My\App\Tests\ExampleTest" assertions="1" time="0.03">
-            <failure type="PHPUnit\Framework\ExpectationFailedException">
-                Failed asserting that false is true.
-            </failure>
-        </testcase>
-        <testcase name="testError" class="My\App\Tests\ExampleTest" assertions="1" time="0.02">
-            <error type="TypeError">
-                Something went wrong.
-            </error>
-        </testcase>
-    </testsuite>
-</testsuites>
-XML;
+            <?xml version="1.0" encoding="UTF-8"?>
+            <testsuites>
+                <testsuite name="My\App\Tests\ExampleTest" tests="3" assertions="3" failures="1" errors="1" time="0.1">
+                    <testcase name="testSuccess" class="My\App\Tests\ExampleTest" assertions="1" time="0.05" />
+                    <testcase name="testFailure" class="My\App\Tests\ExampleTest" assertions="1" time="0.03">
+                        <failure type="PHPUnit\Framework\ExpectationFailedException">
+                            Failed asserting that false is true.
+                        </failure>
+                    </testcase>
+                    <testcase name="testError" class="My\App\Tests\ExampleTest" assertions="1" time="0.02">
+                        <error type="TypeError">
+                            Something went wrong.
+                        </error>
+                    </testcase>
+                </testsuite>
+            </testsuites>
+            XML;
 
-        $results = $this->parser->parse($xmlContent);
+        $results = $this->jUnitParser->parse($xmlContent);
 
         $this->assertCount(1, $results['suites']);
         $this->assertEquals([
@@ -54,7 +54,7 @@ XML;
 
         // Test case 2: Failure
         $this->assertEquals('failed', $suite['testcases'][1]['status']);
-        $this->assertEquals('PHPUnit\Framework\ExpectationFailedException', $suite['testcases'][1]['failure']['type']);
+        $this->assertEquals(\PHPUnit\Framework\ExpectationFailedException::class, $suite['testcases'][1]['failure']['type']);
         $this->assertStringContainsString('Failed asserting that false is true', $suite['testcases'][1]['failure']['message']);
 
         // Test case 3: Error
@@ -66,12 +66,12 @@ XML;
     public function testParseEmptyXml()
     {
         $this->expectException(\Exception::class);
-        $this->parser->parse('');
+        $this->jUnitParser->parse('');
     }
 
     public function testParseMalformedXml()
     {
         $this->expectException(\Exception::class);
-        $this->parser->parse('<testsuite><testcase...></testsuite>');
+        $this->jUnitParser->parse('<testsuite><testcase...></testsuite>');
     }
 }

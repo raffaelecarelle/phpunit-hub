@@ -46,50 +46,41 @@ class ServeCommand extends Command
         $discoverer = new TestDiscoverer(getcwd());
         $wsServer = new WsServer($statusHandler);
 
-        $router = new class($wsServer, $output, $statusHandler, $testRunner, $parser, $discoverer) implements HttpServerInterface {
-            private HttpServerInterface $wsServer;
-            private OutputInterface $output;
-            private StatusHandler $statusHandler;
-            private TestRunner $testRunner;
-            private JUnitParser $parser;
-            private TestDiscoverer $discoverer;
-            private string $publicPath;
+        $router = new class ($wsServer, $output, $statusHandler, $testRunner, $parser, $discoverer) implements HttpServerInterface {
+            private readonly string $publicPath;
+
             private bool $isTestRunning = false;
+
             private array $failedTests = [];
+
             private array $lastFilters = [];
 
-            public function __construct(HttpServerInterface $wsServer, OutputInterface $output, StatusHandler $statusHandler, TestRunner $testRunner, JUnitParser $parser, TestDiscoverer $discoverer)
+            public function __construct(private readonly HttpServerInterface $httpServer, private readonly OutputInterface $output, private readonly StatusHandler $statusHandler, private readonly TestRunner $testRunner, private readonly JUnitParser $jUnitParser, private readonly TestDiscoverer $testDiscoverer)
             {
-                $this->wsServer = $wsServer;
-                $this->output = $output;
-                $this->statusHandler = $statusHandler;
-                $this->testRunner = $testRunner;
-                $this->parser = $parser;
-                $this->discoverer = $discoverer;
                 $this->publicPath = dirname(__DIR__, 2) . '/public';
             }
 
             public function onOpen(ConnectionInterface $conn, RequestInterface $request = null)
             {
                 $path = $request?->getUri()->getPath();
-                $this->output->writeln("Request for {$path}", OutputInterface::VERBOSITY_VERBOSE);
+                $this->output->writeln('Request for ' . $path, OutputInterface::VERBOSITY_VERBOSE);
 
                 if ($path === '/ws/status') {
-                    $this->wsServer->onOpen($conn, $request);
+                    $this->httpServer->onOpen($conn, $request);
                     return;
                 }
 
                 $this->handleHttpRequest($conn, $request);
             }
 
-            private function handleHttpRequest(ConnectionInterface $conn, RequestInterface $request): void
+            private function handleHttpRequest(ConnectionInterface $connection, RequestInterface $request): void
             {
                 $path = $request->getUri()->getPath();
                 $method = $request->getMethod();
                 $response = null;
 
                 if ($path === '/api/tests' && $method === 'GET') {
-                    $tests = $this->discoverer->discover();
+                    $tests = $this->testDiscoverer->discover();
                     $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($tests));
                 } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
                     if ($this->isTestRunning) {
@@ -104,11 +95,12 @@ class ServeCommand extends Command
                             $this->lastFilters = $filters;
                         } else { // /api/run-failed
                             $isRerun = true;
-                            if (empty($this->failedTests)) {
+                            if ($this->failedTests === []) {
                                 $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'No failed tests to run.']));
-                                $this->sendResponse($conn, $response);
+                                $this->sendResponse($connection, $response);
                                 return;
                             }
+
                             $filters = $this->failedTests;
                         }
 
@@ -126,11 +118,11 @@ class ServeCommand extends Command
                     }
                 }
 
-                if ($response === null) {
+                if (!$response instanceof \GuzzleHttp\Psr7\Response) {
                     $response = new GuzzleResponse(404, ['Content-Type' => 'text/plain'], 'Not Found');
                 }
 
-                $this->sendResponse($conn, $response);
+                $this->sendResponse($connection, $response);
             }
 
             public function runTests(array $filters, bool $isRerun = false): void
@@ -142,8 +134,8 @@ class ServeCommand extends Command
 
                 $this->isTestRunning = true;
                 $runId = Uuid::uuid4()->toString();
-                $junitLogfile = sys_get_temp_dir() . "/phpunit-gui-{$runId}.xml";
-                $this->output->writeln("Starting test run #{$runId} with filters: " . implode(', ', $filters));
+                $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
+                $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
 
                 $this->statusHandler->broadcast(json_encode(['type' => 'start', 'runId' => $runId]));
                 $process = $this->testRunner->run($junitLogfile, $filters);
@@ -153,11 +145,11 @@ class ServeCommand extends Command
                 });
 
                 $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
-                    $this->output->writeln("Test run #{$runId} finished with code {$exitCode}.");
+                    $this->output->writeln(sprintf('Test run #%s finished with code %s.', $runId, $exitCode));
                     $parsedResults = null;
                     if (file_exists($junitLogfile)) {
                         $xmlContent = file_get_contents($junitLogfile);
-                        $parsedResults = $this->parser->parse($xmlContent);
+                        $parsedResults = $this->jUnitParser->parse($xmlContent);
 
                         if (!$isRerun) {
                             $currentRunFailedTests = [];
@@ -172,8 +164,10 @@ class ServeCommand extends Command
                                     }
                                 }
                             }
+
                             $this->failedTests = $currentRunFailedTests;
                         }
+
                         unlink($junitLogfile);
                     }
 
@@ -181,7 +175,7 @@ class ServeCommand extends Command
                         'type' => 'exit',
                         'runId' => $runId,
                         'exitCode' => $exitCode,
-                        'results' => $parsedResults
+                        'results' => $parsedResults,
                     ]));
 
                     $this->isTestRunning = false;
@@ -193,10 +187,10 @@ class ServeCommand extends Command
                 return $this->lastFilters;
             }
 
-            private function sendResponse(ConnectionInterface $conn, GuzzleResponse $response): void
+            private function sendResponse(ConnectionInterface $connection, GuzzleResponse $guzzleResponse): void
             {
-                $conn->send(Message::toString($response));
-                $conn->close();
+                $connection->send(Message::toString($guzzleResponse));
+                $connection->close();
             }
 
             private function getMimeType(string $filename): string
@@ -212,43 +206,43 @@ class ServeCommand extends Command
 
             public function onMessage(ConnectionInterface $from, $msg)
             {
-                $this->wsServer->onMessage($from, $msg);
+                $this->httpServer->onMessage($from, $msg);
             }
 
             public function onClose(ConnectionInterface $conn)
             {
-                if (isset($conn->WebSocket)) {
-                    $this->wsServer->onClose($conn);
+                if (property_exists($conn, 'WebSocket') && $conn->WebSocket !== null) {
+                    $this->httpServer->onClose($conn);
                 }
             }
 
             public function onError(ConnectionInterface $conn, Exception $e)
             {
-                if (isset($conn->WebSocket)) {
-                    $this->wsServer->onError($conn, $e);
+                if (property_exists($conn, 'WebSocket') && $conn->WebSocket !== null) {
+                    $this->httpServer->onError($conn, $e);
                 } else {
-                    $this->output->writeln("<error>HTTP Server error: {$e->getMessage()}</error>");
+                    $this->output->writeln(sprintf('<error>HTTP Server error: %s</error>', $e->getMessage()));
                     $conn->close();
                 }
             }
         };
 
         $httpServer = new HttpServer($router);
-        $socket = new SocketServer("127.0.0.1:{$port}", [], $loop);
-        $server = new IoServer($httpServer, $socket, $loop);
+        $socketServer = new SocketServer('127.0.0.1:' . $port, [], $loop);
+        $ioServer = new IoServer($httpServer, $socketServer, $loop);
 
         if ($watch) {
             $this->startFileWatcher($loop, $output, $router);
         }
 
-        $output->writeln("<info>Starting server on http://127.0.0.1:{$port}</info>");
+        $output->writeln(sprintf('<info>Starting server on http://127.0.0.1:%d</info>', $port));
         $output->writeln("API endpoint available at GET /api/tests");
         $output->writeln("API endpoint available at POST /api/run");
         $output->writeln("API endpoint available at POST /api/run-failed");
         $output->writeln("WebSocket server listening on /ws/status");
         $output->writeln("Serving static files from 'public' directory");
 
-        $server->run();
+        $ioServer->run();
 
         return Command::SUCCESS;
     }
@@ -280,45 +274,55 @@ class ServeCommand extends Command
                     $composerConfig['autoload-dev']['psr-4'] ?? []
                 );
 
-                foreach ($psr4Paths as $paths) {
-                    if (is_array($paths)) {
-                        $watchPaths = array_merge($watchPaths, $paths);
+                foreach ($psr4Paths as $psr4Path) {
+                    if (is_array($psr4Path)) {
+                        $watchPaths = array_merge($watchPaths, $psr4Path);
                     } else {
-                        $watchPaths[] = $paths;
+                        $watchPaths[] = $psr4Path;
                     }
                 }
             }
 
             // Fallback to default if composer.json is not found or doesn't have paths
-            if (empty($watchPaths)) {
+            if ($watchPaths === []) {
                 $watchPaths = ['src', 'tests'];
             }
 
             $absolutePaths = array_map(fn ($path) => getcwd() . '/' . trim($path, '/\\'), $watchPaths);
             $uniquePaths = array_unique($absolutePaths);
-            $existingWatchPaths = array_filter($uniquePaths, 'is_dir');
+            $existingWatchPaths = array_filter($uniquePaths, is_dir(...));
 
-            if (empty($existingWatchPaths)) {
+            if ($existingWatchPaths === []) {
                 $output->writeln('<warning>Could not find any valid directories to watch from composer.json or defaults.</warning>');
                 return;
             }
 
             $command = sprintf(
                 'inotifywait -q -m -r -e modify,create,delete,move --format "%%e %%w%%f" %s',
-                implode(' ', array_map('escapeshellarg', $existingWatchPaths))
+                implode(' ', array_map(escapeshellarg(...), $existingWatchPaths))
             );
 
             $watcherProcess = new Process($command);
             $watcherProcess->start($loop);
+
             $debounceTimer = null;
 
             $watcherProcess->stdout->on('data', function ($chunk) use ($output, $loop, $router, &$debounceTimer) {
                 $lines = explode("\n", trim($chunk));
                 foreach ($lines as $line) {
-                    if (empty($line) || !str_ends_with(strtolower($line), '.php')) {
+                    if ($line === '') {
                         continue;
                     }
-                    $output->writeln("<comment>File change detected: {$line}</comment>");
+
+                    if ($line === '0') {
+                        continue;
+                    }
+
+                    if (!str_ends_with(strtolower($line), '.php')) {
+                        continue;
+                    }
+
+                    $output->writeln(sprintf('<comment>File change detected: %s</comment>', $line));
                 }
 
                 if ($debounceTimer !== null) {
@@ -332,11 +336,11 @@ class ServeCommand extends Command
             });
 
             $watcherProcess->stderr->on('data', function ($chunk) use ($output) {
-                $output->writeln("<error>Watcher error: {$chunk}</error>");
+                $output->writeln(sprintf('<error>Watcher error: %s</error>', $chunk));
             });
 
-            foreach ($existingWatchPaths as $path) {
-                $output->writeln("<info>Watching for changes in {$path}</info>");
+            foreach ($existingWatchPaths as $existingWatchPath) {
+                $output->writeln(sprintf('<info>Watching for changes in %s</info>', $existingWatchPath));
             }
         });
     }

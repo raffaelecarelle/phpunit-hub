@@ -24,7 +24,7 @@ class StatusHandler implements MessageComponentInterface
     public function onMessage(ConnectionInterface $from, $msg): void
     {
         // For now, we don't handle incoming messages from clients
-        echo "Received message from {$from->resourceId}: {$msg}\n";
+        echo sprintf('Received message from %s: %s%s', $from->resourceId, $msg, PHP_EOL);
     }
 
     public function onClose(ConnectionInterface $conn): void
@@ -35,19 +35,17 @@ class StatusHandler implements MessageComponentInterface
 
     public function onError(ConnectionInterface $conn, \Exception $e): void
     {
-        echo "An error has occurred: {$e->getMessage()}\n";
+        echo sprintf('An error has occurred: %s%s', $e->getMessage(), PHP_EOL);
         $conn->close();
     }
 
     /**
      * Broadcasts a message to all connected clients.
-     *
-     * @param string $message
      */
     public function broadcast(string $message): void
     {
-        foreach ($this->connections as $conn) {
-            $conn->send($message);
+        foreach ($this->connections as $connection) {
+            $connection->send($message);
         }
     }
 }
