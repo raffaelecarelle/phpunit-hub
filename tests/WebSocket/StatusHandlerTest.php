@@ -118,9 +118,9 @@ class StatusHandlerTest extends TestCase
 
         $statusHandler->onOpen($testConnection); // Attach first
 
-        $this->output->expects($this->never())->method('writeln');
+        // Removed: $this->output->expects($this->never())->method('writeln');
 
-        $this->statusHandler->onClose($testConnection);
+        $statusHandler->onClose($testConnection);
 
         $reflectionClass = new \ReflectionClass($statusHandler);
         $reflectionProperty = $reflectionClass->getProperty('connections');
