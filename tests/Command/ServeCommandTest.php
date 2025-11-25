@@ -23,6 +23,7 @@ use React\ChildProcess\Process;
 class ServeCommandTest extends TestCase
 {
     private CommandTester $commandTester;
+
     private Application $application;
 
     protected function setUp(): void
@@ -46,11 +47,11 @@ class ServeCommandTest extends TestCase
         $this->assertEquals('serve', $command->getName());
         $this->assertEquals('Starts the PHPUnit GUI server.', $command->getDescription());
         $this->assertTrue($command->getDefinition()->hasOption('watch'));
-        $option = $command->getDefinition()->getOption('watch');
-        $this->assertFalse($option->isValueRequired());
-        $this->assertFalse($option->isValueOptional());
-        $this->assertFalse($option->acceptValue()); // Corrected assertion
-        $this->assertEquals('Enable file watching to re-run tests on changes', $option->getDescription());
+        $inputOption = $command->getDefinition()->getOption('watch');
+        $this->assertFalse($inputOption->isValueRequired());
+        $this->assertFalse($inputOption->isValueOptional());
+        $this->assertFalse($inputOption->acceptValue()); // Corrected assertion
+        $this->assertEquals('Enable file watching to re-run tests on changes', $inputOption->getDescription());
     }
 
     public function testExecuteWithoutWatchOptionOutputsMessages(): void

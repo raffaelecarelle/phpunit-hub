@@ -29,9 +29,7 @@ class ServeCommand extends Command
         private ?WsServer             $wsServer = null,
         private readonly ?JUnitParser $jUnitParser = new JUnitParser(),
         private ?TestRunner           $testRunner = null,
-
-    )
-    {
+    ) {
         parent::__construct();
 
         $this->loop ??= Loop::get();
@@ -60,7 +58,7 @@ class ServeCommand extends Command
             $this->statusHandler,
             $this->testRunner,
             $this->jUnitParser,
-           $this->testDiscoverer
+            $this->testDiscoverer
         );
 
         $httpServer = new HttpServer($router);

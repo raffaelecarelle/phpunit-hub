@@ -145,7 +145,7 @@ class TestDiscoverer
         $finder = new Finder();
         $finder->files()->in($directories)->name('*Test.php');
 
-        $suites = [];
+        $uniqueSuites = []; // Use an associative array to ensure uniqueness by suite ID
         foreach ($finder as $file) {
             $className = $this->getClassNameFromFile($file->getRealPath());
             if (!$className) {
@@ -173,12 +173,16 @@ class TestDiscoverer
                 }
 
                 if ($methods !== []) {
-                    $suites[] = [
-                        'id' => $className,
-                        'name' => $reflection->getShortName(),
-                        'namespace' => $reflection->getNamespaceName(),
-                        'methods' => $methods,
-                    ];
+                    $suiteId = $className; // The class name is a unique identifier for the suite
+                    // Add the suite only if it hasn't been added yet
+                    if (!isset($uniqueSuites[$suiteId])) {
+                        $uniqueSuites[$suiteId] = [
+                            'id' => $className,
+                            'name' => $reflection->getShortName(),
+                            'namespace' => $reflection->getNamespaceName(),
+                            'methods' => $methods,
+                        ];
+                    }
                 }
             } catch (ReflectionException) {
                 // Could not autoload the class, skip it.
@@ -186,7 +190,7 @@ class TestDiscoverer
             }
         }
 
-        return $suites;
+        return array_values($uniqueSuites); // Convert back to a numerically indexed array
     }
 
     private function getClassNameFromFile(string $filePath): ?string

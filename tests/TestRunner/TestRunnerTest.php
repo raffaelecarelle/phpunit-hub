@@ -10,6 +10,7 @@ use React\EventLoop\LoopInterface;
 class TestRunnerTest extends TestCase
 {
     private LoopInterface $loop;
+
     private string $tempDir;
 
     protected function setUp(): void
@@ -23,15 +24,16 @@ class TestRunnerTest extends TestCase
     protected function tearDown(): void
     {
         if (is_dir($this->tempDir)) {
-            array_map('unlink', glob("$this->tempDir/*.*"));
+            array_map(unlink(...), glob($this->tempDir . '/*.*'));
             rmdir($this->tempDir);
         }
+
         parent::tearDown();
     }
 
     public function testRunReturnsProcessInstance(): void
     {
-        $runner = new TestRunner($this->loop);
+        $testRunner = new TestRunner($this->loop);
         $junitLogfile = $this->tempDir . '/logfile.xml';
 
         // The TestRunner directly instantiates React\ChildProcess\Process.
@@ -41,7 +43,7 @@ class TestRunnerTest extends TestCase
         // This test only verifies that an instance of Process is returned.
         // For more comprehensive testing, TestRunner would need to be refactored.
 
-        $process = $runner->run($junitLogfile);
+        $process = $testRunner->run($junitLogfile);
         $this->assertInstanceOf(Process::class, $process);
     }
 
