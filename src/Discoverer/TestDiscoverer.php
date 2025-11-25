@@ -10,26 +10,42 @@ use Symfony\Component\Finder\Finder;
 class TestDiscoverer
 {
     private string $projectRoot;
+    private ?string $configFile;
 
     public function __construct(string $projectRoot)
     {
         $this->projectRoot = $projectRoot;
+        $this->configFile = $this->findConfigFile();
     }
 
     public function discover(): array
     {
-        $configFile = $this->findConfigFile();
-        if (!$configFile) {
+        if (!$this->configFile) {
+            return ['suites' => [], 'availableSuites' => []];
+        }
+
+        $testDirectories = $this->parseTestDirectories($this->configFile);
+        $foundTests = empty($testDirectories) ? [] : $this->findTestsInDirectories($testDirectories);
+        $availableSuites = $this->discoverSuites();
+
+        return [
+            'suites' => $foundTests,
+            'availableSuites' => $availableSuites,
+        ];
+    }
+
+    public function discoverSuites(): array
+    {
+        if (!$this->configFile) {
             return [];
         }
 
-        $testDirectories = $this->parseConfig($configFile);
-
-        if (empty($testDirectories)) {
-            return [];
+        $xml = new SimpleXMLElement(file_get_contents($this->configFile));
+        $suites = [];
+        foreach ($xml->xpath('//testsuites/testsuite') as $suiteNode) {
+            $suites[] = (string) $suiteNode['name'];
         }
-
-        return $this->findTestsInDirectories($testDirectories);
+        return $suites;
     }
 
     private function findConfigFile(): ?string
@@ -47,14 +63,18 @@ class TestDiscoverer
         return null;
     }
 
-    private function parseConfig(string $configFile): array
+    private function parseTestDirectories(string $configFile): array
     {
         $xml = new SimpleXMLElement(file_get_contents($configFile));
         $directories = [];
+        // We look for all directories inside any testsuite to discover individual tests
         foreach ($xml->xpath('//testsuite/directory') as $dir) {
-            $directories[] = (string) $dir;
+            $fullPath = $this->projectRoot . '/' . (string) $dir;
+            if (is_dir($fullPath)) {
+                $directories[] = $fullPath;
+            }
         }
-        return $directories;
+        return array_unique($directories);
     }
 
     private function findTestsInDirectories(array $directories): array
@@ -109,6 +129,7 @@ class TestDiscoverer
 
         for ($i = 0; $i < count($tokens); $i++) {
             if ($tokens[$i][0] === T_NAMESPACE) {
+                $namespace = ''; // Reset for each namespace statement
                 for ($j = $i + 1; $j < count($tokens); $j++) {
                     if ($tokens[$j] === ';') {
                         break;
@@ -131,6 +152,10 @@ class TestDiscoverer
 
         if ($namespace && $class) {
             return trim($namespace) . '\\' . $class;
+        }
+        
+        if ($class) {
+            return $class;
         }
 
         return null;

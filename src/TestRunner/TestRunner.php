@@ -11,30 +11,40 @@ class TestRunner
     {
     }
 
-    public function run(string $junitLogfile, array $filters = []): Process
+    public function run(string $junitLogfile, array $filters = [], string $group = '', array $suites = [], array $options = []): Process
     {
         $phpunitPath = realpath('vendor/bin/phpunit') ?: 'vendor/bin/phpunit';
 
         $command = escapeshellcmd($phpunitPath)
             . ' --log-junit ' . escapeshellarg($junitLogfile);
 
+        // Add test suite filters if provided
+        if (!empty($suites)) {
+            foreach ($suites as $suite) {
+                $command .= ' --testsuite ' . escapeshellarg($suite);
+            }
+        }
+
+        // Add name/group filters if provided
         if (!empty($filters)) {
-            // The --filter option expects a regular expression.
-            // To match the filter strings literally, we must escape any special regex characters.
-            // preg_quote is the correct tool for this, as it will handle `\` and other special chars.
-            $escapedFilters = array_map(function ($filter) {
-                // The second argument adds the regex delimiter `/` to the list of characters to be escaped,
-                // although it's not strictly necessary for the default delimiter used by PHPUnit.
-                // It's good practice for robustness.
-                return preg_quote($filter, '/');
-            }, $filters);
-
-            // Join multiple filters with the regex OR operator.
+            $escapedFilters = array_map(fn($filter) => preg_quote($filter, '/'), $filters);
             $filterPattern = implode('|', $escapedFilters);
-
             $command .= ' --filter ' . escapeshellarg($filterPattern);
         }
 
+        // Add --group filter if provided
+        if (!empty($group)) {
+            $command .= ' --group ' . escapeshellarg($group);
+        }
+
+        // Add boolean command-line options
+        foreach ($options as $option => $isEnabled) {
+            if ($isEnabled) {
+                // Assuming the option name from the frontend matches the PHPUnit CLI flag
+                $command .= ' ' . escapeshellarg($option);
+            }
+        }
+        
         $process = new Process($command);
         $process->start($this->loop);
 

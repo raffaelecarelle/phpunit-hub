@@ -6,195 +6,371 @@
     <title>TestRunUI</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the filter panel dropdown */
+        .filter-panel-dropdown {
+            position: absolute;
+            top: 100%; /* Position below the header */
+            right: 0;
+            z-index: 20; /* Above other content */
+            min-width: 350px; /* Increased width to accommodate more options */
+        }
+        .play-button {
+            cursor: pointer;
+            color: #10B981; /* Green color for play icon */
+            margin-left: 8px;
+            font-size: 0.9em;
+            transition: color 0.2s;
+        }
+        .play-button:hover {
+            color: #059669;
+        }
+        .suite-header {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px 0;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .suite-header:hover {
+            background-color: #4a5568; /* Tailwind gray-700 equivalent */
+        }
+        .suite-arrow {
+            margin-right: 8px;
+            transition: transform 0.2s ease-in-out;
+        }
+        .suite-arrow.rotated {
+            transform: rotate(90deg);
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
-    <div id="app" class="flex flex-col h-screen">
-        <header class="bg-gray-800 shadow-md p-4 flex justify-between items-center z-10">
-            <h1 class="text-2xl font-bold text-white">TestRunUI</h1>
-            <div class="flex items-center space-x-4">
-                <input type="text" v-model="filter" placeholder="Filter by name, group..."
-                       class="bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       :disabled="isRunning">
-                <button @click="runTests" :disabled="isRunning"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed">
-                    <span v-if="isRunning">Running...</span>
-                    <span v-else>Run Tests</span>
+<div id="app" class="flex flex-col h-screen">
+    <header class="bg-gray-800 shadow-md p-4 flex justify-between items-center z-10 relative">
+        <h1 class="text-2xl font-bold text-white">TestRunUI</h1>
+        <div class="flex items-center space-x-4">
+            <input type="text" v-model="filter" placeholder="Filter by name, group..."
+                   class="bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   :disabled="isRunning">
+
+            <!-- New Filters Button -->
+            <div class="relative">
+                <button @click="toggleFilterPanel"
+                        class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    Filters
                 </button>
-            </div>
-        </header>
 
-        <div class="flex flex-grow overflow-hidden">
-            <!-- Test Explorer -->
-            <aside class="w-1/3 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
-                <h2 class="text-lg font-bold text-white mb-4">Test Explorer</h2>
-                <div v-if="testSuites.length === 0" class="text-gray-500">Loading tests...</div>
-                <div v-for="suite in testSuites" :key="suite.id" class="mb-4">
-                    <h3 class="font-bold text-md text-gray-200">{{ suite.name }}</h3>
-                    <ul class="ml-4 mt-2 space-y-1">
-                        <li v-for="method in suite.methods" :key="method.id">
-                            <a href="#" @click.prevent="setFilter(method.id)" class="text-sm text-blue-400 hover:text-blue-300 hover:underline">
-                                {{ method.name }}
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </aside>
+                <!-- Filter Panel Dropdown -->
+                <div v-show="showFilterPanel" @click.stop class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
+                    <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
 
-            <main class="w-2/3 p-4 flex flex-col">
-                <!-- Results Summary -->
-                <div v-if="results" class="bg-gray-800 p-4 rounded-lg shadow-lg mb-4">
-                    <h2 class="text-xl font-bold mb-2 text-white">Test Summary</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div class="p-2 bg-gray-700 rounded"><div class="text-2xl font-bold text-white">{{ results.summary.tests }}</div><div class="text-sm text-gray-400">Tests</div></div>
-                        <div class="p-2 bg-gray-700 rounded"><div class="text-2xl font-bold text-green-500">{{ results.summary.tests - results.summary.failures - results.summary.errors }}</div><div class="text-sm text-gray-400">Passed</div></div>
-                        <div class="p-2 rounded" :class="results.summary.failures > 0 ? 'bg-red-800' : 'bg-gray-700'"><div class="text-2xl font-bold text-red-500">{{ results.summary.failures }}</div><div class="text-sm text-gray-400">Failures</div></div>
-                        <div class="p-2 rounded" :class="results.summary.errors > 0 ? 'bg-yellow-800' : 'bg-gray-700'"><div class="text-2xl font-bold text-yellow-500">{{ results.summary.errors }}</div><div class="text-sm text-gray-400">Errors</div></div>
+                    <div class="form-group mb-4">
+                        <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Group Filter (--group)</label>
+                        <input type="text" id="group-filter" v-model="groupFilter" placeholder="e.g., @fast, @integration"
+                               class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white">
                     </div>
-                </div>
 
-                <!-- Tabs -->
-                <div class="flex-shrink-0 border-b border-gray-700">
-                    <nav class="-mb-px flex space-x-4">
-                        <button @click="activeTab = 'results'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
-                            Results
-                        </button>
-                        <button @click="activeTab = 'output'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'output' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
-                            Output
-                        </button>
-                    </nav>
-                </div>
+                    <div class="form-group mb-4">
+                        <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
+                        <select id="filter-suite" v-model="selectedSuites" multiple
+                                class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
+                            <option v-for="suite in availableSuites" :value="suite">{{ suite }}</option>
+                        </select>
+                    </div>
 
-                <!-- Tab Content -->
-                <div class="flex-grow overflow-y-auto pt-4">
-                    <!-- Results Tab -->
-                    <div v-show="activeTab === 'results'">
-                        <div v-if="!results" class="text-gray-500 text-center pt-10">Run tests to see the results.</div>
-                        <div v-else class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-700">
-                                <thead class="bg-gray-700">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-700">
-                                    <template v-for="suite in results.suites">
-                                        <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
-                                            <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
-                                                <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
-                                                <td class="px-6 py-4"><div class="text-sm text-white">{{ testcase.name }}</div><div class="text-xs text-gray-400">{{ testcase.class }}</div></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</td>
-                                            </tr>
-                                            <tr v-if="isExpanded(testcase)"><td colspan="3" class="bg-gray-900 p-4"><h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4><pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre></td></tr>
-                                        </template>
-                                    </template>
-                                </tbody>
-                            </table>
+                    <div class="form-group mb-4">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayWarnings" class="mr-2"> Show Warnings (--display-warnings)</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayDeprecations" class="mr-2"> Show Deprecations (--display-deprecations)</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displaySkipped" class="mr-2"> Show Skipped (--display-skipped)</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayIncomplete" class="mr-2"> Show Incomplete (--display-incomplete)</label>
                         </div>
                     </div>
-                    <!-- Output Tab -->
-                    <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
-                        <div v-for="(line, index) in output" :key="index" v-html="line" class="whitespace-pre-wrap"></div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Stop On Options</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnDefect" class="mr-2"> Stop on Defect</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnError" class="mr-2"> Stop on Error</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnFailure" class="mr-2"> Stop on Failure</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnWarning" class="mr-2"> Stop on Warning</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnRisky" class="mr-2"> Stop on Risky</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnDeprecation" class="mr-2"> Stop on Deprecation</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnNotice" class="mr-2"> Stop on Notice</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnSkipped" class="mr-2"> Stop on Skipped</label>
+                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnIncomplete" class="mr-2"> Stop on Incomplete</label>
+                        </div>
                     </div>
                 </div>
-            </main>
+            </div>
+
+            <button @click="runTests" :disabled="isRunning"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed">
+                <span v-if="isRunning">Running...</span>
+                <span v-else>Run Tests</span>
+            </button>
         </div>
+    </header>
+
+    <div class="flex flex-grow overflow-hidden">
+        <!-- Test Explorer -->
+        <aside class="w-1/3 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
+            <h2 class="text-lg font-bold text-white mb-4">Test Explorer</h2>
+
+            <div v-if="testSuites.length === 0" class="text-gray-500">Loading tests...</div>
+            <div v-for="suite in testSuites" :key="suite.id" class="mb-2">
+                <div @click="toggleSuite(suite.id)" class="suite-header text-md text-gray-200 hover:bg-gray-700 px-2">
+                    <span class="suite-arrow" :class="{ 'rotated': expandedSuites.has(suite.id) }">▶</span>
+                    <span class="font-bold">{{ suite.name }}</span>
+                    <span @click.stop="runSuiteTests(suite.id)" class="play-button" title="Run all tests in this suite">▶</span>
+                </div>
+                <ul v-show="expandedSuites.has(suite.id)" class="ml-4 mt-2 space-y-1">
+                    <li v-for="method in suite.methods" :key="method.id" class="flex items-center">
+                        <a href="#" @click.prevent="setFilter(method.id)" class="text-sm text-blue-400 hover:text-blue-300 hover:underline">
+                            {{ method.name }}
+                        </a>
+                        <span @click.stop="runSingleTest(method.id)" class="play-button" title="Run this test only">▶</span>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="w-2/3 p-4 flex flex-col">
+            <!-- Results Summary -->
+            <div v-if="results" class="bg-gray-800 p-4 rounded-lg shadow-lg mb-4">
+                <h2 class="text-xl font-bold mb-2 text-white">Test Summary</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="p-2 bg-gray-700 rounded"><div class="text-2xl font-bold text-white">{{ results.summary.tests }}</div><div class="text-sm text-gray-400">Tests</div></div>
+                    <div class="p-2 bg-gray-700 rounded"><div class="text-2xl font-bold text-green-500">{{ results.summary.tests - results.summary.failures - results.summary.errors }}</div><div class="text-sm text-gray-400">Passed</div></div>
+                    <div class="p-2 rounded" :class="results.summary.failures > 0 ? 'bg-red-800' : 'bg-gray-700'"><div class="text-2xl font-bold text-red-500">{{ results.summary.failures }}</div><div class="text-sm text-gray-400">Failures</div></div>
+                    <div class="p-2 rounded" :class="results.summary.errors > 0 ? 'bg-yellow-800' : 'bg-gray-700'"><div class="text-2xl font-bold text-yellow-500">{{ results.summary.errors }}</div><div class="text-sm text-gray-400">Errors</div></div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex-shrink-0 border-b border-gray-700">
+                <nav class="-mb-px flex space-x-4">
+                    <button @click="activeTab = 'results'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
+                        Results
+                    </button>
+                    <button @click="activeTab = 'output'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'output' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-400']">
+                        Output
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="flex-grow overflow-y-auto pt-4">
+                <!-- Results Tab -->
+                <div v-show="activeTab === 'results'">
+                    <div v-if="!results" class="text-gray-500 text-center pt-10">Run tests to see the results.</div>
+                    <div v-else class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-700">
+                            <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Case</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                            <template v-for="suite in results.suites">
+                                <template v-for="testcase in suite.testcases" :key="testcase.class + '::' + testcase.name">
+                                    <tr @click="toggleDetails(testcase)" :class="{'cursor-pointer hover:bg-gray-700': testcase.status !== 'passed'}">
+                                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{'bg-green-900 text-green-300': testcase.status === 'passed', 'bg-red-900 text-red-300': testcase.status === 'failed', 'bg-yellow-900 text-yellow-300': testcase.status === 'error'}">{{ testcase.status }}</span></td>
+                                        <td class="px-6 py-4"><div class="text-sm text-white">{{ testcase.name }}</div><div class="text-xs text-gray-400">{{ testcase.class }}</div></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</td>
+                                    </tr>
+                                    <tr v-if="isExpanded(testcase)"><td colspan="3" class="bg-gray-900 p-4"><h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4><pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre></td></tr>
+                                </template>
+                            </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Output Tab -->
+                <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
+                    <div v-for="(line, index) in output" :key="index" v-html="line" class="whitespace-pre-wrap"></div>
+                </div>
+            </div>
+        </main>
     </div>
+</div>
 
-    <script>
-        const { createApp, ref, onMounted } = Vue
+<script>
+    const { createApp, ref, reactive, onMounted } = Vue
 
-        createApp({
-            setup() {
-                const isRunning = ref(false);
-                const status = ref('Disconnected');
-                const activeTab = ref('results');
-                const output = ref([]);
-                const results = ref(null);
-                const filter = ref('');
-                const expandedTestId = ref(null);
-                const testSuites = ref([]);
-                let ws = null;
+    createApp({
+        setup() {
+            const isRunning = ref(false);
+            const status = ref('Disconnected');
+            const activeTab = ref('results');
+            const output = ref([]);
+            const results = ref(null);
+            const filter = ref('');
+            const groupFilter = ref('');
+            const expandedTestId = ref(null);
+            const testSuites = ref([]);
+            const availableSuites = ref([]);
+            const selectedSuites = ref([]);
+            const options = reactive({
+                // Output Options
+                displayWarnings: true,
+                displayDeprecations: false,
+                displaySkipped: true,
+                displayIncomplete: false,
+                // Stop On Options
+                stopOnDefect: false,
+                stopOnError: false,
+                stopOnFailure: false,
+                stopOnWarning: false,
+                stopOnRisky: false,
+                stopOnDeprecation: false,
+                stopOnNotice: false,
+                stopOnSkipped: false,
+                stopOnIncomplete: false,
+            });
+            const showFilterPanel = ref(false);
+            const expandedSuites = ref(new Set());
+            let ws = null;
 
-                const getTestCaseId = (testcase) => testcase.class + '::' + testcase.name;
-                const toggleDetails = (testcase) => {
-                    if (testcase.status === 'passed') return;
-                    const id = getTestCaseId(testcase);
-                    expandedTestId.value = expandedTestId.value === id ? null : id;
-                };
-                const isExpanded = (testcase) => getTestCaseId(testcase) === expandedTestId.value;
-                const setFilter = (id) => { filter.value = id; };
+            const getTestCaseId = (testcase) => testcase.class + '::' + testcase.name;
+            const toggleDetails = (testcase) => {
+                if (testcase.status === 'passed') return;
+                const id = getTestCaseId(testcase);
+                expandedTestId.value = expandedTestId.value === id ? null : id;
+            };
+            const isExpanded = (testcase) => getTestCaseId(testcase) === expandedTestId.value;
+            const setFilter = (id) => { filter.value = id; };
+            const toggleFilterPanel = () => { showFilterPanel.value = !showFilterPanel.value; };
 
-                const fetchTests = async () => {
-                    try {
-                        const response = await fetch('/api/tests');
-                        testSuites.value = await response.json();
-                    } catch (e) {
-                        console.error("Failed to fetch tests:", e);
-                        output.value.push('<span class="text-red-400">Failed to load tests from /api/tests.</span>');
+            const toggleSuite = (suiteId) => {
+                if (expandedSuites.value.has(suiteId)) {
+                    expandedSuites.value.delete(suiteId);
+                } else {
+                    expandedSuites.value.add(suiteId);
+                }
+            };
+
+            const runSingleTest = (testId) => {
+                filter.value = testId;
+                groupFilter.value = '';
+                selectedSuites.value = [];
+                runTests();
+            };
+
+            // New function to run all tests in a suite
+            const runSuiteTests = (suiteId) => {
+                filter.value = suiteId; // Set the filter to the suite ID (class name)
+                groupFilter.value = ''; // Clear group filter
+                selectedSuites.value = []; // Clear suite selection
+                runTests();
+            };
+
+            const fetchTests = async () => {
+                try {
+                    const response = await fetch('/api/tests');
+                    const data = await response.json();
+                    testSuites.value = data.suites;
+                    if (data.availableSuites) {
+                        availableSuites.value = data.availableSuites;
                     }
-                };
+                    // Removed: testSuites.value.forEach(suite => expandedSuites.value.add(suite.id));
+                    // Suites are now collapsed by default
+                } catch (e) {
+                    console.error("Failed to fetch tests:", e);
+                    output.value.push('<span class="text-red-400">Failed to load tests from /api/tests.</span>');
+                }
+            };
 
-                const connectWebSocket = () => {
-                    ws = new WebSocket('ws://127.0.0.1:8080/ws/status');
-                    ws.onopen = () => { status.value = 'Connected'; };
-                    ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
-                    ws.onclose = () => {
-                        status.value = 'Disconnected';
+            const connectWebSocket = () => {
+                ws = new WebSocket('ws://127.0.0.1:8080/ws/status');
+                ws.onopen = () => { status.value = 'Connected'; };
+                ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
+                ws.onclose = () => {
+                    status.value = 'Disconnected';
+                    isRunning.value = false;
+                };
+                ws.onerror = (error) => { status.value = 'Error'; };
+            };
+
+            const handleWebSocketMessage = (message) => {
+                switch (message.type) {
+                    case 'start':
+                        output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...</span>`];
+                        results.value = null;
+                        expandedTestId.value = null;
+                        break;
+                    case 'stdout':
+                        output.value.push(message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+                        break;
+                    case 'exit':
+                        output.value.push(`<span class="text-yellow-400">Test run finished with exit code: ${message.exitCode}.</span>`);
+                        if (message.results) results.value = message.results;
                         isRunning.value = false;
-                    };
-                    ws.onerror = (error) => { status.value = 'Error'; };
+                        activeTab.value = 'results'; // Switch to results tab on finish
+                        break;
+                }
+            };
+
+            const runTests = async () => {
+                if (isRunning.value) return;
+                isRunning.value = true;
+                activeTab.value = 'output'; // Switch to output tab on start
+                output.value = ['<span class="text-gray-400">Sending request to /api/run...</span>'];
+                showFilterPanel.value = false; // Close filter panel on run
+
+                const payload = {
+                    filters: filter.value ? [filter.value] : [],
+                    group: groupFilter.value,
+                    suites: selectedSuites.value,
+                    options: {
+                        '--display-warnings': options.displayWarnings,
+                        '--display-deprecations': options.displayDeprecations,
+                        '--display-skipped': options.displaySkipped,
+                        '--display-incomplete': options.displayIncomplete,
+                        '--stop-on-defect': options.stopOnDefect,
+                        '--stop-on-error': options.stopOnError,
+                        '--stop-on-failure': options.stopOnFailure,
+                        '--stop-on-warning': options.stopOnWarning,
+                        '--stop-on-risky': options.stopOnRisky,
+                        '--stop-on-deprecation': options.stopOnDeprecation,
+                        '--stop-on-notice': options.stopOnNotice,
+                        '--stop-on-skipped': options.stopOnSkipped,
+                        '--stop-on-incomplete': options.stopOnIncomplete,
+                    },
+                    coverage: false
                 };
 
-                const handleWebSocketMessage = (message) => {
-                    switch (message.type) {
-                        case 'start':
-                            output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...</span>`];
-                            results.value = null;
-                            expandedTestId.value = null;
-                            break;
-                        case 'stdout':
-                            output.value.push(message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-                            break;
-                        case 'exit':
-                            output.value.push(`<span class="text-yellow-400">Test run finished with exit code: ${message.exitCode}.</span>`);
-                            if (message.results) results.value = message.results;
-                            isRunning.value = false;
-                            activeTab.value = 'results'; // Switch to results tab on finish
-                            break;
-                    }
-                };
-
-                const runTests = async () => {
-                    if (isRunning.value) return;
-                    isRunning.value = true;
-                    activeTab.value = 'output'; // Switch to output tab on start
-                    output.value = ['<span class="text-gray-400">Sending request to /api/run...</span>'];
-                    const payload = { filters: filter.value ? [filter.value] : [], coverage: false };
-                    try {
-                        const response = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        const data = await response.json();
-                        if (!response.ok) {
-                            output.value.push(`<span class="text-red-400">Error: ${data.error || response.statusText}</span>`);
-                            isRunning.value = false;
-                        } else {
-                            output.value.push(`<span class="text-green-400">Successfully started test run #${data.runId}.</span>`);
-                        }
-                    } catch (error) {
-                        output.value.push(`<span class="text-red-400">API request failed: ${error.message}</span>`);
+                try {
+                    const response = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        output.value.push(`<span class="text-red-400">Error: ${data.error || response.statusText}</span>`);
                         isRunning.value = false;
+                    } else {
+                        output.value.push(`<span class="text-green-400">Successfully started test run #${data.runId}.</span>`);
                     }
-                };
+                } catch (error) {
+                    output.value.push(`<span class="text-red-400">API request failed: ${error.message}</span>`);
+                    isRunning.value = false;
+                }
+            };
 
-                onMounted(() => {
-                    connectWebSocket();
-                    fetchTests();
-                });
+            onMounted(() => {
+                connectWebSocket();
+                fetchTests();
+            });
 
-                return { isRunning, status, activeTab, output, results, filter, testSuites, runTests, toggleDetails, isExpanded, setFilter };
-            }
-        }).mount('#app');
-    </script>
+            return {
+                isRunning, status, activeTab, output, results, filter, groupFilter, testSuites,
+                availableSuites, selectedSuites, options, showFilterPanel, expandedSuites,
+                runTests, toggleDetails, isExpanded, setFilter, toggleFilterPanel, runSingleTest, runSuiteTests, toggleSuite
+            };
+        }
+    }).mount('#app');
+</script>
 </body>
 </html>
