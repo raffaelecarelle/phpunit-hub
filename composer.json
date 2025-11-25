@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": ">=8.2",
-        "symfony/console": "^6.0",
+        "symfony/console": "^7.3",
         "symfony/process": "^7.3",
         "react/http": "^1.8",
         "cboden/ratchet": "^0.4.4",
