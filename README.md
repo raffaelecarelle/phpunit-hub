@@ -5,13 +5,14 @@
 
 PHPUnit Hub is a modern, real-time web interface for running and analyzing PHPUnit tests. It provides a local, self-contained server that discovers your tests, runs them, and displays the results in a clean and interactive web UI.
 
-The entire application is powered by a PHP backend using the high-performance [ReactPHP](https://reactphp.org/) event loop, with a frontend built on [Vue.js](https://vuejs.org/) and [Tailwind CSS](https://tailwindcss.com/).
+The entire application is powered by a PHP backend using the high-performance [ReactPHP](https://reactphp.org/) event-loop, with a frontend built on [Vue.js](https://vuejs.org/) and [Tailwind CSS](https://tailwindcss.com/).
 
 ## Features
 
 - **Real-Time Feedback**: Watch your tests run in real-time via WebSockets.
 - **Test Explorer**: Automatically discovers your test suites and methods from your `phpunit.xml` configuration.
 - **Interactive Filtering**: Click on a test in the explorer to filter the run, or write your own filter pattern.
+- **Automatic Test Re-run**: Automatically re-run your tests on file changes with the efficient `--watch` mode.
 - **Detailed Results**: View a clear summary of test outcomes and a detailed table of all test cases.
 - **Failure Analysis**: Expand failed or errored tests to see the detailed stack trace and error messages.
 - **Clean UI**: A modern, tabbed interface to switch between structured results and raw console output.
@@ -57,6 +58,26 @@ That's it! All dependencies will be installed automatically.
     - Alternatively, you can type a custom filter pattern (as you would for `phpunit --filter`).
     - Click the **"Run Tests"** button to start the test execution.
     - Watch the **"Output"** tab for real-time progress, and see the final results in the **"Results"** tab.
+
+### File Watching (Auto Re-run)
+
+To automatically re-run tests whenever a source or test file changes, start the server with the `--watch` option:
+
+```sh
+vendor/bin/phpunit-hub --watch
+```
+
+When you save a `.php` file in your `src/` or `tests/` directories, the test suite will automatically execute again using the last applied filters.
+
+**System Requirement for `--watch` on Linux:**
+
+The watch mode on Linux relies on `inotify` for high-performance, event-driven file monitoring. You must have `inotify-tools` installed.
+
+On Debian-based distributions (like Ubuntu), you can install it with:
+```sh
+sudo apt-get install -y inotify-tools
+```
+This ensures that file watching has a negligible impact on CPU performance, even on very large projects.
 
 ## Contributing
 

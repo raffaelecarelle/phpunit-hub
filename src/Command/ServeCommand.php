@@ -16,10 +16,12 @@ use Ratchet\Http\HttpServer;
 use Ratchet\Http\HttpServerInterface;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
+use React\ChildProcess\Process;
 use React\EventLoop\Loop;
 use React\Socket\SocketServer;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class ServeCommand extends Command
@@ -28,12 +30,14 @@ class ServeCommand extends Command
 
     protected function configure(): void
     {
-        $this->setDescription('Starts the PHPUnit GUI server.');
+        $this->setDescription('Starts the PHPUnit GUI server.')
+            ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Enable file watching to re-run tests on changes');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $port = 8080;
+        $watch = $input->getOption('watch');
 
         $loop = Loop::get();
         $testRunner = new TestRunner($loop);
@@ -52,6 +56,7 @@ class ServeCommand extends Command
             private string $publicPath;
             private bool $isTestRunning = false;
             private array $failedTests = [];
+            private array $lastFilters = [];
 
             public function __construct(HttpServerInterface $wsServer, OutputInterface $output, StatusHandler $statusHandler, TestRunner $testRunner, JUnitParser $parser, TestDiscoverer $discoverer)
             {
@@ -96,6 +101,7 @@ class ServeCommand extends Command
                             $body = $request->getBody()->getContents();
                             $payload = json_decode($body, true) ?? [];
                             $filters = $payload['filters'] ?? [];
+                            $this->lastFilters = $filters;
                         } else { // /api/run-failed
                             $isRerun = true;
                             if (empty($this->failedTests)) {
@@ -106,55 +112,8 @@ class ServeCommand extends Command
                             $filters = $this->failedTests;
                         }
 
-                        $this->isTestRunning = true;
-                        $runId = Uuid::uuid4()->toString();
-                        $junitLogfile = sys_get_temp_dir() . "/phpunit-gui-{$runId}.xml";
-                        $this->output->writeln("Starting test run #{$runId} with filters: " . implode(', ', $filters));
-
-                        $this->statusHandler->broadcast(json_encode(['type' => 'start', 'runId' => $runId]));
-                        $process = $this->testRunner->run($junitLogfile, $filters);
-
-                        $process->stdout->on('data', function ($chunk) {
-                            $this->statusHandler->broadcast(json_encode(['type' => 'stdout', 'data' => $chunk]));
-                        });
-
-                        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
-                            $this->output->writeln("Test run #{$runId} finished with code {$exitCode}.");
-                            $parsedResults = null;
-                            if (file_exists($junitLogfile)) {
-                                $xmlContent = file_get_contents($junitLogfile);
-                                $parsedResults = $this->parser->parse($xmlContent);
-
-                                // Only repopulate the failed tests list on a full run
-                                if (!$isRerun) {
-                                    $currentRunFailedTests = [];
-                                    if (isset($parsedResults['suites'])) {
-                                        foreach ($parsedResults['suites'] as $suite) {
-                                            if (isset($suite['testcases'])) {
-                                                foreach ($suite['testcases'] as $testcase) {
-                                                    if (in_array($testcase['status'], ['failed', 'error'])) {
-                                                        $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    $this->failedTests = $currentRunFailedTests;
-                                }
-                                unlink($junitLogfile);
-                            }
-
-                            $this->statusHandler->broadcast(json_encode([
-                                'type' => 'exit',
-                                'runId' => $runId,
-                                'exitCode' => $exitCode,
-                                'results' => $parsedResults
-                            ]));
-
-                            $this->isTestRunning = false;
-                        });
-
-                        $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], json_encode(['runId' => $runId, 'message' => 'Test run started.']));
+                        $this->runTests($filters, $isRerun);
+                        $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], json_encode(['message' => 'Test run started.']));
                     }
                 } else {
                     $filePath = $this->publicPath . $path;
@@ -172,6 +131,66 @@ class ServeCommand extends Command
                 }
 
                 $this->sendResponse($conn, $response);
+            }
+
+            public function runTests(array $filters, bool $isRerun = false): void
+            {
+                if ($this->isTestRunning) {
+                    $this->output->writeln("<comment>Skipping test run: another is already in progress.</comment>");
+                    return;
+                }
+
+                $this->isTestRunning = true;
+                $runId = Uuid::uuid4()->toString();
+                $junitLogfile = sys_get_temp_dir() . "/phpunit-gui-{$runId}.xml";
+                $this->output->writeln("Starting test run #{$runId} with filters: " . implode(', ', $filters));
+
+                $this->statusHandler->broadcast(json_encode(['type' => 'start', 'runId' => $runId]));
+                $process = $this->testRunner->run($junitLogfile, $filters);
+
+                $process->stdout->on('data', function ($chunk) {
+                    $this->statusHandler->broadcast(json_encode(['type' => 'stdout', 'data' => $chunk]));
+                });
+
+                $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
+                    $this->output->writeln("Test run #{$runId} finished with code {$exitCode}.");
+                    $parsedResults = null;
+                    if (file_exists($junitLogfile)) {
+                        $xmlContent = file_get_contents($junitLogfile);
+                        $parsedResults = $this->parser->parse($xmlContent);
+
+                        if (!$isRerun) {
+                            $currentRunFailedTests = [];
+                            if (isset($parsedResults['suites'])) {
+                                foreach ($parsedResults['suites'] as $suite) {
+                                    if (isset($suite['testcases'])) {
+                                        foreach ($suite['testcases'] as $testcase) {
+                                            if (in_array($testcase['status'], ['failed', 'error'])) {
+                                                $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            $this->failedTests = $currentRunFailedTests;
+                        }
+                        unlink($junitLogfile);
+                    }
+
+                    $this->statusHandler->broadcast(json_encode([
+                        'type' => 'exit',
+                        'runId' => $runId,
+                        'exitCode' => $exitCode,
+                        'results' => $parsedResults
+                    ]));
+
+                    $this->isTestRunning = false;
+                });
+            }
+
+            public function getLastFilters(): array
+            {
+                return $this->lastFilters;
             }
 
             private function sendResponse(ConnectionInterface $conn, GuzzleResponse $response): void
@@ -218,6 +237,10 @@ class ServeCommand extends Command
         $socket = new SocketServer("127.0.0.1:{$port}", [], $loop);
         $server = new IoServer($httpServer, $socket, $loop);
 
+        if ($watch) {
+            $this->startFileWatcher($loop, $output, $router);
+        }
+
         $output->writeln("<info>Starting server on http://127.0.0.1:{$port}</info>");
         $output->writeln("API endpoint available at GET /api/tests");
         $output->writeln("API endpoint available at POST /api/run");
@@ -228,5 +251,67 @@ class ServeCommand extends Command
         $server->run();
 
         return Command::SUCCESS;
+    }
+
+    private function startFileWatcher($loop, OutputInterface $output, $router): void
+    {
+        // Check for inotifywait availability
+        $checkProcess = new Process('command -v inotifywait');
+        $checkProcess->start($loop);
+
+        $checkProcess->on('exit', function ($exitCode) use ($loop, $output, $router) {
+            if ($exitCode !== 0) {
+                $output->writeln('<error>Error: `inotifywait` command not found.</error>');
+                $output->writeln('<error>Please install `inotify-tools` to use the --watch feature on Linux.</error>');
+                $output->writeln('<error>Example: sudo apt-get install inotify-tools</error>');
+                return;
+            }
+
+            $output->writeln('<info>Event-based file watcher enabled (inotify).</info>');
+
+            $watchPaths = [getcwd() . '/src', getcwd() . '/tests'];
+            $existingWatchPaths = array_filter($watchPaths, 'is_dir');
+
+            if (empty($existingWatchPaths)) {
+                $output->writeln('<warning>No directories to watch (src/ or tests/ not found).</warning>');
+                return;
+            }
+
+            $command = sprintf(
+                'inotifywait -m -r -e modify,create,delete,move --format "%%e %%w%%f" %s',
+                implode(' ', array_map('escapeshellarg', $existingWatchPaths))
+            );
+
+            $watcherProcess = new Process($command);
+            $watcherProcess->start($loop);
+            $debounceTimer = null;
+
+            $watcherProcess->stdout->on('data', function ($chunk) use ($output, $loop, $router, &$debounceTimer) {
+                $lines = explode("\n", trim($chunk));
+                foreach ($lines as $line) {
+                    if (empty($line) || !str_ends_with(strtolower($line), '.php')) {
+                        continue;
+                    }
+                    $output->writeln("<comment>File change detected: {$line}</comment>");
+                }
+
+                if ($debounceTimer !== null) {
+                    $loop->cancelTimer($debounceTimer);
+                }
+
+                $debounceTimer = $loop->addTimer(0.5, function () use ($router, $output) {
+                    $output->writeln('<info>Re-running tests due to file changes...</info>');
+                    $router->runTests($router->getLastFilters());
+                });
+            });
+
+            $watcherProcess->stderr->on('data', function ($chunk) use ($output) {
+                $output->writeln("<error>Watcher error: {$chunk}</error>");
+            });
+
+            foreach ($existingWatchPaths as $path) {
+                $output->writeln("<info>Watching for changes in {$path}</info>");
+            }
+        });
     }
 }
