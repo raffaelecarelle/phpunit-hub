@@ -145,29 +145,6 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\TestSuite\FinishedSubscriber {
-            private $writeEvent;
-
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(TestSuiteFinished $event): void {
-                if ($event->testSuite()->isForTestClass()) {
-                    ($this->writeEvent)('suite.finished', [
-                        'name' => $event->testSuite()->name(),
-                        'numberOfTests' => $event->testSuite()->tests()->count(),
-                        'numberOfTestsRun' => $event->testSuite()->numberOfTestsRun(),
-                        'numberOfAssertions' => $event->testSuite()->numberOfAssertions(),
-                        'numberOfErrors' => $event->testSuite()->numberOfErrors(),
-                        'numberOfFailures' => $event->testSuite()->numberOfFailures(),
-                        'numberOfWarnings' => $event->testSuite()->numberOfWarnings(),
-                        'numberOfSkipped' => $event->testSuite()->numberOfSkipped(),
-                        'numberOfIncomplete' => $event->testSuite()->numberOfIncomplete(),
-                        'numberOfRisky' => $event->testSuite()->numberOfRisky(),
-                        'duration' => $event->duration()->asFloat(),
-                    ]);
-                }
-            }
-        });
-
         $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\TestRunner\FinishedSubscriber {
             private $writeEvent;
 
