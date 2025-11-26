@@ -9,4 +9,10 @@
             <directory>tests</directory>
         </testsuite>
     </testsuites>
+
+    <extensions>
+        <extension class="App\PHPUnit\RealtimeTestExtension">
+            <parameter name="outputFile" value="__REALTIME_OUTPUT_FILE__"/>
+        </extension>
+    </extensions>
 </phpunit>

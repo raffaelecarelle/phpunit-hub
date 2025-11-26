@@ -9,11 +9,16 @@ use React\EventLoop\LoopInterface;
 use function array_map;
 use function escapeshellarg;
 use function escapeshellcmd;
+use function file_get_contents;
+use function file_put_contents;
 use function implode;
 use function preg_quote;
 use function preg_replace;
+use function str_replace;
 use function strtolower;
+use function sys_get_temp_dir;
 use function trim;
+use function uniqid;
 
 class TestRunner
 {
@@ -22,21 +27,28 @@ class TestRunner
     }
 
     /**
-     * Runs PHPUnit tests.
+     * Runs PHPUnit tests using a real-time extension.
      *
-     * @param string $junitLogfile The path to the JUnit XML log file.
+     * @param string $realtimeOutputFile The path to the file where the RealtimeTestExtension will write events.
      * @param string[] $filters An array of filters to apply to the tests (e.g., method names).
      * @param string[] $groups An array of test groups to run.
      * @param string[] $suites An array of test suites to run.
      * @param array<string, bool> $options An associative array of boolean PHPUnit CLI options (e.g., ['--stop-on-failure' => true]).
      * @return Process The ReactPHP child process.
      */
-    public function run(string $junitLogfile, array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
+    public function run(string $realtimeOutputFile, array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
     {
         $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
+        $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
+
+        // Create a temporary phpunit.xml for this run
+        $tempPhpunitXmlPath = sys_get_temp_dir() . '/phpunit-hub-temp-' . uniqid() . '.xml';
+        $phpunitXmlContent = file_get_contents($phpunitXmlPath);
+        $modifiedPhpunitXmlContent = str_replace('__REALTIME_OUTPUT_FILE__', $realtimeOutputFile, $phpunitXmlContent);
+        file_put_contents($tempPhpunitXmlPath, $modifiedPhpunitXmlContent);
 
         $command = escapeshellcmd($phpunitPath)
-            . ' --log-junit ' . escapeshellarg($junitLogfile);
+            . ' --configuration ' . escapeshellarg($tempPhpunitXmlPath); // Use the temporary config file
 
         // Always enable colors
         $command .= ' --colors=always';
@@ -74,6 +86,13 @@ class TestRunner
 
         $process = new Process($command);
         $process->start($this->loop);
+
+        // Clean up the temporary phpunit.xml file after the process exits
+        $process->on('exit', function () use ($tempPhpunitXmlPath) {
+            if (file_exists($tempPhpunitXmlPath)) {
+                unlink($tempPhpunitXmlPath);
+            }
+        });
 
         return $process;
     }

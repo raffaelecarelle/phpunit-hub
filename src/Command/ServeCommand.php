@@ -3,7 +3,6 @@
 namespace PhpUnitHub\Command;
 
 use PhpUnitHub\Discoverer\TestDiscoverer;
-use PhpUnitHub\Parser\JUnitParser;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
 use Ratchet\Http\HttpServer;
@@ -27,7 +26,6 @@ class ServeCommand extends Command
         private ?TestDiscoverer       $testDiscoverer = null,
         private ?StatusHandler        $statusHandler = null,
         private ?WsServer             $wsServer = null,
-        private readonly ?JUnitParser $jUnitParser = new JUnitParser(),
         private ?TestRunner           $testRunner = null,
     ) {
         parent::__construct();
@@ -57,7 +55,6 @@ class ServeCommand extends Command
             $output,
             $this->statusHandler,
             $this->testRunner,
-            $this->jUnitParser,
             $this->testDiscoverer
         );
 
