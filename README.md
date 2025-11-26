@@ -16,8 +16,12 @@ The entire application is powered by a PHP backend using the high-performance [R
     - **Group**: The available groups are automatically populated by running `phpunit --list-groups`. You can select multiple groups to run.
     - **Filter**: You can write your own filter pattern.
 - **Automatic Test Re-run**: Automatically re-run your tests on file changes with the efficient `--watch` mode.
-- **Detailed Results**: View a clear summary of test outcomes and a detailed table of all test cases.
-- **Failure Analysis**: Expand failed or errored tests to see the detailed stack trace and error messages.
+- **Advanced Results Analysis**: The "Results" tab provides a powerful and organized view of test outcomes:
+    - **Execution Summary**: A top-level summary shows total tests, assertions, and duration.
+    - **Status Breakdown**: Get immediate counts for passed, failed, errors, skipped, warnings, and deprecations.
+    - **Grouped by TestCase**: Tests are grouped by their parent TestCase for clarity.
+    - **Prioritized Issues**: Tests with failures, errors, or other issues are displayed first. You can expand them to see detailed stack traces.
+    - **Clean UI**: Passed tests are collapsed into a single summary line per group, reducing noise.
 - **Clean UI**: A modern, tabbed interface to switch between structured results and raw console output.
 - **Self-Contained**: Runs with a simple command, no need for a separate web server like Nginx or Apache.
 
