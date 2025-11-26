@@ -269,7 +269,7 @@
                                         </div>
                                     </div>
                                     <div v-if="isExpanded(testcase)" class="bg-gray-900 p-4">
-                                        <h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'errored'}">{{ testcase.message }}</h4>
+                                        <h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed' || testcase.status === 'errored' }">{{ testcase.message }}</h4>
                                         <pre v-if="testcase.trace" class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.trace }}</pre>
                                     </div>
                                 </template>
