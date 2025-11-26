@@ -23,10 +23,17 @@ export function updateFavicon(status = 'neutral') {
  * Parse test ID to extract suite name and test name
  */
 export function parseTestId(testId) {
-    const parts = testId.split('::');
+    const separatorIndex = testId.indexOf('::');
+    if (separatorIndex === -1) {
+        return {
+            suiteName: testId,
+            testName: undefined,
+            fullId: testId
+        };
+    }
     return {
-        suiteName: parts[0],
-        testName: parts[1],
+        suiteName: testId.substring(0, separatorIndex),
+        testName: testId.substring(separatorIndex + 2),
         fullId: testId
     };
 }
@@ -35,7 +42,7 @@ export function parseTestId(testId) {
  * Format time in seconds to readable string
  */
 export function formatTime(seconds) {
-    if (!seconds) return '0.00s';
+    if (seconds === null || seconds === undefined) return '0.00s';
     return `${seconds.toFixed(4)}s`;
 }
 
@@ -53,4 +60,3 @@ export function calculatePassedTests(summary) {
     const problems = failed + error + warnings + skipped + incomplete + deprecations;
     return (summary.tests || 0) - problems;
 }
-
