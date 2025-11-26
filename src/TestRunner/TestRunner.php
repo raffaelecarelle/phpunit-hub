@@ -38,6 +38,9 @@ class TestRunner
         $command = escapeshellcmd($phpunitPath)
             . ' --log-junit ' . escapeshellarg($junitLogfile);
 
+        // Always enable colors
+        $command .= ' --colors=always';
+
         // Add test suite filters if provided
         foreach ($suites as $suite) {
             $command .= ' --testsuite ' . escapeshellarg($suite);
@@ -58,6 +61,11 @@ class TestRunner
         // Add boolean command-line options
         foreach ($options as $option => $isEnabled) {
             if ($isEnabled) {
+                // Skip the generic handling for 'colors' as we've already handled it.
+                if ($option === 'colors') {
+                    continue;
+                }
+
                 $option = '--'.$this->camelToKebab($option);
                 // Assuming the option name from the frontend matches the PHPUnit CLI flag
                 $command .= ' ' . escapeshellarg($option);

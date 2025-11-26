@@ -27,7 +27,6 @@
         /* Sort arrow animation */
         .sort-arrow { display: inline-block; transition: transform 220ms cubic-bezier(.4,0,.2,1), opacity 220ms ease; transform-origin: center; }
         .sort-arrow.none { opacity: 0.7; transform: rotate(0deg) scale(1); }
-        /* asc: arrow up (no rotation), desc: arrow down (rotated 180deg) */
         .sort-arrow.asc { opacity: 1; transform: rotate(0deg) scale(1); }
         .sort-arrow.desc { opacity: 1; transform: rotate(180deg) scale(1); }
         /* Custom Scrollbar */
@@ -44,6 +43,68 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #6b7280; /* bg-gray-500 */
+        }
+        /* ANSI color classes */
+        .ansi-black { color: #2e3440; }
+        .ansi-red { color: #bf616a; }
+        .ansi-green { color: #a3be8c; }
+        .ansi-yellow { color: #ebcb8b; }
+        .ansi-blue { color: #81a1c1; }
+        .ansi-magenta { color: #b48ead; }
+        .ansi-cyan { color: #88c0d0; }
+        .ansi-white { color: #e5e9f0; }
+        .ansi-bright-black { color: #4c566a; }
+        .ansi-bright-red { color: #bf616a; }
+        .ansi-bright-green { color: #a3be8c; }
+        .ansi-bright-yellow { color: #ebcb8b; }
+        .ansi-bright-blue { color: #81a1c1; }
+        .ansi-bright-magenta { color: #b48ead; }
+        .ansi-bright-cyan { color: #88c0d0; }
+        .ansi-bright-white { color: #eceff4; }
+        .ansi-bg-black { background-color: #2e3440; }
+        .ansi-bg-red { background-color: #bf616a; }
+        .ansi-bg-green { background-color: #a3be8c; }
+        .ansi-bg-yellow { background-color: #ebcb8b; }
+        .ansi-bg-blue { background-color: #81a1c1; }
+        .ansi-bg-magenta { background-color: #b48ead; }
+        .ansi-bg-cyan { background-color: #88c0d0; }
+        .ansi-bg-white { background-color: #e5e9f0; }
+        .ansi-bold { font-weight: bold; }
+        .ansi-underline { text-decoration: underline; }
+
+        /* Custom Output Formatting */
+        .output-line {
+            padding: 2px 8px;
+            margin: 0 -8px; /* Counteract padding to align with container */
+        }
+        .summary-ok {
+            background-color: rgba(16, 185, 129, 0.2); /* bg-green-500 with opacity */
+            border-left: 4px solid #10B981;
+            font-weight: bold;
+        }
+        .summary-fail {
+            background-color: rgba(239, 68, 68, 0.2); /* bg-red-500 with opacity */
+            border-left: 4px solid #EF4444;
+            font-weight: bold;
+        }
+        .summary-warn {
+            background-color: rgba(245, 158, 11, 0.2); /* bg-amber-500 with opacity */
+            border-left: 4px solid #F59E0B;
+            font-weight: bold;
+        }
+        .summary-time {
+            background-color: #374151; /* bg-gray-700 */
+            margin-top: 8px;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .failure-block {
+            background-color: rgba(239, 68, 68, 0.05);
+            border-left: 4px solid #b91c1c; /* red-800 */
+            padding-top: 8px;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
         }
     </style>
 </head>
@@ -254,7 +315,7 @@
                     </div>
                 </div>
                 <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
-                    <div v-for="(line, index) in output" :key="index" v-html="line" class="whitespace-pre-wrap"></div>
+                    <div v-for="(line, index) in output" :key="index" v-html="line.html" :class="line.blockClass"></div>
                 </div>
             </div>
         </main>
@@ -266,8 +327,8 @@
 
     createApp({
         setup() {
-            const runningTestIds = reactive({}); // Mappa runId a true/false (in esecuzione)
-            const stopPending = reactive({}); // Mappa runId a true/false (in fase di stop)
+            const runningTestIds = reactive({});
+            const stopPending = reactive({});
 
             const activeTab = ref('results');
             const output = ref([]);
@@ -279,6 +340,10 @@
             const availableGroups = ref([]);
             const selectedGroups = ref([]);
             const options = reactive({
+                displayWarnings: false,
+                displayDeprecations: false,
+                displaySkipped: false,
+                displayIncomplete: false,
                 stopOnDefect: false,
                 stopOnError: false,
                 stopOnFailure: false,
@@ -288,9 +353,10 @@
             const expandedSuites = ref(new Set());
             const expandedTestId = ref(null);
             const statusFilters = reactive({ passed: true, failed: true, error: true });
-            const sortOrder = ref(null); // null | 'asc' | 'desc'
+            const sortOrder = ref(null);
             const globalView = ref(true);
             let ws = null;
+            let inFailureBlock = false;
 
             const favicons = {
                 neutral: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#6b7280"/></svg>`,
@@ -298,7 +364,6 @@
                 failure: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#EF4444"/><line x1="11" y1="11" x2="21" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="21" y1="11" x2="11" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`
             };
 
-            // counts for status pills
             const statusCounts = computed(() => {
                 const counts = { passed: 0, failed: 0, error: 0 };
                 if (!results.value) return counts;
@@ -311,7 +376,6 @@
                 return counts;
             });
 
-            const totalTestsCount = computed(() => testSuites.value.flatMap(s => s.methods).length);
             const hasFailedTests = computed(() => results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0));
 
             const filteredTestSuites = computed(() => {
@@ -353,23 +417,13 @@
             };
             const isExpanded = (testcase) => `${testcase.class}::${testcase.name}` === expandedTestId.value;
 
-            // Helper per controllare se un test specifico è in esecuzione
             const isTestRunning = (runId) => runningTestIds[runId] === true;
             const isTestStopPending = (runId) => stopPending[runId] === true;
 
-            const runSingleTest = (testId) => {
-                runTests({ filters: [testId], contextId: testId }); // Passa testId come contextId
-            };
-            const runSuiteTests = (suiteId) => {
-                runTests({ filters: [suiteId], contextId: suiteId }); // Passa suiteId come contextId
-            };
-            const runAllTests = () => {
-                runTests({ filters: searchQuery.value ? [searchQuery.value] : [], contextId: 'global' });
-            };
-
-            const runFailedTests = () => {
-                runTests({ endpoint: '/api/run-failed', contextId: 'failed' });
-            };
+            const runSingleTest = (testId) => runTests({ filters: [testId], contextId: testId });
+            const runSuiteTests = (suiteId) => runTests({ filters: [suiteId], contextId: suiteId });
+            const runAllTests = () => runTests({ filters: searchQuery.value ? [searchQuery.value] : [], contextId: 'global' });
+            const runFailedTests = () => runTests({ endpoint: '/api/run-failed', contextId: 'failed' });
 
             const stopSingleTest = async (runId) => {
                 stopPending[runId] = true;
@@ -377,47 +431,37 @@
                     const res = await fetch(`/api/stop-single-test/${runId}`, { method: 'POST' });
                     if (!res.ok) {
                         const text = await res.text();
-                        output.value.push(`<span class="text-red-400">Failed to stop test run ${runId}: ${text}</span>`);
+                        output.value.push({ html: `<span class="text-red-400">Failed to stop test run ${runId}: ${text}</span>` });
                         delete stopPending[runId];
                     } else {
-                        output.value.push(`<span class="text-yellow-300">Stop requested for test run ${runId}...</span>`);
+                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for test run ${runId}...</span>` });
                     }
                 } catch (e) {
-                    output.value.push(`<span class="text-red-400">Failed to send stop request for test run ${runId}: ${e.message}</span>`);
+                    output.value.push({ html: `<span class="text-red-400">Failed to send stop request for ${runId}: ${e.message}</span>` });
                     delete stopPending[runId];
                 }
             };
 
             const stopTests = async () => {
-                Object.keys(runningTestIds).forEach(runId => {
-                    stopPending[runId] = true;
-                });
-
+                Object.keys(runningTestIds).forEach(runId => { stopPending[runId] = true; });
                 try {
                     const res = await fetch('/api/stop', { method: 'POST' });
                     if (!res.ok) {
                         const text = await res.text();
-                        output.value.push(`<span class="text-red-400">Failed to stop all tests: ${text}</span>`);
-                        Object.keys(runningTestIds).forEach(runId => {
-                            delete stopPending[runId];
-                        });
+                        output.value.push({ html: `<span class="text-red-400">Failed to stop all tests: ${text}</span>` });
+                        Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
                     } else {
-                        output.value.push(`<span class="text-yellow-300">Stop requested for all tests...</span>`);
+                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for all tests...</span>` });
                     }
                 } catch (e) {
-                    output.value.push(`<span class="text-red-400">Failed to send stop all request: ${e.message}</span>`);
-                    Object.keys(runningTestIds).forEach(runId => {
-                        delete stopPending[runId];
-                    });
+                    output.value.push({ html: `<span class="text-red-400">Failed to send stop all request: ${e.message}</span>` });
+                    Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
                 }
             };
 
             const togglePlayStop = () => {
-                if (isAnyTestRunning.value) {
-                    stopTests();
-                } else {
-                    runAllTests();
-                }
+                if (isAnyTestRunning.value) stopTests();
+                else runAllTests();
             };
 
             const fetchTests = async () => {
@@ -442,70 +486,111 @@
                 ws = new WebSocket('ws://127.0.0.1:8080/ws/status');
                 ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
                 ws.onclose = () => {
-                    // Clear all running states
-                    for (const key in runningTestIds) {
-                        delete runningTestIds[key];
-                    }
-                    for (const key in stopPending) {
-                        delete stopPending[key];
-                    }
+                    Object.keys(runningTestIds).forEach(k => delete runningTestIds[k]);
+                    Object.keys(stopPending).forEach(k => delete stopPending[k]);
                     updateFavicon('neutral');
                 };
+            };
+
+            const formatAnsiToHtml = (text) => {
+                const ansiRegex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+                const colorMap = {
+                    '30': 'black', '31': 'red', '32': 'green', '33': 'yellow',
+                    '34': 'blue', '35': 'magenta', '36': 'cyan', '37': 'white',
+                    '90': 'bright-black', '91': 'bright-red', '92': 'bright-green', '93': 'bright-yellow',
+                    '94': 'bright-blue', '95': 'bright-magenta', '96': 'bright-cyan', '97': 'bright-white'
+                };
+                const styleMap = { '1': 'bold', '4': 'underline' };
+
+                let openSpans = 0;
+                const escapedText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                return escapedText.replace(ansiRegex, (match) => {
+                    if (match === '\u001b[0m') {
+                        const closingTags = '</span>'.repeat(openSpans);
+                        openSpans = 0;
+                        return closingTags;
+                    }
+                    const codes = match.slice(2, -1).split(';');
+                    const classes = [];
+                    codes.forEach(code => {
+                        if (colorMap[code]) classes.push(`ansi-${colorMap[code]}`);
+                        else if (styleMap[code]) classes.push(`ansi-${styleMap[code]}`);
+                    });
+                    if (classes.length > 0) {
+                        openSpans++;
+                        return `<span class="${classes.join(' ')}">`;
+                    }
+                    return '';
+                }) + '</span>'.repeat(openSpans);
             };
 
             const handleWebSocketMessage = (message) => {
                 switch (message.type) {
                     case 'start':
-                        // Non resettare l'intero output, ma aggiungi solo il nuovo messaggio
-                        output.value.push(`<span class="text-yellow-400">Test run #${message.runId} started...\n\r</span>`);
+                        output.value = [];
+                        inFailureBlock = false;
                         results.value = null;
                         expandedTestId.value = null;
                         testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
                         updateFavicon('neutral');
                         runningTestIds[message.runId] = true;
                         delete stopPending[message.runId];
-
-                        // Associa il runId al test specifico se è un singolo test o suite
-                        if (message.contextId) { // contextId sarà passato dal frontend al backend e ritornato
+                        if (message.contextId) {
                             testSuites.value.forEach(suite => {
-                                if (suite.id === message.contextId) {
-                                    suite.runId = message.runId;
-                                }
+                                if (suite.id === message.contextId) suite.runId = message.runId;
                                 suite.methods.forEach(method => {
-                                    if (method.id === message.contextId) {
-                                        method.runId = message.runId;
-                                    }
+                                    if (method.id === message.contextId) method.runId = message.runId;
                                 });
                             });
                         }
                         break;
                     case 'stopped':
-                        output.value.push(`<span class="text-yellow-300">Test run ${message.runId} stopped by user.</span>`);
+                        output.value.push({ html: `<span class="text-yellow-300">Test run ${message.runId} stopped by user.</span>` });
                         delete runningTestIds[message.runId];
                         delete stopPending[message.runId];
-                        // Rimuovi il runId dal test specifico
                         testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) {
-                                suite.runId = null;
-                            }
+                            if (suite.runId === message.runId) suite.runId = null;
                             suite.methods.forEach(method => {
-                                if (method.runId === message.runId) {
-                                    method.runId = null;
-                                }
+                                if (method.runId === message.runId) method.runId = null;
                             });
                         });
-                        if (Object.keys(runningTestIds).length === 0) {
-                            updateFavicon('neutral');
-                        }
+                        if (Object.keys(runningTestIds).length === 0) updateFavicon('neutral');
                         break;
                     case 'stdout': {
-                        const escaped = message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        // Aggiungi il runId al messaggio di output per chiarezza
-                        output.value.push(`[${message.runId.substring(0, 8)}] ${escaped}`);
+                        const data = message.data;
+                        const progressRegex = /^[.FESIWDR\s]+$/;
+                        if (progressRegex.test(data)) {
+                            // Ignore progress characters, we are not displaying them
+                            return;
+                        }
+
+                        let blockClass = 'output-line';
+                        if (data.startsWith('Time:')) {
+                            blockClass += ' summary-time';
+                            inFailureBlock = false;
+                        } else if (data.startsWith('OK, but there were issues!')) {
+                            blockClass += ' summary-warn';
+                            inFailureBlock = false;
+                        } else if (data.startsWith('FAILURES!')) {
+                            blockClass += ' summary-fail';
+                            inFailureBlock = false;
+                        } else if (data.startsWith('OK (')) {
+                            blockClass += ' summary-ok';
+                            inFailureBlock = false;
+                        } else if (data.startsWith('There was') || data.match(/^\d+\)/)) {
+                            inFailureBlock = true;
+                        }
+
+                        if (inFailureBlock) {
+                            blockClass += ' failure-block';
+                        }
+                        
+                        output.value.push({ html: formatAnsiToHtml(data), blockClass });
                         break;
                     }
                     case 'exit':
-                        output.value.push(`<span class="text-yellow-400">Test run ${message.runId} finished with exit code: ${message.exitCode}.</span>`);
+                        inFailureBlock = false;
                         if (message.results) {
                             results.value = message.results;
                             const resultsMap = new Map();
@@ -520,18 +605,12 @@
                         }
                         delete runningTestIds[message.runId];
                         delete stopPending[message.runId];
-                        // Rimuovi il runId dal test specifico
                         testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) {
-                                suite.runId = null;
-                            }
+                            if (suite.runId === message.runId) suite.runId = null;
                             suite.methods.forEach(method => {
-                                if (method.runId === message.runId) {
-                                    method.runId = null;
-                                }
+                                if (method.runId === message.runId) method.runId = null;
                             });
                         });
-                        // Aggiorna il favicon solo se non ci sono più test in esecuzione
                         if (Object.keys(runningTestIds).length === 0) {
                             if (results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0)) {
                                 updateFavicon('failure');
@@ -546,7 +625,6 @@
                 }
             };
 
-            // Filter & sort helpers for the results table
             const toggleSortTime = () => {
                 if (sortOrder.value === null) sortOrder.value = 'desc';
                 else if (sortOrder.value === 'desc') sortOrder.value = 'asc';
@@ -554,7 +632,6 @@
             };
 
             const passesStatusFilter = (testcase) => {
-                // If testcase.status is falsy, treat as 'passed' neutral? keep it visible only if passed filter enabled
                 const st = testcase.status || 'passed';
                 if (st === 'passed') return statusFilters.passed;
                 if (st === 'failed') return statusFilters.failed;
@@ -564,7 +641,6 @@
 
             const filteredBySuite = (suite) => {
                 if (!results.value) return [];
-                // return array of objects { key: 'class::name', testcase }
                 let items = suite.testcases.map(tc => ({ key: tc.class + '::' + tc.name, tc }));
                 items = items.filter(i => passesStatusFilter(i.tc));
                 return items;
@@ -572,7 +648,6 @@
 
             const resultsView = computed(() => {
                 if (!results.value) return [];
-                // If globalView is on, flatten all testcases, filter and sort globally and return a single pseudo-suite
                 if (globalView.value) {
                     let items = [];
                     results.value.suites.forEach(suite => {
@@ -584,68 +659,33 @@
                         items.sort((a, b) => {
                             const ta = Number(a.tc.time ?? Infinity);
                             const tb = Number(b.tc.time ?? Infinity);
-                            if (isNaN(ta)) return 1;
-                            if (isNaN(tb)) return -1;
                             return sortOrder.value === 'asc' ? ta - tb : tb - ta;
                         });
                     }
-                    // Map to single suite object
                     return [{ id: 'all', name: 'All Tests', testcases: items.map(i => i.tc) }];
                 }
-
-                // per-suite: keep suites but filter testcases (no per-suite sort)
                 return results.value.suites.map(suite => ({ ...suite, testcases: filteredBySuite(suite).map(i => i.tc) })).filter(s => s.testcases.length > 0);
             });
 
             const runTests = async (runOptions = {}) => {
-                // Non controlliamo più isRunning.value qui
                 activeTab.value = 'output';
                 const endpoint = runOptions.endpoint || '/api/run';
-                output.value.push(`<span class="text-gray-400">Sending request to ${endpoint}...</span>`);
-
                 const payload = {
                     filters: runOptions.filters || [],
                     groups: selectedGroups.value,
                     suites: selectedSuites.value,
-                    options: { ...options },
-                    contextId: runOptions.contextId, // Invia il contextId al backend
+                    options: { ...options, colors: true },
+                    contextId: runOptions.contextId,
                 };
-
                 try {
                     const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
-                        let errorMessage;
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            const data = await response.json();
-                            errorMessage = data.error || response.statusText;
-                        } else {
-                            errorMessage = await response.text();
-                        }
-                        output.value.push(`<span class="text-red-400">Error: ${errorMessage}</span>`);
+                        const text = await response.text();
+                        output.value.push({ html: `<span class="text-red-400">Error: ${text}</span>` });
                         updateFavicon('failure');
-                    } else {
-                        const data = await response.json();
-                        const runId = data.runId;
-                        if (runId) {
-                            runningTestIds[runId] = true;
-                            // Associa il runId al test specifico che lo ha avviato
-                            if (runOptions.contextId) {
-                                testSuites.value.forEach(suite => {
-                                    if (suite.id === runOptions.contextId) {
-                                        suite.runId = runId;
-                                    }
-                                    suite.methods.forEach(method => {
-                                        if (method.id === runOptions.contextId) {
-                                            method.runId = runId;
-                                        }
-                                    });
-                                });
-                            }
-                        }
                     }
                 } catch (error) {
-                    output.value.push(`<span class="text-red-400">API request failed: ${error.message}</span>`);
+                    output.value.push({ html: `<span class="text-red-400">API request failed: ${error.message}</span>` });
                     updateFavicon('failure');
                 }
             };
@@ -654,17 +694,14 @@
                 connectWebSocket();
                 fetchTests();
                 updateFavicon();
-
                 const resizer = document.getElementById('resizer');
                 const sidebar = document.getElementById('test-sidebar');
                 let isResizing = false;
-
                 resizer.addEventListener('mousedown', (e) => {
                     e.preventDefault();
                     isResizing = true;
                     document.body.style.cursor = 'col-resize';
                     document.body.style.userSelect = 'none';
-
                     const mouseMoveHandler = (e) => {
                         if (!isResizing) return;
                         const sidebarWidth = e.clientX;
@@ -672,7 +709,6 @@
                             sidebar.style.width = `${sidebarWidth}px`;
                         }
                     };
-
                     const mouseUpHandler = () => {
                         isResizing = false;
                         document.body.style.cursor = '';
@@ -680,7 +716,6 @@
                         document.removeEventListener('mousemove', mouseMoveHandler);
                         document.removeEventListener('mouseup', mouseUpHandler);
                     };
-
                     document.addEventListener('mousemove', mouseMoveHandler);
                     document.addEventListener('mouseup', mouseUpHandler);
                 });
@@ -691,7 +726,7 @@
                 activeTab, output, results, searchQuery, testSuites, availableSuites, selectedSuites, availableGroups, selectedGroups, options,
                 showFilterPanel, expandedSuites, expandedTestId, hasFailedTests,
                 runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
-                statusFilters, sortOrder, toggleSortTime, resultsView, filteredBySuite, statusCounts, globalView,
+                statusFilters, sortOrder, toggleSortTime, resultsView,
                 stopTests, togglePlayStop, stopSingleTest, isTestRunning, isTestStopPending
               };
           }
