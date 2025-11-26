@@ -37,7 +37,14 @@ class Router implements RouterInterface
 {
     private readonly string $publicPath;
 
-    private bool $isTestRunning = false;
+    /** @var array<string, Process> */
+    private array $runningProcesses = [];
+
+    /** @var array<string, string> */ // Mappa runId a junitLogfile
+    private array $junitLogfiles = [];
+
+    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroup, lastOptions per ogni runId
+    private array $runContexts = [];
 
     /** @var string[] */
     private array $failedTests = [];
@@ -52,12 +59,6 @@ class Router implements RouterInterface
 
     /** @var array<string, bool> */
     private array $lastOptions = [];
-
-    // Track the currently running process so we can terminate it
-    private ?Process $currentProcess = null;
-
-    // Current run id for broadcasting stop events
-    private ?string $currentRunId = null;
 
     public function __construct(
         private readonly HttpServerInterface $httpServer,
@@ -98,59 +99,64 @@ class Router implements RouterInterface
                 $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
             }
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
-            if ($this->isTestRunning) {
-                $jsonResponse = json_encode(['error' => 'A test run is already in progress.']);
-                if ($jsonResponse === false) {
-                    $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
-                } else {
-                    $response = new GuzzleResponse(429, ['Content-Type' => 'application/json'], $jsonResponse);
-                }
-            } else {
-                /** @var string[] $filters */
-                $filters = [];
-                $group = [];
-                $suites = [];
-                $options = [];
-                $isRerun = false;
-                if ($path === '/api/run') {
-                    $body = $request?->getBody()->getContents();
-                    $payload = json_decode((string) $body, true) ?? [];
-                    $filters = $payload['filters'] ?? [];
-                    $group = $payload['group'] ?? '';
-                    $suites = $payload['suites'] ?? [];
-                    $options = $payload['options'] ?? [];
-                    $this->lastFilters = $filters;
-                    $this->lastSuites = $suites;
-                    $this->lastGroup = $group;
-                    $this->lastOptions = $options;
-                } else { // /api/run-failed
-                    $isRerun = true;
-                    if ($this->failedTests === []) {
-                        $jsonResponse = json_encode(['error' => 'No failed tests to run.']);
-                        if ($jsonResponse === false) {
-                            $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
-                        } else {
-                            $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], $jsonResponse);
-                        }
+            // No longer checking isTestRunning here, as multiple runs are now allowed
+            /** @var string[] $filters */
+            $filters = [];
+            $group = '';
+            /** @var string[] $suites */
+            $suites = [];
+            /** @var array<string, bool> $options */
+            $options = [];
+            $isRerun = false;
+            $contextId = null; // Initialize contextId
 
-                        $this->sendResponse($connection, $response);
-                        return;
+            if ($path === '/api/run') {
+                $body = $request?->getBody()->getContents();
+                $payload = json_decode((string) $body, true) ?? [];
+                $filters = $payload['filters'] ?? [];
+                $group = $payload['group'] ?? '';
+                $suites = $payload['suites'] ?? [];
+                $options = $payload['options'] ?? [];
+                $contextId = $payload['contextId'] ?? null; // Get contextId from payload
+                $this->lastFilters = $filters;
+                $this->lastSuites = $suites;
+                $this->lastGroup = $group;
+                $this->lastOptions = $options;
+            } else { // /api/run-failed
+                $isRerun = true;
+                if ($this->failedTests === []) {
+                    $jsonResponse = json_encode(['error' => 'No failed tests to run.']);
+                    if ($jsonResponse === false) {
+                        $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
+                    } else {
+                        $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], $jsonResponse);
                     }
 
-                    $filters = $this->failedTests;
+                    $this->sendResponse($connection, $response);
+                    return;
                 }
 
-                $this->runTests($filters, $suites, $group, $options, $isRerun);
-                $jsonResponse = json_encode(['message' => 'Test run started.']);
-                if ($jsonResponse === false) {
-                    $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
-                } else {
-                    $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
-                }
+                $filters = $this->failedTests;
+                // For run-failed, we might not have a specific contextId, or it could be 'failed'
+                $body = $request?->getBody()->getContents();
+                $payload = json_decode((string) $body, true) ?? [];
+                $contextId = $payload['contextId'] ?? 'failed';
+            }
+
+            $runId = $this->runTests($filters, $suites, $group, $options, $isRerun, $contextId);
+            $jsonResponse = json_encode(['message' => 'Test run started.', 'runId' => $runId]);
+            if ($jsonResponse === false) {
+                $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
+            } else {
+                $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
             }
         } elseif ($path === '/api/stop' && $method === 'POST') {
-            // Handle stop requests
-            $response = $this->stopTests();
+            // Handle stop requests for all running tests
+            $response = $this->stopAllTests();
+        } elseif (str_starts_with((string) $path, '/api/stop-single-test/') && $method === 'POST') {
+            $parts = explode('/', (string) $path);
+            $runId = end($parts);
+            $response = $this->stopSingleTest($runId);
         } else {
             $filePath = $this->publicPath . $path;
             if ($path === '/') {
@@ -171,21 +177,27 @@ class Router implements RouterInterface
 
     /**
      * @param string[] $filters
+     * @param string[] $suites
+     * @param array<string, bool> $options
+     * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
+     * @return string The runId of the started test process.
      */
-    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false): void
+    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false, ?string $contextId = null): string
     {
-        if ($this->isTestRunning) {
-            $this->output->writeln("<comment>Skipping test run: another is already in progress.</comment>");
-            return;
-        }
-
-        $this->isTestRunning = true;
         $runId = Uuid::uuid4()->toString();
-        $this->currentRunId = $runId;
         $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
+        $this->junitLogfiles[$runId] = $junitLogfile;
+        $this->runContexts[$runId] = [
+            'filters' => $filters,
+            'suites' => $suites,
+            'group' => $group,
+            'options' => $options,
+            'contextId' => $contextId, // Store contextId
+        ];
+
         $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
 
-        $jsonBroadcast = json_encode(['type' => 'start', 'runId' => $runId]);
+        $jsonBroadcast = json_encode(['type' => 'start', 'runId' => $runId, 'contextId' => $contextId]); // Include contextId
         if ($jsonBroadcast !== false) {
             $this->statusHandler->broadcast($jsonBroadcast);
         } else {
@@ -195,10 +207,10 @@ class Router implements RouterInterface
         $process = $this->testRunner->run($junitLogfile, $filters, $group, $suites, $options);
 
         // Keep a reference so we can terminate later
-        $this->currentProcess = $process;
+        $this->runningProcesses[$runId] = $process;
 
-        $process->stdout->on('data', function ($chunk) {
-            $jsonBroadcast = json_encode(['type' => 'stdout', 'data' => $chunk]);
+        $process->stdout->on('data', function ($chunk) use ($runId) {
+            $jsonBroadcast = json_encode(['type' => 'stdout', 'runId' => $runId, 'data' => $chunk]);
             if ($jsonBroadcast !== false) {
                 $this->statusHandler->broadcast($jsonBroadcast);
             } else {
@@ -206,7 +218,7 @@ class Router implements RouterInterface
             }
         });
 
-        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun) {
+        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun, $contextId) { // Pass contextId to closure
             $this->output->writeln(sprintf('Test run #%s finished with code %s.', $runId, $exitCode));
             $parsedResults = null;
             if (file_exists($junitLogfile)) {
@@ -239,6 +251,7 @@ class Router implements RouterInterface
                 'runId' => $runId,
                 'exitCode' => $exitCode,
                 'results' => $parsedResults,
+                'contextId' => $contextId, // Include contextId in exit message
             ]);
 
             if ($jsonBroadcast !== false) {
@@ -252,38 +265,44 @@ class Router implements RouterInterface
             }
 
             // Clear running process/runId state
-            $this->currentProcess = null;
-            $this->currentRunId = null;
-            $this->isTestRunning = false;
+            unset($this->runningProcesses[$runId]);
+            unset($this->junitLogfiles[$runId]);
+            unset($this->runContexts[$runId]);
         });
+
+        return $runId;
     }
 
     public function getLastFilters(): array
     {
+        // This now refers to the last global run, not a specific single test run
         return $this->lastFilters;
     }
 
     public function getLastGroup(): string
     {
+        // This now refers to the last global run, not a specific single test run
         return $this->lastGroup;
     }
 
     public function getLastOptions(): array
     {
+        // This now refers to the last global run, not a specific single test run
         return $this->lastOptions;
     }
 
     public function getLastSuites(): array
     {
+        // This now refers to the last global run, not a specific single test run
         return $this->lastSuites;
     }
 
     /**
-     * Attempt to stop the currently running test process.
+     * Attempt to stop all currently running test processes.
      */
-    private function stopTests(): GuzzleResponse
+    private function stopAllTests(): GuzzleResponse
     {
-        if (!$this->isTestRunning || !$this->currentProcess instanceof \React\ChildProcess\Process) {
+        if ($this->runningProcesses === []) {
             $json = json_encode(['error' => 'No test run in progress.']);
             if ($json === false) {
                 return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
@@ -292,20 +311,58 @@ class Router implements RouterInterface
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], $json);
         }
 
-        try {
-            $this->currentProcess->terminate();
-        } catch (Exception $exception) {
-            $this->output->writeln(sprintf('<error>Failed to terminate process: %s</error>', $exception->getMessage()));
-            $json = json_encode(['error' => 'Failed to terminate running tests.']);
+        foreach (array_keys($this->runningProcesses) as $runId) {
+            $this->terminateProcess($runId);
+        }
+
+        $json = json_encode(['message' => 'Stop requested for all running tests.']);
+        if ($json === false) {
+            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
+        }
+
+        return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
+    }
+
+    /**
+     * Attempt to stop a specific running test process.
+     */
+    private function stopSingleTest(string $runId): GuzzleResponse
+    {
+        if (!isset($this->runningProcesses[$runId])) {
+            $json = json_encode(['error' => sprintf('No test run found with ID %s.', $runId)]);
             if ($json === false) {
                 return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.']));
             }
 
-            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], $json);
+            return new GuzzleResponse(404, ['Content-Type' => 'application/json'], $json);
+        }
+
+        $this->terminateProcess($runId);
+
+        $json = json_encode(['message' => sprintf('Stop requested for test run %s.', $runId)]);
+        if ($json === false) {
+            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
+        }
+
+        return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
+    }
+
+    private function terminateProcess(string $runId): void
+    {
+        $process = $this->runningProcesses[$runId] ?? null;
+        if (!$process instanceof Process || !$process->isRunning()) {
+            return;
+        }
+
+        try {
+            $process->terminate();
+        } catch (Exception $exception) {
+            $this->output->writeln(sprintf('<error>Failed to terminate process for run %s: %s</error>', $runId, $exception->getMessage()));
+            return;
         }
 
         // Broadcast a stopped message immediately so the UI can react quickly
-        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $this->currentRunId]);
+        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId]);
         if ($jsonBroadcast !== false) {
             $this->statusHandler->broadcast($jsonBroadcast);
         }
@@ -313,32 +370,23 @@ class Router implements RouterInterface
         // If the process doesn't exit within a short timeout, force-kill it (SIGKILL)
         try {
             $timeoutSeconds = 2.0;
-            Loop::get()->addTimer($timeoutSeconds, function () {
-                // If still running, force kill
-                if ($this->currentProcess instanceof \React\ChildProcess\Process && $this->currentProcess->isRunning()) {
-                    $sigkill = defined('SIGKILL') ? SIGKILL : 9;
-                    try {
-                        $this->currentProcess->terminate($sigkill);
-                        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $this->currentRunId, 'forced' => true]);
-                        if ($jsonBroadcast !== false) {
-                            $this->statusHandler->broadcast($jsonBroadcast);
-                        }
-                    } catch (Exception $e) {
-                        $this->output->writeln(sprintf('<error>Failed to force-kill process: %s</error>', $e->getMessage()));
+            Loop::get()->addTimer($timeoutSeconds, function () use ($runId, $process) {
+                // force kill
+                $sigkill = defined('SIGKILL') ? SIGKILL : 9;
+                try {
+                    $process->terminate($sigkill);
+                    $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId, 'forced' => true]);
+                    if ($jsonBroadcast !== false) {
+                        $this->statusHandler->broadcast($jsonBroadcast);
                     }
+                } catch (Exception $exception) {
+                    $this->output->writeln(sprintf('<error>Failed to force-kill process for run %s: %s</error>', $runId, $exception->getMessage()));
                 }
             });
         } catch (Exception $exception) {
             // If scheduling the timer fails for any reason, just log it and continue
-            $this->output->writeln(sprintf('<error>Failed to schedule force-kill timer: %s</error>', $exception->getMessage()));
+            $this->output->writeln(sprintf('<error>Failed to schedule force-kill timer for run %s: %s</error>', $runId, $exception->getMessage()));
         }
-
-        $json = json_encode(['message' => 'Stop requested.']);
-        if ($json === false) {
-            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
-        }
-
-        return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
     }
 
     private function sendResponse(ConnectionInterface $connection, GuzzleResponse $guzzleResponse): void
@@ -360,7 +408,9 @@ class Router implements RouterInterface
 
     public function onMessage(ConnectionInterface $from, $msg): void
     {
-        $this->httpServer->onMessage($from, $msg);
+        if (property_exists($from, 'WebSocket') && $from->WebSocket !== null) {
+            $this->httpServer->onMessage($from, $msg);
+        }
     }
 
     public function onClose(ConnectionInterface $conn): void
@@ -422,7 +472,7 @@ class Router implements RouterInterface
             if ($parsedResults !== null) {
                 foreach ($parsedResults['suites'] as $suite) {
                     foreach ($suite['testcases'] as $testcase) {
-                        if ($testcase['status'] === 'failed') {
+                        if (in_array($testcase['status'], ['failed', 'error'])) {
                             $failures++;
                         } elseif ($testcase['status'] === 'error') {
                             $errors++;

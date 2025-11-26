@@ -8,8 +8,10 @@ interface RouterInterface extends HttpServerInterface
 {
     /**
      * @param string[] $filters
+     * @param string[] $suites
+     * @param array<string, bool> $options
      */
-    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false): void;
+    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false): string;
 
     /**
      * @return string[]

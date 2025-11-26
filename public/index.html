@@ -75,25 +75,25 @@
                     </div>
                 </div>
             </div>
-            <button @click="runFailedTests" :disabled="isRunning || !hasFailedTests" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
+            <button @click="runFailedTests" :disabled="isAnyTestRunning || !hasFailedTests" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
                 Run Failed
             </button>
-            <button @click="togglePlayStop" :title="isRunning ? 'Stop test run' : 'Run all tests'" :disabled="stopPending" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-60">
-                <span v-if="stopPending">Stopping...</span>
+            <button @click="togglePlayStop" :title="isAnyTestRunning ? 'Stop all test runs' : 'Run all tests'" :disabled="isAnyStopPending" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-60">
+                <span v-if="isAnyStopPending">Stopping...</span>
                 <template v-else>
-                    <span v-if="!isRunning">
+                    <span v-if="!isAnyTestRunning">
                         <!-- Play icon -->
-                        <svg v-if="!isRunning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
                             <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                         </svg>
-                        <span v-if="!isRunning" class="ml-2 align-middle">Run</span>
+                        <span class="ml-2 align-middle">Run All</span>
                     </span>
                     <span v-else>
                         <!-- Stop icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
                             <path d="M6 6h8v8H6z" />
                         </svg>
-                        <span class="ml-2 align-middle">Stop</span>
+                        <span class="ml-2 align-middle">Stop All</span>
                     </span>
                 </template>
             </button>
@@ -135,8 +135,11 @@
                         <span class="font-bold">{{ suite.name }}</span>
                     </div>
                     <div class="flex items-center">
-                        <div v-if="runningTestId === suite.id" class="spinner !w-4 !h-4"></div>
-                        <span @click.stop="runSuiteTests(suite.id)" class="cursor-pointer text-green-500 hover:text-green-400" title="Run all tests in this suite">
+                        <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
+                        <span v-if="suite.runId && isTestRunning(suite.runId)" @click.stop="stopSingleTest(suite.runId)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2" title="Stop this suite">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6 6h8v8H6z" /></svg>
+                        </span>
+                        <span v-else @click.stop="runSuiteTests(suite.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}" :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
                         </span>
                     </div>
@@ -147,15 +150,17 @@
                             <span class="status-icon" :class="method.status ? `status-${method.status}` : 'status-neutral'"></span>
                             <div class="flex items-center space-x-2 justify-between w-full">
                                 <span class="test-name">{{ method.name }}</span>
-                                <span @click.stop="runSingleTest(method.id)" class="cursor-pointer text-green-500 hover:text-green-400 mr-2" title="Run this test">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
-                            </span>
+                                <div class="flex items-center">
+                                    <div v-if="method.runId && isTestRunning(method.runId)" class="spinner !w-4 !h-4"></div>
+                                    <span v-if="method.runId && isTestRunning(method.runId)" @click.stop="stopSingleTest(method.runId)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2" title="Stop this test">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6 6h8v8H6z" /></svg>
+                                    </span>
+                                    <span v-else @click.stop="runSingleTest(method.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(method.runId), 'text-gray-500': isTestStopPending(method.runId)}" :title="isTestStopPending(method.runId) ? 'Stopping...' : 'Run this test'">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        <!--                        <div class="flex items-center">-->
-                        <!--                            <div v-if="runningTestId === method.id" class="spinner !w-4 !h-4"></div>-->
-                        <!--                            <span v-if="method.time !== null" class="test-time">{{ method.time.toFixed(2) }}s</span>-->
-                        <!--                        </div>-->
                     </li>
                 </ul>
             </div>
@@ -248,8 +253,9 @@
 
     createApp({
         setup() {
-            const isRunning = ref(false);
-            const stopPending = ref(false);
+            const runningTestIds = reactive({}); // Mappa runId a true/false (in esecuzione)
+            const stopPending = reactive({}); // Mappa runId a true/false (in fase di stop)
+
             const activeTab = ref('results');
             const output = ref([]);
             const results = ref(null);
@@ -266,7 +272,6 @@
             });
             const showFilterPanel = ref(false);
             const expandedSuites = ref(new Set());
-            const runningTestId = ref(null);
             const expandedTestId = ref(null);
             const statusFilters = reactive({ passed: true, failed: true, error: true });
             const sortOrder = ref(null); // null | 'asc' | 'desc'
@@ -310,6 +315,9 @@
                 }).filter(Boolean);
             });
 
+            const isAnyTestRunning = computed(() => Object.keys(runningTestIds).length > 0);
+            const isAnyStopPending = computed(() => Object.keys(stopPending).length > 0);
+
             const updateFavicon = (status = 'neutral') => {
                 const favicon = document.getElementById('favicon');
                 if (favicon) {
@@ -331,58 +339,83 @@
             };
             const isExpanded = (testcase) => `${testcase.class}::${testcase.name}` === expandedTestId.value;
 
+            // Helper per controllare se un test specifico è in esecuzione
+            const isTestRunning = (runId) => runningTestIds[runId] === true;
+            const isTestStopPending = (runId) => stopPending[runId] === true;
+
             const runSingleTest = (testId) => {
-                runningTestId.value = testId;
-                runTests({ filters: [testId] });
+                runTests({ filters: [testId], contextId: testId }); // Passa testId come contextId
             };
             const runSuiteTests = (suiteId) => {
-                runningTestId.value = suiteId;
-                runTests({ filters: [suiteId] });
+                runTests({ filters: [suiteId], contextId: suiteId }); // Passa suiteId come contextId
             };
             const runAllTests = () => {
-                runningTestId.value = 'all';
-                runTests({ filters: searchQuery.value ? [searchQuery.value] : [] });
+                runTests({ filters: searchQuery.value ? [searchQuery.value] : [], contextId: 'global' });
             };
 
             const runFailedTests = () => {
-                runningTestId.value = 'failed';
-                runTests({ endpoint: '/api/run-failed' });
+                runTests({ endpoint: '/api/run-failed', contextId: 'failed' });
+            };
+
+            const stopSingleTest = async (runId) => {
+                stopPending[runId] = true;
+                try {
+                    const res = await fetch(`/api/stop-single-test/${runId}`, { method: 'POST' });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        output.value.push(`<span class="text-red-400">Failed to stop test run ${runId}: ${text}</span>`);
+                        delete stopPending[runId];
+                    } else {
+                        output.value.push(`<span class="text-yellow-300">Stop requested for test run ${runId}...</span>`);
+                    }
+                } catch (e) {
+                    output.value.push(`<span class="text-red-400">Failed to send stop request for test run ${runId}: ${e.message}</span>`);
+                    delete stopPending[runId];
+                }
             };
 
             const stopTests = async () => {
-                stopPending.value = true;
-                 try {
-                     const res = await fetch('/api/stop', { method: 'POST' });
-                     if (!res.ok) {
-                         const text = await res.text();
-                         output.value.push(`<span class="text-red-400">Failed to stop: ${text}</span>`);
-                         stopPending.value = false;
-                     } else {
-                         output.value.push(`<span class="text-yellow-300">Stop requested...</span>`);
-                         // The websocket 'stopped' or 'exit' event will set isRunning=false
-                     }
-                 } catch (e) {
-                     output.value.push(`<span class="text-red-400">Failed to send stop request: ${e.message}</span>`);
-                     stopPending.value = false;
-                 }
-             };
+                Object.keys(runningTestIds).forEach(runId => {
+                    stopPending[runId] = true;
+                });
 
-             const togglePlayStop = () => {
-                 if (isRunning.value) {
-                     stopTests();
-                 } else {
-                     runAllTests();
-                 }
-             };
+                try {
+                    const res = await fetch('/api/stop', { method: 'POST' });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        output.value.push(`<span class="text-red-400">Failed to stop all tests: ${text}</span>`);
+                        Object.keys(runningTestIds).forEach(runId => {
+                            delete stopPending[runId];
+                        });
+                    } else {
+                        output.value.push(`<span class="text-yellow-300">Stop requested for all tests...</span>`);
+                    }
+                } catch (e) {
+                    output.value.push(`<span class="text-red-400">Failed to send stop all request: ${e.message}</span>`);
+                    Object.keys(runningTestIds).forEach(runId => {
+                        delete stopPending[runId];
+                    });
+                }
+            };
+
+            const togglePlayStop = () => {
+                if (isAnyTestRunning.value) {
+                    stopTests();
+                } else {
+                    runAllTests();
+                }
+            };
 
             const fetchTests = async () => {
                 try {
                     const response = await fetch('/api/tests');
                     const data = await response.json();
                     data.suites.forEach(suite => {
+                        suite.runId = null;
                         suite.methods.forEach(method => {
                             method.time = null;
                             method.status = null;
+                            method.runId = null;
                         });
                     });
                     testSuites.value = data.suites;
@@ -393,7 +426,16 @@
             const connectWebSocket = () => {
                 ws = new WebSocket('ws://127.0.0.1:8080/ws/status');
                 ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
-                ws.onclose = () => { isRunning.value = false; runningTestId.value = null; updateFavicon('neutral'); };
+                ws.onclose = () => {
+                    // Clear all running states
+                    for (const key in runningTestIds) {
+                        delete runningTestIds[key];
+                    }
+                    for (const key in stopPending) {
+                        delete stopPending[key];
+                    }
+                    updateFavicon('neutral');
+                };
             };
 
             const handleWebSocketMessage = (message) => {
@@ -404,70 +446,50 @@
                         expandedTestId.value = null;
                         testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
                         updateFavicon('neutral');
-                        // Mark UI as running
-                        isRunning.value = true;
-                        stopPending.value = false;
+                        runningTestIds[message.runId] = true;
+                        delete stopPending[message.runId];
+
+                        // Associa il runId al test specifico se è un singolo test o suite
+                        if (message.contextId) { // contextId sarà passato dal frontend al backend e ritornato
+                            testSuites.value.forEach(suite => {
+                                if (suite.id === message.contextId) {
+                                    suite.runId = message.runId;
+                                }
+                                suite.methods.forEach(method => {
+                                    if (method.id === message.contextId) {
+                                        method.runId = message.runId;
+                                    }
+                                });
+                            });
+                        }
                         break;
                     case 'stopped':
-                        output.value.push(`<span class="text-yellow-300">Test run stopped by user.</span>`);
-                        isRunning.value = false;
-                        stopPending.value = false;
-                        runningTestId.value = null;
-                        updateFavicon('neutral');
+                        output.value.push(`<span class="text-yellow-300">Test run ${message.runId} stopped by user.</span>`);
+                        delete runningTestIds[message.runId];
+                        delete stopPending[message.runId];
+                        // Rimuovi il runId dal test specifico
+                        testSuites.value.forEach(suite => {
+                            if (suite.runId === message.runId) {
+                                suite.runId = null;
+                            }
+                            suite.methods.forEach(method => {
+                                if (method.runId === message.runId) {
+                                    method.runId = null;
+                                }
+                            });
+                        });
+                        if (Object.keys(runningTestIds).length === 0) {
+                            updateFavicon('neutral');
+                        }
                         break;
                     case 'stdout': {
-                        // Escape HTML special chars
                         const escaped = message.data.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-                        // If the chunk starts with a test-number like "3)" (possibly preceded by whitespace),
-                        // force it onto a new line so it doesn't get appended to previous output.
-                        if (/^\s*\d+\)/.test(escaped)) {
-                            // Ensure we have an explicit newline/carriage-return before the numbered line.
-                            const newline = '\n\r';
-                            if (output.value.length === 0) {
-                                // Prepend newline to the line we're about to add so the buffer contains it
-                                output.value.push(newline + escaped);
-                            } else {
-                                // Append newline to the current last line, then push the numbered line as a new entry
-                                output.value[output.value.length - 1] += newline;
-                                output.value.push(escaped);
-                            }
-                            break;
-                        }
-
-                        // If the chunk contains carriage return (\r), PHPUnit or other tools may be updating the same line.
-                        // In that case, replace the current last line with the content after the last \r.
-                        if (escaped.includes('\r')) {
-                            const crParts = escaped.split('\r');
-                            const lastPart = crParts[crParts.length - 1];
-                            if (output.value.length === 0) {
-                                output.value.push(lastPart);
-                            } else {
-                                // Overwrite the last line (simulate carriage-return behaviour)
-                                output.value[output.value.length - 1] = output.value[output.value.length - 1] + lastPart;
-                            }
-                        }
-                        // If the chunk contains newline(s), split them and distribute across lines.
-                        else if (escaped.includes('\n')) {
-                            const parts = escaped.split('\n');
-                            // Append first part to the existing last line (or create one)
-                            if (output.value.length === 0) output.value.push(parts[0]);
-                            else output.value[output.value.length - 1] += parts[0];
-
-                            // Push remaining parts as new lines
-                            for (let i = 1; i < parts.length; i++) {
-                                output.value.push(parts[i]);
-                            }
-                        } else {
-                            // Normal case: no newline/carriage return — append to the last line so dots stay horizontal
-                            if (output.value.length === 0) output.value.push(escaped);
-                            else output.value[output.value.length - 1] += escaped;
-                        }
-
+                        // Aggiungi il runId al messaggio di output per chiarezza
+                        output.value.push(`[${message.runId.substring(0, 8)}] ${escaped}`);
                         break;
                     }
                     case 'exit':
-                        output.value.push(`<span class="text-yellow-400">Test run finished with exit code: ${message.exitCode}.</span>`);
+                        output.value.push(`<span class="text-yellow-400">Test run ${message.runId} finished with exit code: ${message.exitCode}.</span>`);
                         if (message.results) {
                             results.value = message.results;
                             const resultsMap = new Map();
@@ -488,9 +510,22 @@
                         } else {
                             updateFavicon('neutral');
                         }
-                        isRunning.value = false;
-                        stopPending.value = false;
-                        runningTestId.value = null;
+                        delete runningTestIds[message.runId];
+                        delete stopPending[message.runId];
+                        // Rimuovi il runId dal test specifico
+                        testSuites.value.forEach(suite => {
+                            if (suite.runId === message.runId) {
+                                suite.runId = null;
+                            }
+                            suite.methods.forEach(method => {
+                                if (method.runId === message.runId) {
+                                    method.runId = null;
+                                }
+                            });
+                        });
+                        if (Object.keys(runningTestIds).length === 0) {
+                            updateFavicon('neutral');
+                        }
                         activeTab.value = 'results';
                         break;
                 }
@@ -548,17 +583,17 @@
             });
 
             const runTests = async (runOptions = {}) => {
-                if (isRunning.value) return;
-                isRunning.value = true;
+                // Non controlliamo più isRunning.value qui
                 activeTab.value = 'output';
                 const endpoint = runOptions.endpoint || '/api/run';
-                output.value = [`<span class="text-gray-400">Sending request to ${endpoint}...</span>`];
+                output.value.push(`<span class="text-gray-400">Sending request to ${endpoint}...</span>`);
 
                 const payload = {
                     filters: runOptions.filters || [],
                     group: groupFilter.value,
                     suites: selectedSuites.value,
                     options: { ...options },
+                    contextId: runOptions.contextId, // Invia il contextId al backend
                 };
 
                 try {
@@ -573,14 +608,29 @@
                             errorMessage = await response.text();
                         }
                         output.value.push(`<span class="text-red-400">Error: ${errorMessage}</span>`);
-                        isRunning.value = false;
-                        runningTestId.value = null;
                         updateFavicon('failure');
+                    } else {
+                        const data = await response.json();
+                        const runId = data.runId;
+                        if (runId) {
+                            runningTestIds[runId] = true;
+                            // Associa il runId al test specifico che lo ha avviato
+                            if (runOptions.contextId) {
+                                testSuites.value.forEach(suite => {
+                                    if (suite.id === runOptions.contextId) {
+                                        suite.runId = runId;
+                                    }
+                                    suite.methods.forEach(method => {
+                                        if (method.id === runOptions.contextId) {
+                                            method.runId = runId;
+                                        }
+                                    });
+                                });
+                            }
+                        }
                     }
                 } catch (error) {
                     output.value.push(`<span class="text-red-400">API request failed: ${error.message}</span>`);
-                    isRunning.value = false;
-                    runningTestId.value = null;
                     updateFavicon('failure');
                 }
             };
@@ -622,11 +672,12 @@
             });
 
             return {
-                isRunning, activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
-                showFilterPanel, expandedSuites, runningTestId, totalTestsCount, expandedTestId, hasFailedTests,
+                runningTestIds, stopPending, isAnyTestRunning, isAnyStopPending,
+                activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
+                showFilterPanel, expandedSuites, expandedTestId, hasFailedTests,
                 runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
                 statusFilters, sortOrder, toggleSortTime, resultsView, filteredBySuite, statusCounts, globalView,
-                stopTests, togglePlayStop, stopPending
+                stopTests, togglePlayStop, stopSingleTest, isTestRunning, isTestStopPending
               };
           }
       }).mount('#app');
