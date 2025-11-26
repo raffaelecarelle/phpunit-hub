@@ -140,7 +140,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6 6h8v8H6z" /></svg>
                         </span>
                         <span v-else @click.stop="runSuiteTests(suite.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}" :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                            <svg xmlns="http://www.3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
                         </span>
                     </div>
                 </div>
@@ -441,7 +441,8 @@
             const handleWebSocketMessage = (message) => {
                 switch (message.type) {
                     case 'start':
-                        output.value = [`<span class="text-yellow-400">Test run #${message.runId} started...\n\r</span>`];
+                        // Non resettare l'intero output, ma aggiungi solo il nuovo messaggio
+                        output.value.push(`<span class="text-yellow-400">Test run #${message.runId} started...\n\r</span>`);
                         results.value = null;
                         expandedTestId.value = null;
                         testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
@@ -501,14 +502,6 @@
                                     m.status = res.status;
                                 }
                             }));
-
-                            if (results.value.summary.failures > 0 || results.value.summary.errors > 0) {
-                                updateFavicon('failure');
-                            } else {
-                                updateFavicon('success');
-                            }
-                        } else {
-                            updateFavicon('neutral');
                         }
                         delete runningTestIds[message.runId];
                         delete stopPending[message.runId];
@@ -523,8 +516,15 @@
                                 }
                             });
                         });
+                        // Aggiorna il favicon solo se non ci sono più test in esecuzione
                         if (Object.keys(runningTestIds).length === 0) {
-                            updateFavicon('neutral');
+                            if (results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0)) {
+                                updateFavicon('failure');
+                            } else if (results.value) {
+                                updateFavicon('success');
+                            } else {
+                                updateFavicon('neutral');
+                            }
                         }
                         activeTab.value = 'results';
                         break;
