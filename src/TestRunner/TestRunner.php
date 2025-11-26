@@ -19,6 +19,7 @@ use function strtolower;
 use function sys_get_temp_dir;
 use function trim;
 use function uniqid;
+use function var_dump;
 
 class TestRunner
 {
@@ -29,26 +30,19 @@ class TestRunner
     /**
      * Runs PHPUnit tests using a real-time extension.
      *
-     * @param string $realtimeOutputFile The path to the file where the RealtimeTestExtension will write events.
      * @param string[] $filters An array of filters to apply to the tests (e.g., method names).
      * @param string[] $groups An array of test groups to run.
      * @param string[] $suites An array of test suites to run.
      * @param array<string, bool> $options An associative array of boolean PHPUnit CLI options (e.g., ['--stop-on-failure' => true]).
      * @return Process The ReactPHP child process.
      */
-    public function run(string $realtimeOutputFile, array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
+    public function run(array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
     {
         $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
         $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
 
-        // Create a temporary phpunit.xml for this run
-        $tempPhpunitXmlPath = sys_get_temp_dir() . '/phpunit-hub-temp-' . uniqid() . '.xml';
-        $phpunitXmlContent = file_get_contents($phpunitXmlPath);
-        $modifiedPhpunitXmlContent = str_replace('__REALTIME_OUTPUT_FILE__', $realtimeOutputFile, $phpunitXmlContent);
-        file_put_contents($tempPhpunitXmlPath, $modifiedPhpunitXmlContent);
-
         $command = escapeshellcmd($phpunitPath)
-            . ' --configuration ' . escapeshellarg($tempPhpunitXmlPath); // Use the temporary config file
+            . ' --configuration ' . escapeshellarg($phpunitXmlPath);
 
         // Always enable colors
         $command .= ' --colors=always';
@@ -86,13 +80,6 @@ class TestRunner
 
         $process = new Process($command);
         $process->start($this->loop);
-
-        // Clean up the temporary phpunit.xml file after the process exits
-        $process->on('exit', function () use ($tempPhpunitXmlPath) {
-            if (file_exists($tempPhpunitXmlPath)) {
-                unlink($tempPhpunitXmlPath);
-            }
-        });
 
         return $process;
     }

@@ -21,7 +21,8 @@
         .status-icon { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
         .status-neutral { background-color: #6b7280; }
         .status-passed { background-color: #10B981; }
-        .status-failed, .status-error { background-color: #EF4444; }
+        .status-failed, .status-errored { background-color: #EF4444; } /* Changed from .status-error to .status-errored */
+        .status-running { background-color: #3498db; } /* New status color */
         .test-name { color: #d1d5db; }
         .test-time { font-size: 0.8em; color: #9ca3af; }
         /* Sort arrow animation */
@@ -44,35 +45,7 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #6b7280; /* bg-gray-500 */
         }
-        /* ANSI color classes */
-        .ansi-black { color: #2e3440; }
-        .ansi-red { color: #bf616a; }
-        .ansi-green { color: #a3be8c; }
-        .ansi-yellow { color: #ebcb8b; }
-        .ansi-blue { color: #81a1c1; }
-        .ansi-magenta { color: #b48ead; }
-        .ansi-cyan { color: #88c0d0; }
-        .ansi-white { color: #e5e9f0; }
-        .ansi-bright-black { color: #4c566a; }
-        .ansi-bright-red { color: #bf616a; }
-        .ansi-bright-green { color: #a3be8c; }
-        .ansi-bright-yellow { color: #ebcb8b; }
-        .ansi-bright-blue { color: #81a1c1; }
-        .ansi-bright-magenta { color: #b48ead; }
-        .ansi-bright-cyan { color: #88c0d0; }
-        .ansi-bright-white { color: #eceff4; }
-        .ansi-bg-black { background-color: #2e3440; }
-        .ansi-bg-red { background-color: #bf616a; }
-        .ansi-bg-green { background-color: #a3be8c; }
-        .ansi-bg-yellow { background-color: #ebcb8b; }
-        .ansi-bg-blue { background-color: #81a1c1; }
-        .ansi-bg-magenta { background-color: #b48ead; }
-        .ansi-bg-cyan { background-color: #88c0d0; }
-        .ansi-bg-white { background-color: #e5e9f0; }
-        .ansi-bold { font-weight: bold; }
-        .ansi-underline { text-decoration: underline; }
-
-        /* Custom Output Formatting */
+        /* Custom Output Formatting - mostly removed, keeping for potential future use or if some raw output is desired */
         .output-line {
             padding: 2px 8px;
             margin: 0 -8px; /* Counteract padding to align with container */
@@ -231,9 +204,7 @@
                     <button @click="activeTab = 'results'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
                         Results
                     </button>
-                    <button @click="activeTab = 'output'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'output' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
-                        Output
-                    </button>
+                    <!-- Removed Output Tab -->
                 </nav>
             </div>
             <div class="flex-grow overflow-y-auto pt-4">
@@ -260,9 +231,9 @@
                                 <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>{{ statusCounts.passed }} Passed</span>
                                 <span v-if="statusCounts.failed > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>{{ statusCounts.failed }} Failed</span>
                                 <span v-if="statusCounts.error > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>{{ statusCounts.error }} Errors</span>
-                                <span v-if="results.summary.warnings > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>{{ results.summary.warnings }} Warnings</span>
-                                <span v-if="results.summary.skipped > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>{{ results.summary.skipped }} Skipped</span>
-                                <span v-if="results.summary.deprecations > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>{{ results.summary.deprecations }} Deprecations</span>
+                                <span v-if="statusCounts.warnings > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>{{ statusCounts.warnings }} Warnings</span>
+                                <span v-if="statusCounts.skipped > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>{{ statusCounts.skipped }} Skipped</span>
+                                <span v-if="statusCounts.deprecations > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>{{ statusCounts.deprecations }} Deprecations</span>
                             </div>
                         </div>
 
@@ -276,7 +247,7 @@
                                 </div>
                                 <div class="flex items-center space-x-4 text-sm">
                                     <span v-if="group.failed > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.failed }} Failed</span>
-                                    <span v-if="group.error > 0" class="px-2 py-0.5 rounded-full bg-yellow-900 text-yellow-300">{{ group.error }} Error</span>
+                                    <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-yellow-900 text-yellow-300">{{ group.errored }} Error</span>
                                     <span v-if="group.warning > 0" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
                                     <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
                                 </div>
@@ -298,8 +269,8 @@
                                         </div>
                                     </div>
                                     <div v-if="isExpanded(testcase)" class="bg-gray-900 p-4">
-                                        <h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4>
-                                        <pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre>
+                                        <h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'errored'}">{{ testcase.message }}</h4>
+                                        <pre v-if="testcase.trace" class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.trace }}</pre>
                                     </div>
                                 </template>
                                 <!-- Passed tests summary -->
@@ -315,9 +286,7 @@
                         </div>
                     </div>
                 </div>
-                <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
-                    <div v-for="(line, index) in output" :key="index" v-html="line.html" :class="line.blockClass"></div>
-                </div>
+                <!-- Removed Output Tab Content -->
             </div>
         </main>
     </div>
@@ -331,11 +300,11 @@
             const runningTestIds = reactive({});
             const stopPending = reactive({});
 
-            const activeTab = ref('results');
-            const output = ref([]);
-            const results = ref(null);
+            const activeTab = ref('results'); // Will always be 'results' now
+            // const output = ref([]); // Removed
+            // const results = ref(null); // Now a computed property
             const searchQuery = ref('');
-            const testSuites = ref([]);
+            const testSuites = ref([]); // For the sidebar, will be updated by realtime events
             const availableSuites = ref([]);
             const selectedSuites = ref([]);
             const availableGroups = ref([]);
@@ -355,17 +324,110 @@
             const expandedTestId = ref(null);
             const expandedTestcaseGroups = ref(new Set());
             let ws = null;
-            let inFailureBlock = false;
+
+            // New reactive state for real-time test runs
+            const realtimeTestRuns = reactive({}); // Keyed by runId, stores detailed real-time data
+            const lastCompletedRunId = ref(null); // To track which run's results to display
 
             const favicons = {
                 neutral: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#6b7280"/></svg>`,
                 success: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#10B981"/><polyline points="9 16, 14 21, 23 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-                failure: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#EF4444"/><line x1="11" y1="11" x2="21" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="21" y1="11" x2="11" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`
+                failure: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="#EF4444"/><line x1="11" y1="11" x2="21" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="21" y1="11" x2="11" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`
             };
+
+            const results = computed(() => {
+                // Show results from the last started or completed run
+                const runId = lastCompletedRunId.value || Object.keys(realtimeTestRuns).pop();
+                if (!runId || !realtimeTestRuns[runId]) {
+                    return null;
+                }
+                const run = realtimeTestRuns[runId];
+
+                // Calculate summary dynamically from the test results if not yet available
+                const summary = run.summary || {
+                    numberOfTests: 0,
+                    numberOfAssertions: 0,
+                    duration: 0,
+                    numberOfFailures: 0,
+                    numberOfErrors: 0,
+                    numberOfWarnings: 0,
+                    numberOfSkipped: 0,
+                    numberOfDeprecations: 0,
+                    numberOfIncomplete: 0,
+                };
+
+                // Transform the real-time run data into a structure similar to the old JUnitParser output
+                // This makes it easier to reuse existing statusCounts and groupedResults logic
+                const transformedSuites = [];
+                for (const suiteName in run.suites) {
+                    const suiteData = run.suites[suiteName];
+                    const testcases = [];
+                    for (const testId in suiteData.tests) {
+                        const testData = suiteData.tests[testId];
+                        testcases.push({
+                            name: testData.name,
+                            class: testData.class,
+                            id: testData.id, // Keep id for easier lookup
+                            time: testData.time || 0,
+                            status: testData.status,
+                            // failure: testData.status === 'failed' ? { type: 'Failure', message: testData.message } : null, // Simplified
+                            // error: testData.status === 'errored' ? { type: 'Error', message: testData.message } : null, // Simplified
+                            message: testData.message, // Store raw message for display
+                            trace: testData.trace, // Store raw trace for display
+                        });
+                    }
+                    transformedSuites.push({
+                        name: suiteData.name,
+                        testcases: testcases,
+                        // Add other suite-level summaries if needed, though groupedResults will calculate
+                    });
+                }
+
+                // If no summary yet, calculate it from the current test data
+                if (!run.summary) {
+                    let totalTests = 0;
+                    let totalDuration = 0;
+                    for (const suiteName in run.suites) {
+                        const suiteData = run.suites[suiteName];
+                        totalTests += Object.keys(suiteData.tests).length;
+                        for (const testId in suiteData.tests) {
+                            const testData = suiteData.tests[testId];
+                            totalDuration = Math.max(totalDuration, testData.time || 0);
+                        }
+                    }
+                    summary.numberOfTests = totalTests;
+                    summary.duration = totalDuration;
+                    // Calculate failures, errors, etc. from suite counts
+                    for (const suiteName in run.suites) {
+                        const suiteData = run.suites[suiteName];
+                        summary.numberOfFailures += suiteData.failed || 0;
+                        summary.numberOfErrors += suiteData.errored || 0;
+                        summary.numberOfWarnings += suiteData.warning || 0;
+                        summary.numberOfSkipped += suiteData.skipped || 0;
+                        summary.numberOfDeprecations += suiteData.deprecation || 0;
+                        summary.numberOfIncomplete += suiteData.incomplete || 0;
+                    }
+                }
+
+                return {
+                    summary: {
+                        tests: summary.numberOfTests,
+                        assertions: summary.numberOfAssertions,
+                        time: summary.duration,
+                        failures: summary.numberOfFailures,
+                        errors: summary.numberOfErrors,
+                        warnings: summary.numberOfWarnings,
+                        skipped: summary.numberOfSkipped,
+                        deprecations: summary.numberOfDeprecations,
+                        incomplete: summary.numberOfIncomplete,
+                    },
+                    suites: transformedSuites,
+                };
+            });
 
             const statusCounts = computed(() => {
                 const counts = { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0 };
-                if (!results.value) return counts;
+                if (!results.value || !results.value.summary) return counts;
 
                 const s = results.value.summary;
                 counts.failed = s.failures || 0;
@@ -375,13 +437,20 @@
                 counts.deprecations = s.deprecations || 0;
                 counts.incomplete = s.incomplete || 0;
 
-                const problems = counts.failed + counts.error + counts.warnings + counts.skipped + counts.incomplete + (s.deprecations || 0);
+                // Calculate passed from total - problems
+                const problems = counts.failed + counts.error + counts.warnings + counts.skipped + counts.incomplete + counts.deprecations;
                 counts.passed = (s.tests || 0) - problems;
 
                 return counts;
             });
 
-            const hasFailedTests = computed(() => results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0));
+            const hasFailedTests = computed(() => {
+                if (!lastCompletedRunId.value || !realtimeTestRuns[lastCompletedRunId.value]) {
+                    return false;
+                }
+                const run = realtimeTestRuns[lastCompletedRunId.value];
+                return run.failedTestIds.size > 0;
+            });
 
             const filteredTestSuites = computed(() => {
                 if (!searchQuery.value) return testSuites.value;
@@ -437,9 +506,10 @@
                 return {
                     'bg-green-900 text-green-300': status === 'passed',
                     'bg-red-900 text-red-300': status === 'failed',
-                    'bg-yellow-900 text-yellow-300': status === 'error',
+                    'bg-yellow-900 text-yellow-300': status === 'errored', // Changed from error
                     'bg-amber-800 text-amber-200': status === 'warning' || status === 'deprecation',
                     'bg-gray-700 text-gray-300': status === 'skipped' || status === 'incomplete',
+                    'bg-blue-800 text-blue-300': status === 'running', // New status class
                 };
             };
 
@@ -449,7 +519,18 @@
             const runSingleTest = (testId) => runTests({ filters: [testId], contextId: testId });
             const runSuiteTests = (suiteId) => runTests({ filters: [suiteId], contextId: suiteId });
             const runAllTests = () => runTests({ filters: searchQuery.value ? [searchQuery.value] : [], contextId: 'global' });
-            const runFailedTests = () => runTests({ endpoint: '/api/run-failed', contextId: 'failed' });
+            const runFailedTests = () => {
+                if (!lastCompletedRunId.value || !realtimeTestRuns[lastCompletedRunId.value]) {
+                    console.warn('No completed run to get failed tests from.');
+                    return;
+                }
+                const failedTestIds = Array.from(realtimeTestRuns[lastCompletedRunId.value].failedTestIds);
+                if (failedTestIds.length === 0) {
+                    console.log('No failed tests to run.');
+                    return;
+                }
+                runTests({ filters: failedTestIds, contextId: 'failed' });
+            };
 
             const stopSingleTest = async (runId) => {
                 stopPending[runId] = true;
@@ -457,13 +538,13 @@
                     const res = await fetch(`/api/stop-single-test/${runId}`, { method: 'POST' });
                     if (!res.ok) {
                         const text = await res.text();
-                        output.value.push({ html: `<span class="text-red-400">Failed to stop test run ${runId}: ${text}</span>` });
+                        console.error(`Failed to stop test run ${runId}: ${text}`);
                         delete stopPending[runId];
                     } else {
-                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for test run ${runId}...</span>` });
+                        console.log(`Stop requested for test run ${runId}...`);
                     }
                 } catch (e) {
-                    output.value.push({ html: `<span class="text-red-400">Failed to send stop request for ${runId}: ${e.message}</span>` });
+                    console.error(`Failed to send stop request for ${runId}: ${e.message}`);
                     delete stopPending[runId];
                 }
             };
@@ -474,13 +555,13 @@
                     const res = await fetch('/api/stop', { method: 'POST' });
                     if (!res.ok) {
                         const text = await res.text();
-                        output.value.push({ html: `<span class="text-red-400">Failed to stop all tests: ${text}</span>` });
+                        console.error(`Failed to stop all tests: ${text}`);
                         Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
                     } else {
-                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for all tests...</span>` });
+                        console.log(`Stop requested for all tests...`);
                     }
                 } catch (e) {
-                    output.value.push({ html: `<span class="text-red-400">Failed to send stop all request: ${e.message}</span>` });
+                    console.error(`Failed to send stop all request: ${e.message}`);
                     Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
                 }
             };
@@ -515,53 +596,143 @@
                     Object.keys(runningTestIds).forEach(k => delete runningTestIds[k]);
                     Object.keys(stopPending).forEach(k => delete stopPending[k]);
                     updateFavicon('neutral');
+                    console.log('WebSocket disconnected.');
+                };
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                ws.onopen = () => {
+                    console.log('WebSocket connected.');
                 };
             };
 
-            const formatAnsiToHtml = (text) => {
-                const ansiRegex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-                const colorMap = {
-                    '30': 'black', '31': 'red', '32': 'green', '33': 'yellow',
-                    '34': 'blue', '35': 'magenta', '36': 'cyan', '37': 'white',
-                    '90': 'bright-black', '91': 'bright-red', '92': 'bright-green', '93': 'bright-yellow',
-                    '94': 'bright-blue', '95': 'bright-magenta', '96': 'bright-cyan', '97': 'bright-white'
-                };
-                const styleMap = { '1': 'bold', '4': 'underline' };
+            const handleRealtimeEvent = (runId, eventData) => {
+                let run = realtimeTestRuns[runId];
+                if (!run) {
+                    console.warn(`Received event for unknown runId: ${runId}. Initializing.`);
+                    run = realtimeTestRuns[runId] = {
+                        status: 'running',
+                        contextId: 'unknown', // Will be updated by 'start' message
+                        suites: {}, // Keyed by suite name, e.g., 'App\\Tests\\Unit\\MyTestSuite'
+                        summary: null, // Populated by 'execution.ended'
+                        failedTestIds: reactive(new Set()), // To track failed tests for 'run failed'
+                    };
+                }
 
-                let openSpans = 0;
-                const escapedText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                switch (eventData.event) {
+                    case 'suite.started':
+                        run.suites[eventData.data.name] = reactive({
+                            name: eventData.data.name,
+                            count: eventData.data.count,
+                            tests: {}, // Keyed by test ID, e.g., 'App\\Tests\\Unit\\MyTestSuite::testMethod'
+                            passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0, warning: 0, deprecation: 0, risky: 0,
+                            hasIssues: false,
+                        });
+                        break;
+                    case 'test.prepared':
+                        const testIdParts = eventData.data.test.split('::');
+                        const suiteName = testIdParts[0]; // Assuming testId is like 'SuiteName::testMethod'
+                        // Initialize suite if it doesn't exist yet
+                        if (!run.suites[suiteName]) {
+                            run.suites[suiteName] = reactive({
+                                name: suiteName,
+                                count: 0,
+                                tests: {},
+                                passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0, warning: 0, deprecation: 0, risky: 0,
+                                hasIssues: false,
+                            });
+                        }
+                        run.suites[suiteName].tests[eventData.data.test] = reactive({
+                            id: eventData.data.test,
+                            name: testIdParts[1],
+                            class: suiteName,
+                            status: 'running', // Or 'prepared'
+                            time: null,
+                            message: null,
+                            trace: null,
+                        });
+                        // Also update the sidebar test status
+                        testSuites.value.forEach(s => {
+                            if (s.id === suiteName) { // Assuming suite.id is the full class name
+                                s.methods.forEach(m => {
+                                    if (m.id === eventData.data.test) {
+                                        m.status = 'running';
+                                        m.runId = runId; // Link sidebar test to this run
+                                    }
+                                });
+                            }
+                        });
+                        break;
+                    case 'test.passed':
+                    case 'test.failed':
+                    case 'test.errored':
+                    case 'test.skipped':
+                    case 'test.incomplete':
+                    case 'test.warning':
+                    case 'test.deprecation':
+                        const testId = eventData.data.test;
+                        const testIdPartsForUpdate = testId.split('::');
+                        const testSuiteNameForUpdate = testIdPartsForUpdate[0];
 
-                return escapedText.replace(ansiRegex, (match) => {
-                    if (match === '\u001b[0m') {
-                        const closingTags = '</span>'.repeat(openSpans);
-                        openSpans = 0;
-                        return closingTags;
-                    }
-                    const codes = match.slice(2, -1).split(';');
-                    const classes = [];
-                    codes.forEach(code => {
-                        if (colorMap[code]) classes.push(`ansi-${colorMap[code]}`);
-                        else if (styleMap[code]) classes.push(`ansi-${styleMap[code]}`);
-                    });
-                    if (classes.length > 0) {
-                        openSpans++;
-                        return `<span class="${classes.join(' ')}">`;
-                    }
-                    return '';
-                }) + '</span>'.repeat(openSpans);
+                        if (run.suites[testSuiteNameForUpdate] && run.suites[testSuiteNameForUpdate].tests[testId]) {
+                            const test = run.suites[testSuiteNameForUpdate].tests[testId];
+                            test.status = eventData.event.replace('test.', ''); // 'passed', 'failed', etc.
+                            test.time = eventData.data.time;
+                            test.message = eventData.data.message || null;
+                            test.trace = eventData.data.trace || null;
+
+                            // Update suite counts and hasIssues
+                            const suite = run.suites[testSuiteNameForUpdate];
+
+                            if (suite[test.status] !== undefined) {
+                                suite[test.status]++;
+                            }
+                            if (test.status !== 'passed') {
+                                suite.hasIssues = true;
+                                if (test.status === 'failed' || test.status === 'errored') {
+                                    run.failedTestIds.add(testId);
+                                }
+                            } else {
+                                run.failedTestIds.delete(testId); // If a previously failed test now passes
+                            }
+
+                            // Update sidebar test status
+                            testSuites.value.forEach(s => {
+                                if (s.id === testSuiteNameForUpdate) {
+                                    s.methods.forEach(m => {
+                                        if (m.id === testId) {
+                                            m.status = test.status;
+                                            m.time = test.time;
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        break;
+                    case 'suite.finished':
+                        // The summary for the suite is already updated in the suite.started object
+                        break;
+                    case 'execution.ended':
+                        run.summary = eventData.data.summary;
+                        lastCompletedRunId.value = runId; // Mark this run as the one to display
+                        break;
+                }
             };
 
             const handleWebSocketMessage = (message) => {
                 switch (message.type) {
                     case 'start':
-                        output.value = [];
-                        inFailureBlock = false;
-                        results.value = null;
-                        expandedTestId.value = null;
-                        testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
-                        updateFavicon('neutral');
+                        // Initialize a new run in realtimeTestRuns
+                        realtimeTestRuns[message.runId] = reactive({
+                            status: 'running',
+                            contextId: message.contextId,
+                            suites: {},
+                            summary: null,
+                            failedTestIds: reactive(new Set()),
+                        });
                         runningTestIds[message.runId] = true;
                         delete stopPending[message.runId];
+                        // Update sidebar for the specific run context
                         if (message.contextId) {
                             testSuites.value.forEach(suite => {
                                 if (suite.id === message.contextId) suite.runId = message.runId;
@@ -570,86 +741,75 @@
                                 });
                             });
                         }
-                        break;
-                    case 'stopped':
-                        output.value.push({ html: `<span class="text-yellow-300">Test run ${message.runId} stopped by user.</span>` });
-                        delete runningTestIds[message.runId];
-                        delete stopPending[message.runId];
-                        testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) suite.runId = null;
-                            suite.methods.forEach(method => {
-                                if (method.runId === message.runId) method.runId = null;
-                            });
-                        });
-                        if (Object.keys(runningTestIds).length === 0) updateFavicon('neutral');
-                        break;
-                    case 'stdout': {
-                        const data = message.data;
-                        const progressRegex = /^[.FESIWDR\s]+$/;
-                        if (progressRegex.test(data) && data.trim().length > 0) {
-                            // Ignore progress characters, we are not displaying them
-                            return;
+                        updateFavicon('neutral'); // Reset favicon
+                        // Clear previous results if this is a new global run
+                        if (message.contextId === 'global' || message.contextId === 'failed') { // Also clear for 'run failed'
+                            expandedTestId.value = null;
+                            expandedTestcaseGroups.value = new Set();
+                            // Reset all test statuses in sidebar
+                            testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; m.runId = null; }));
                         }
+                        // Show results immediately when a run starts
+                        activeTab.value = 'results';
+                        break;
 
-                        let blockClass = 'output-line';
-                        if (data.startsWith('Time:')) {
-                            blockClass += ' summary-time';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('OK, but there were issues!')) {
-                            blockClass += ' summary-warn';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('FAILURES!')) {
-                            blockClass += ' summary-fail';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('OK (')) {
-                            blockClass += ' summary-ok';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('There was') || data.match(/^\d+\)/)) {
-                            inFailureBlock = true;
+                    case 'realtime':
+                        try {
+                            const realtimeEvent = JSON.parse(message.data);
+                            handleRealtimeEvent(message.runId, realtimeEvent);
+                        } catch (e) {
+                            console.error('Failed to parse realtime event data:', e, message.data);
                         }
-
-                        if (inFailureBlock) {
-                            blockClass += ' failure-block';
-                        }
-                        
-                        output.value.push({ html: formatAnsiToHtml(data), blockClass });
                         break;
-                    }
+
                     case 'exit':
-                        inFailureBlock = false;
-                        if (message.results) {
-                            results.value = message.results;
-                            const resultsMap = new Map();
-                            message.results.suites.forEach(s => s.testcases.forEach(tc => resultsMap.set(`${tc.class}::${tc.name}`, { time: tc.time, status: tc.status })));
-                            testSuites.value.forEach(s => s.methods.forEach(m => {
-                                if (resultsMap.has(m.id)) {
-                                    const res = resultsMap.get(m.id);
-                                    m.time = res.time;
-                                    m.status = res.status;
-                                }
-                            }));
-                            // This needs to be after results.value is set, but before it's returned from setup
-                            const groupsWithIssues = groupedResults.value.filter(g => g.hasIssues).map(g => g.className);
-                            expandedTestcaseGroups.value = new Set(groupsWithIssues);
+                        if (realtimeTestRuns[message.runId]) {
+                            realtimeTestRuns[message.runId].status = 'finished';
                         }
                         delete runningTestIds[message.runId];
                         delete stopPending[message.runId];
-                        testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) suite.runId = null;
-                            suite.methods.forEach(method => {
-                                if (method.runId === message.runId) method.runId = null;
+
+                        // Update sidebar runId for the specific run context
+                        if (realtimeTestRuns[message.runId] && realtimeTestRuns[message.runId].contextId) {
+                            testSuites.value.forEach(suite => {
+                                if (suite.runId === message.runId) suite.runId = null;
+                                suite.methods.forEach(method => {
+                                    if (method.runId === message.runId) method.runId = null;
+                                });
                             });
-                        });
+                        }
+
+                        // If this was the last running test, update favicon based on its summary
                         if (Object.keys(runningTestIds).length === 0) {
-                            if (results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0)) {
+                            const summary = realtimeTestRuns[message.runId]?.summary;
+                            if (summary && (summary.numberOfFailures > 0 || summary.numberOfErrors > 0)) {
                                 updateFavicon('failure');
-                            } else if (results.value) {
+                            } else if (summary) {
                                 updateFavicon('success');
                             } else {
                                 updateFavicon('neutral');
                             }
                         }
-                        activeTab.value = 'results';
+                        // Ensure the results displayed are from the last completed run
+                        // This is handled by lastCompletedRunId.value being set in handleRealtimeEvent for 'execution.ended'
+                        break;
+
+                    case 'stopped':
+                        if (realtimeTestRuns[message.runId]) {
+                            realtimeTestRuns[message.runId].status = 'stopped';
+                        }
+                        delete runningTestIds[message.runId];
+                        delete stopPending[message.runId];
+                        // Update sidebar runId for the specific run context
+                        if (realtimeTestRuns[message.runId] && realtimeTestRuns[message.runId].contextId) {
+                            testSuites.value.forEach(suite => {
+                                if (suite.runId === message.runId) suite.runId = null;
+                                suite.methods.forEach(method => {
+                                    if (method.runId === message.runId) method.runId = null;
+                                });
+                            });
+                        }
+                        if (Object.keys(runningTestIds).length === 0) updateFavicon('neutral');
                         break;
                 }
             };
@@ -665,13 +825,13 @@
                             groups[tc.class] = {
                                 className: tc.class,
                                 testcases: [],
-                                passed: 0, failed: 0, error: 0, skipped: 0, warning: 0, deprecation: 0, incomplete: 0,
+                                passed: 0, failed: 0, errored: 0, skipped: 0, warning: 0, deprecation: 0, incomplete: 0,
                                 hasIssues: false
                             };
                         }
                         const group = groups[tc.class];
                         group.testcases.push(tc);
-                        const status = tc.status || 'passed';
+                        const status = tc.status || 'passed'; // Default to passed if status is null/undefined
                         if (group[status] !== undefined) {
                             group[status]++;
                         }
@@ -689,7 +849,7 @@
 
                 sortedGroups.forEach(group => {
                     group.testcases.sort((a, b) => {
-                        const statusOrder = { 'failed': 1, 'error': 2, 'warning': 3, 'deprecation': 4, 'skipped': 5, 'incomplete': 6, 'passed': 7 };
+                        const statusOrder = { 'failed': 1, 'errored': 2, 'warning': 3, 'deprecation': 4, 'skipped': 5, 'incomplete': 6, 'passed': 7 };
                         const statusA = statusOrder[a.status || 'passed'] || 99;
                         const statusB = statusOrder[b.status || 'passed'] || 99;
                         if (statusA !== statusB) {
@@ -703,7 +863,7 @@
             });
 
             const runTests = async (runOptions = {}) => {
-                activeTab.value = 'output';
+                activeTab.value = 'results'; // Ensure results tab is active
                 const endpoint = runOptions.endpoint || '/api/run';
                 const payload = {
                     filters: runOptions.filters || [],
@@ -715,12 +875,12 @@
                 try {
                     const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
-                        const text = await response.text();
-                        output.value.push({ html: `<span class="text-red-400">Error: ${text}</span>` });
+                        const errorData = await response.json();
+                        console.error(`Error starting test run: ${errorData.error}`);
                         updateFavicon('failure');
                     }
                 } catch (error) {
-                    output.value.push({ html: `<span class="text-red-400">API request failed: ${error.message}</span>` });
+                    console.error(`API request failed: ${error.message}`);
                     updateFavicon('failure');
                 }
             };
@@ -760,15 +920,15 @@
 
             return {
                 runningTestIds, stopPending, isAnyTestRunning, isAnyStopPending,
-                activeTab, output, results, searchQuery, testSuites, availableSuites, selectedSuites, availableGroups, selectedGroups, options,
+                activeTab, results, searchQuery, testSuites, availableSuites, selectedSuites, availableGroups, selectedGroups, options,
                 showFilterPanel, expandedSuites, expandedTestId, hasFailedTests,
                 runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
                 statusCounts,
                 stopTests, togglePlayStop, stopSingleTest, isTestRunning, isTestStopPending,
                 groupedResults, expandedTestcaseGroups, toggleTestcaseGroup, statusClass
-              };
-          }
-      }).mount('#app');
- </script>
- </body>
- </html>
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

@@ -41,9 +41,6 @@ class Router implements RouterInterface
     /** @var array<string, Process> */
     private array $runningProcesses = [];
 
-    /** @var array<string, string> */ // Mappa runId a realtimeOutputFile
-    private array $realtimeOutputFiles = [];
-
     /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions per ogni runId
     private array $runContexts = [];
 
@@ -191,11 +188,6 @@ class Router implements RouterInterface
     public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null): string
     {
         $runId = Uuid::uuid4()->toString();
-        $realtimeOutputFile = sys_get_temp_dir() . '/phpunit-hub-realtime-' . uniqid() . '.log';
-        $this->realtimeOutputFiles[$runId] = $realtimeOutputFile;
-
-        // Ensure the file exists before the extension tries to write to it
-        file_put_contents($realtimeOutputFile, '');
 
         $this->runContexts[$runId] = [
             'filters' => $filters,
@@ -214,31 +206,28 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($realtimeOutputFile, $filters, $groups, $suites, $options);
+        $process = $this->testRunner->run($filters, $groups, $suites, $options);
 
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
 
-        // Open the realtime output file for reading
-        $fileHandle = fopen($realtimeOutputFile, 'r');
-        if ($fileHandle === false) {
-            $this->output->writeln(sprintf('<error>Failed to open realtime output file %s for reading.</error>', $realtimeOutputFile));
-            // Handle error, perhaps terminate the process or broadcast an error
-            return $runId;
-        }
-
-        $stream = new ReadableResourceStream($fileHandle, Loop::get());
+        // Listen to STDERR for realtime events
         $buffer = '';
 
-        $stream->on('data', function ($chunk) use (&$buffer, $runId, $isRerun) {
+        $process->stderr->on('data', function ($chunk) use (&$buffer, $runId) {
             $buffer .= $chunk;
             $lines = explode("\n", $buffer);
             $buffer = array_pop($lines); // Keep the last (incomplete) line in the buffer
 
             foreach ($lines as $line) {
-                if (empty($line)) {
+                if ($line === '') {
                     continue;
                 }
+
+                if ($line === '0') {
+                    continue;
+                }
+
                 // Each line is a JSON object from our RealtimeTestExtension
                 $decodedLine = json_decode($line, true);
                 if ($decodedLine === null) {
@@ -260,24 +249,31 @@ class Router implements RouterInterface
             }
         });
 
-        $process->on('exit', function ($exitCode) use ($runId, $isRerun, $contextId, $realtimeOutputFile, $stream, &$buffer) { // Pass contextId to closure
+        $process->on('exit', function ($exitCode) use ($runId, $isRerun, $contextId, &$buffer) { // Pass contextId to closure
             $this->output->writeln(sprintf('Test run #%s finished with code %s.', $runId, $exitCode));
 
             // Ensure all buffered data is processed
-            if (!empty($buffer)) {
+            if ($buffer !== '' && $buffer !== '0') {
                 $lines = explode("\n", $buffer);
                 foreach ($lines as $line) {
-                    if (empty($line)) {
+                    if ($line === '') {
                         continue;
                     }
+
+                    if ($line === '0') {
+                        continue;
+                    }
+
                     $decodedLine = json_decode($line, true);
                     if ($decodedLine === null) {
                         $this->output->writeln(sprintf('<error>Failed to decode JSON from final realtime output: %s</error>', $line));
                         continue;
                     }
+
                     if ($decodedLine['event'] === 'execution.ended') {
                         $this->lastRunSummaries[$runId] = $decodedLine['data']['summary'];
                     }
+
                     $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line]);
                     if ($jsonBroadcast !== false) {
                         $this->statusHandler->broadcast($jsonBroadcast);
@@ -317,16 +313,7 @@ class Router implements RouterInterface
             $this->notify($exitCode, $summary, $runId);
 
             // Clear running process/runId state
-            unset($this->runningProcesses[$runId]);
-            unset($this->runContexts[$runId]);
-            unset($this->realtimeOutputFiles[$runId]);
-            unset($this->lastRunSummaries[$runId]); // Clear the summary after use
-
-            // Close the stream and delete the temporary file
-            $stream->close();
-            if (file_exists($realtimeOutputFile)) {
-                unlink($realtimeOutputFile);
-            }
+            unset($this->runningProcesses[$runId], $this->runContexts[$runId], $this->lastRunSummaries[$runId]);
         });
 
         return $runId;

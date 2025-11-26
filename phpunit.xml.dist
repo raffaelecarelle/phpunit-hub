@@ -11,8 +11,6 @@
     </testsuites>
 
     <extensions>
-        <extension class="App\PHPUnit\RealtimeTestExtension">
-            <parameter name="outputFile" value="__REALTIME_OUTPUT_FILE__"/>
-        </extension>
+        <bootstrap class="PhpUnitHub\PHPUnit\PhpUnitHubExtension"/>
     </extensions>
 </phpunit>

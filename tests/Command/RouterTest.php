@@ -23,10 +23,9 @@ class RouterTest extends TestCase
         $mockOutput = $this->createMock(OutputInterface::class);
         $mockStatusHandler = $this->createMock(StatusHandler::class);
         $mockTestRunner = $this->createMock(TestRunner::class);
-        $jUnitParser = $this->createMock(JUnitParser::class);
         $testDiscoverer = $this->createMock(TestDiscoverer::class);
 
-        return new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $jUnitParser, $testDiscoverer);
+        return new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $testDiscoverer);
     }
 
     private function createMockProcess(bool $expectTerminate = false): Process

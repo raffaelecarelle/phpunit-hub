@@ -34,7 +34,6 @@ class TestRunnerTest extends TestCase
     public function testRunReturnsProcessInstance(): void
     {
         $testRunner = new TestRunner($this->loop);
-        $junitLogfile = $this->tempDir . '/logfile.xml';
 
         // The TestRunner directly instantiates React\ChildProcess\Process.
         // Without refactoring TestRunner to allow injecting a mockable Process
@@ -43,7 +42,7 @@ class TestRunnerTest extends TestCase
         // This test only verifies that an instance of Process is returned.
         // For more comprehensive testing, TestRunner would need to be refactored.
 
-        $process = $testRunner->run($junitLogfile);
+        $process = $testRunner->run([], [], [], []);
         $this->assertInstanceOf(Process::class, $process);
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PhpUnitHub\PHPUnit;
 
+use Closure;
 use PHPUnit\Event\Test\DeprecationTriggered;
 use PHPUnit\Runner\Extension\Facade;
 use PHPUnit\Event\Test\Errored;
@@ -14,48 +15,62 @@ use PHPUnit\Event\Test\Prepared;
 use PHPUnit\Event\Test\Skipped;
 use PHPUnit\Event\Test\WarningTriggered;
 use PHPUnit\Event\TestRunner\Finished as TestRunnerFinished;
-use PHPUnit\Event\TestSuite\Finished as TestSuiteFinished;
 use PHPUnit\Event\TestSuite\Started as TestSuiteStarted;
 use PHPUnit\Runner\Extension\Extension;
 use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use PHPUnit\TestRunner\TestResult\Facade as TestResultFacade;
 
-class RealtimeTestExtension implements Extension
+use function var_dump;
+
+class PhpUnitHubExtension implements Extension
 {
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
-        $outputFile = $parameters->get('outputFile');
-
-        // Helper function to write events to the file
-        $writeEvent = static function (string $event, array $data) use ($outputFile): void {
-            file_put_contents($outputFile, json_encode(['event' => $event, 'data' => $data]) . "\n", FILE_APPEND);
+        // Helper function to write events to STDERR (to avoid mixing with PHPUnit's normal output)
+        $writeEvent = static function (string $event, array $data): void {
+            fwrite(STDERR, json_encode(['event' => $event, 'data' => $data]) . "\n");
         };
 
         // Register individual subscribers for each event type
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\PreparedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PreparedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(Prepared $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Prepared $event): void
+            {
                 ($this->writeEvent)('test.prepared', ['test' => $event->test()->id()]);
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\PassedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PassedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(Passed $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Passed $event): void
+            {
                 ($this->writeEvent)('test.passed', ['test' => $event->test()->id(), 'time' => $event->telemetryInfo()->durationSinceStart()->asFloat()]);
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\FailedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\FailedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(Failed $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Failed $event): void
+            {
                 ($this->writeEvent)('test.failed', [
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
@@ -65,11 +80,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\ErroredSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\ErroredSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(Errored $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Errored $event): void
+            {
                 ($this->writeEvent)('test.errored', [
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
@@ -79,11 +99,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\SkippedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\SkippedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(Skipped $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Skipped $event): void
+            {
                 ($this->writeEvent)('test.skipped', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
@@ -92,11 +117,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\MarkedIncompleteSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\MarkedIncompleteSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(MarkedIncomplete $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(MarkedIncomplete $event): void
+            {
                 ($this->writeEvent)('test.incomplete', [
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
@@ -105,11 +135,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\WarningTriggeredSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\WarningTriggeredSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(WarningTriggered $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(WarningTriggered $event): void
+            {
                 ($this->writeEvent)('test.warning', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
@@ -118,12 +153,17 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\Test\DeprecationTriggeredSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\DeprecationTriggeredSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(DeprecationTriggered $event): void {
-                ($this->writeEvent)('test.deprecation', [], [
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(DeprecationTriggered $event): void
+            {
+                ($this->writeEvent)('test.deprecation', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
                     'time' => $event->telemetryInfo()->durationSinceStart()->asFloat(),
@@ -131,11 +171,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\TestSuite\StartedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\TestSuite\StartedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(TestSuiteStarted $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(TestSuiteStarted $event): void
+            {
                 if ($event->testSuite()->isForTestClass()) {
                     ($this->writeEvent)('suite.started', [
                         'name' => $event->testSuite()->name(),
@@ -145,11 +190,16 @@ class RealtimeTestExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class($writeEvent) implements \PHPUnit\Event\TestRunner\FinishedSubscriber {
-            private $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\TestRunner\FinishedSubscriber {
+            private readonly \Closure $writeEvent;
 
-            public function __construct(callable $writeEvent) { $this->writeEvent = $writeEvent; }
-            public function notify(TestRunnerFinished $event): void {
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(TestRunnerFinished $event): void
+            {
 
                 $testResult = TestResultFacade::result();
 
@@ -164,7 +214,7 @@ class RealtimeTestExtension implements Extension
                         'numberOfIncomplete' => $testResult->numberOfTestMarkedIncompleteEvents(),
                         'numberOfRisky' => $testResult->numberOfTestsWithTestConsideredRiskyEvents(),
                         'duration' => $event->telemetryInfo()->durationSinceStart()->asFloat(),
-                    ]
+                    ],
                 ]);
             }
         });
