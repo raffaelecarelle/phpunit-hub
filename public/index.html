@@ -252,7 +252,7 @@
                                         <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
                                         {{ results.summary.errors }} Errors
                                     </span>
-                                    <span v-if="results.summary.warnings > 0" class="flex items-center">
+                                    <span v-if="results.summary.warnings > 0 && store.state.options.displayWarnings" class="flex items-center">
                                         <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
                                         {{ results.summary.warnings }} Warnings
                                     </span>
@@ -260,7 +260,7 @@
                                         <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
                                         {{ results.summary.skipped }} Skipped
                                     </span>
-                                    <span v-if="results.summary.deprecations > 0" class="flex items-center">
+                                    <span v-if="results.summary.deprecations > 0 && store.state.options.displayDeprecations" class="flex items-center">
                                         <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
                                         {{ results.summary.deprecations }} Deprecations
                                     </span>
@@ -282,8 +282,8 @@
                                     <div class="flex items-center space-x-4 text-sm">
                                         <span v-if="group.failed > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.failed }} Failed</span>
                                         <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.errored }} Error</span>
-                                        <span v-if="group.warning > 0" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
-                                        <span v-if="group.deprecation > 0" class="px-2 py-0.5 rounded-full bg-purple-800 text-purple-200">{{ group.deprecation }} Deprecations</span>
+                                        <span v-if="group.warning > 0 && store.state.options.displayWarnings" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
+                                        <span v-if="group.deprecation > 0 && store.state.options.displayDeprecations" class="px-2 py-0.5 rounded-full bg-purple-800 text-purple-200">{{ group.deprecation }} Deprecations</span>
                                         <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
                                     </div>
                                 </div>
