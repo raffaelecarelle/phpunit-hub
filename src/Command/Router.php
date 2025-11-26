@@ -100,17 +100,12 @@ class Router implements RouterInterface
                 $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
             }
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
-            // No longer checking isTestRunning here, as multiple runs are now allowed
-            /** @var string[] $filters */
-            $filters = [];
-            /** @var string[] $groups */
             $groups = [];
             /** @var string[] $suites */
             $suites = [];
             /** @var array<string, bool> $options */
             $options = [];
             $isRerun = false;
-            $contextId = null; // Initialize contextId
 
             if ($path === '/api/run') {
                 $body = $request?->getBody()->getContents();

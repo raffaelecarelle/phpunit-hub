@@ -6,6 +6,8 @@ namespace PhpUnitHub\PHPUnit;
 
 use Closure;
 use PHPUnit\Event\Test\DeprecationTriggered;
+use PHPUnit\Event\Test\PhpDeprecationTriggered;
+use PHPUnit\Event\Test\PhpWarningTriggered;
 use PHPUnit\Runner\Extension\Facade;
 use PHPUnit\Event\Test\Errored;
 use PHPUnit\Event\Test\Failed;
@@ -20,8 +22,6 @@ use PHPUnit\Runner\Extension\Extension;
 use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use PHPUnit\TestRunner\TestResult\Facade as TestResultFacade;
-
-use function var_dump;
 
 class PhpUnitHubExtension implements Extension
 {
@@ -171,6 +171,42 @@ class PhpUnitHubExtension implements Extension
             }
         });
 
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PhpDeprecationTriggeredSubscriber {
+            private readonly \Closure $writeEvent;
+
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(PhpDeprecationTriggered $event): void
+            {
+                ($this->writeEvent)('test.deprecation', [
+                    'test' => $event->test()->id(),
+                    'message' => $event->message(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->asFloat(),
+                ]);
+            }
+        });
+
+        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PhpWarningTriggeredSubscriber {
+            private readonly \Closure $writeEvent;
+
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(PhpWarningTriggered $event): void
+            {
+                ($this->writeEvent)('test.warning', [
+                    'test' => $event->test()->id(),
+                    'message' => $event->message(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->asFloat(),
+                ]);
+            }
+        });
+
         $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\TestSuite\StartedSubscriber {
             private readonly \Closure $writeEvent;
 
@@ -200,7 +236,6 @@ class PhpUnitHubExtension implements Extension
 
             public function notify(TestRunnerFinished $event): void
             {
-
                 $testResult = TestResultFacade::result();
 
                 ($this->writeEvent)('execution.ended', [
@@ -213,6 +248,7 @@ class PhpUnitHubExtension implements Extension
                         'numberOfSkipped' => $testResult->numberOfTestSkippedEvents(),
                         'numberOfIncomplete' => $testResult->numberOfTestMarkedIncompleteEvents(),
                         'numberOfRisky' => $testResult->numberOfTestsWithTestConsideredRiskyEvents(),
+                        'numberOfDeprecations' => $testResult->numberOfPhpOrUserDeprecations(),
                         'duration' => $event->telemetryInfo()->durationSinceStart()->asFloat(),
                     ],
                 ]);
