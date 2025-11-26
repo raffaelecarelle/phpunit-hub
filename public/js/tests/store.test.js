@@ -4,8 +4,10 @@ jest.mock('https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js', () 
 }));
 
 // Mock parseTestId from utils.js
-const { parseTestId } = jest.mock('../utils.js', () => ({
-    parseTestId: jest.fn((testId) => {
+const { parseTestId } = jest.requireActual('../utils.js'); // Use requireActual to get the real module, then mock specific functions
+jest.mock('../utils.js', () => ({
+    ...jest.requireActual('../utils.js'), // Import and retain default behavior
+    parseTestId: jest.fn((testId) => { // Mock only parseTestId
         const separatorIndex = testId.indexOf('::');
         if (separatorIndex === -1) {
             return {
@@ -236,7 +238,7 @@ describe('Store', () => {
         const testId = 'SuiteA::testMethod';
         beforeEach(() => {
             store.initializeTestRun('run123', 'global');
-            run = store.state.realtimeTestRuns['run123'];
+            run = store.state.realtimeTestRuns[runId];
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {

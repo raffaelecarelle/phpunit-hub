@@ -11,15 +11,14 @@ const MockWebSocket = jest.fn(() => mockWebSocketInstance);
 global.WebSocket = MockWebSocket;
 
 // Mock dependencies
-// Define the mock function directly in the factory
-const { updateFavicon } = jest.mock('../utils.js', () => ({
-    updateFavicon: jest.fn(),
-}));
+import * as Utils from '../utils.js'; // Import the module
+jest.mock('../utils.js'); // Mock the module
 
 class MockStore {
     constructor() {
         this.state = {
             realtimeTestRuns: {},
+            runningTestIds: {}, // Initialize runningTestIds
         };
         this.initializeTestRun = jest.fn();
         this.handleTestEvent = jest.fn();
@@ -27,7 +26,7 @@ class MockStore {
         this.stopTestRun = jest.fn();
         this.clearRunningTests = jest.fn();
         this.getTestRun = jest.fn((runId) => this.state.realtimeTestRuns[runId]);
-        this.getRunningTestCount = jest.fn(() => Object.keys(this.state.runningTestRuns).length);
+        this.getRunningTestCount = jest.fn(() => Object.keys(this.state.runningTestIds || {}).length); // Corrected property and added safety
     }
 }
 
@@ -43,6 +42,7 @@ describe('WebSocketManager', () => {
         wsManager = new WebSocketManager(wsUrl, store);
 
         jest.clearAllMocks();
+        Utils.updateFavicon.mockClear(); // Clear the mock here
         jest.spyOn(console, 'log').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
         jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -83,7 +83,7 @@ describe('WebSocketManager', () => {
         test('should clear running tests and update favicon to neutral', () => {
             wsManager.handleDisconnect();
             expect(store.clearRunningTests).toHaveBeenCalledTimes(1);
-            expect(updateFavicon).toHaveBeenCalledWith('neutral'); // Use the directly imported mock
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('neutral'); // Use Utils.updateFavicon
         });
 
         test('should attempt to reconnect if reconnect attempts are less than max', () => {
@@ -163,28 +163,28 @@ describe('WebSocketManager', () => {
         test('should set favicon to failure if run has failures', () => {
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 1, numberOfErrors: 0 } };
             wsManager.updateFaviconFromRun('run1');
-            expect(updateFavicon).toHaveBeenCalledWith('failure'); // Use the directly imported mock
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('failure');
         });
 
         test('should set favicon to failure if run has errors', () => {
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 1 } };
             wsManager.updateFaviconFromRun('run1');
-            expect(updateFavicon).toHaveBeenCalledWith('failure'); // Use the directly imported mock
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('failure');
         });
 
         test('should set favicon to success if run has no failures or errors', () => {
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
             wsManager.updateFaviconFromRun('run1');
-            expect(updateFavicon).toHaveBeenCalledWith('success'); // Use the directly imported mock
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('success');
         });
 
         test('should do nothing if run or summary is missing', () => {
             wsManager.updateFaviconFromRun('nonExistentRun');
-            expect(updateFavicon).not.toHaveBeenCalled(); // Use the directly imported mock
+            expect(Utils.updateFavicon).not.toHaveBeenCalled();
 
             store.state.realtimeTestRuns['run2'] = { summary: null };
             wsManager.updateFaviconFromRun('run2');
-            expect(updateFavicon).not.toHaveBeenCalled(); // Use the directly imported mock
+            expect(Utils.updateFavicon).not.toHaveBeenCalled();
         });
     });
 
@@ -192,13 +192,13 @@ describe('WebSocketManager', () => {
         test('should set favicon to neutral if no tests are running', () => {
             store.getRunningTestCount.mockReturnValueOnce(0);
             wsManager.updateFaviconIfComplete();
-            expect(updateFavicon).toHaveBeenCalledWith('neutral'); // Use the directly imported mock
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('neutral');
         });
 
         test('should not update favicon if tests are still running', () => {
             store.getRunningTestCount.mockReturnValueOnce(1);
             wsManager.updateFaviconIfComplete();
-            expect(updateFavicon).not.toHaveBeenCalled(); // Use the directly imported mock
+            expect(Utils.updateFavicon).not.toHaveBeenCalled();
         });
     });
 
