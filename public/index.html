@@ -230,7 +230,7 @@
                             <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
                                 <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>{{ statusCounts.passed }} Passed</span>
                                 <span v-if="statusCounts.failed > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>{{ statusCounts.failed }} Failed</span>
-                                <span v-if="statusCounts.error > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>{{ statusCounts.error }} Errors</span>
+                                <span v-if="statusCounts.error > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>{{ statusCounts.error }} Errors</span>
                                 <span v-if="statusCounts.warnings > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>{{ statusCounts.warnings }} Warnings</span>
                                 <span v-if="statusCounts.skipped > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>{{ statusCounts.skipped }} Skipped</span>
                                 <span v-if="statusCounts.deprecations > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>{{ statusCounts.deprecations }} Deprecations</span>
@@ -247,7 +247,7 @@
                                 </div>
                                 <div class="flex items-center space-x-4 text-sm">
                                     <span v-if="group.failed > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.failed }} Failed</span>
-                                    <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-yellow-900 text-yellow-300">{{ group.errored }} Error</span>
+                                    <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.errored }} Error</span>
                                     <span v-if="group.warning > 0" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
                                     <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
                                 </div>
@@ -506,7 +506,7 @@
                 return {
                     'bg-green-900 text-green-300': status === 'passed',
                     'bg-red-900 text-red-300': status === 'failed',
-                    'bg-yellow-900 text-yellow-300': status === 'errored', // Changed from error
+                    'bg-red-900 text-red-300 ': status === 'errored', // Changed from error
                     'bg-amber-800 text-amber-200': status === 'warning' || status === 'deprecation',
                     'bg-gray-700 text-gray-300': status === 'skipped' || status === 'incomplete',
                     'bg-blue-800 text-blue-300': status === 'running', // New status class
