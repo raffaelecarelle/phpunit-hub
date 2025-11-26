@@ -10,8 +10,11 @@ The entire application is powered by a PHP backend using the high-performance [R
 ## Features
 
 - **Real-Time Feedback**: Watch your tests run in real-time via WebSockets.
-- **Test Explorer**: Automatically discovers your test suites and methods from your `phpunit.xml` configuration.
-- **Interactive Filtering**: Click on a test in the explorer to filter the run, or write your own filter pattern.
+- **Test Explorer**: The test list on the left is automatically populated by running `phpunit --list-tests`. You can click on a specific test to run it.
+- **Interactive Filtering**:
+    - **Test Suite**: The available test suites are automatically populated by running `phpunit --list-suites`.
+    - **Group**: The available groups are automatically populated by running `phpunit --list-groups`. You can select multiple groups to run.
+    - **Filter**: You can write your own filter pattern.
 - **Automatic Test Re-run**: Automatically re-run your tests on file changes with the efficient `--watch` mode.
 - **Detailed Results**: View a clear summary of test outcomes and a detailed table of all test cases.
 - **Failure Analysis**: Expand failed or errored tests to see the detailed stack trace and error messages.

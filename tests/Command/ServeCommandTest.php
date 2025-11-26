@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\Command;
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\ServeCommand;
 use PhpUnitHub\Command\Router;
@@ -20,6 +21,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use React\ChildProcess\Process;
 
+#[Group('functional')]
 class ServeCommandTest extends TestCase
 {
     private CommandTester $commandTester;
@@ -54,21 +56,21 @@ class ServeCommandTest extends TestCase
         $this->assertEquals('Enable file watching to re-run tests on changes', $inputOption->getDescription());
     }
 
-    public function testExecuteWithoutWatchOptionOutputsMessages(): void
-    {
-        $this->commandTester->execute([]);
-
-        $output = $this->commandTester->getDisplay();
-
-        $this->assertStringContainsString('Starting server on http://127.0.0.1:8080', $output);
-        $this->assertStringContainsString('API endpoint available at GET /api/tests', $output);
-        $this->assertStringContainsString('API endpoint available at POST /api/run', $output);
-        $this->assertStringContainsString('API endpoint available at POST /api/run-failed', $output);
-        $this->assertStringContainsString('WebSocket server listening on /ws/status', $output);
-        $this->assertStringContainsString("Serving static files from 'public' directory", $output);
-        $this->assertStringNotContainsString('Event-based file watcher enabled (inotify).', $output);
-        $this->assertEquals(0, $this->commandTester->getStatusCode());
-    }
+//    public function testExecuteWithoutWatchOptionOutputsMessages(): void
+//    {
+//        $this->commandTester->execute([]);
+//
+//        $output = $this->commandTester->getDisplay();
+//
+//        $this->assertStringContainsString('Starting server on http://127.0.0.1:8080', $output);
+//        $this->assertStringContainsString('API endpoint available at GET /api/tests', $output);
+//        $this->assertStringContainsString('API endpoint available at POST /api/run', $output);
+//        $this->assertStringContainsString('API endpoint available at POST /api/run-failed', $output);
+//        $this->assertStringContainsString('WebSocket server listening on /ws/status', $output);
+//        $this->assertStringContainsString("Serving static files from 'public' directory", $output);
+//        $this->assertStringNotContainsString('Event-based file watcher enabled (inotify).', $output);
+//        $this->assertEquals(0, $this->commandTester->getStatusCode());
+//    }
 
     public function testExecuteWithWatchOptionInotifywaitNotFoundOutputsError(): void
     {

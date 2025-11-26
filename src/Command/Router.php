@@ -43,7 +43,7 @@ class Router implements RouterInterface
     /** @var array<string, string> */ // Mappa runId a junitLogfile
     private array $junitLogfiles = [];
 
-    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroup, lastOptions per ogni runId
+    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions per ogni runId
     private array $runContexts = [];
 
     /** @var string[] */
@@ -55,7 +55,8 @@ class Router implements RouterInterface
     /** @var string[] */
     private array $lastSuites = [];
 
-    private string $lastGroup = '';
+    /** @var string[] */
+    private array $lastGroups = [];
 
     /** @var array<string, bool> */
     private array $lastOptions = [];
@@ -102,7 +103,8 @@ class Router implements RouterInterface
             // No longer checking isTestRunning here, as multiple runs are now allowed
             /** @var string[] $filters */
             $filters = [];
-            $group = '';
+            /** @var string[] $groups */
+            $groups = [];
             /** @var string[] $suites */
             $suites = [];
             /** @var array<string, bool> $options */
@@ -114,13 +116,13 @@ class Router implements RouterInterface
                 $body = $request?->getBody()->getContents();
                 $payload = json_decode((string) $body, true) ?? [];
                 $filters = $payload['filters'] ?? [];
-                $group = $payload['group'] ?? '';
+                $groups = $payload['groups'] ?? [];
                 $suites = $payload['suites'] ?? [];
                 $options = $payload['options'] ?? [];
                 $contextId = $payload['contextId'] ?? null; // Get contextId from payload
                 $this->lastFilters = $filters;
                 $this->lastSuites = $suites;
-                $this->lastGroup = $group;
+                $this->lastGroups = $groups;
                 $this->lastOptions = $options;
             } else { // /api/run-failed
                 $isRerun = true;
@@ -143,7 +145,7 @@ class Router implements RouterInterface
                 $contextId = $payload['contextId'] ?? 'failed';
             }
 
-            $runId = $this->runTests($filters, $suites, $group, $options, $isRerun, $contextId);
+            $runId = $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId);
             $jsonResponse = json_encode(['message' => 'Test run started.', 'runId' => $runId]);
             if ($jsonResponse === false) {
                 $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
@@ -178,11 +180,12 @@ class Router implements RouterInterface
     /**
      * @param string[] $filters
      * @param string[] $suites
+     * @param string[] $groups
      * @param array<string, bool> $options
      * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
      * @return string The runId of the started test process.
      */
-    public function runTests(array $filters, array $suites = [], string $group = '', array $options = [], bool $isRerun = false, ?string $contextId = null): string
+    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null): string
     {
         $runId = Uuid::uuid4()->toString();
         $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
@@ -190,7 +193,7 @@ class Router implements RouterInterface
         $this->runContexts[$runId] = [
             'filters' => $filters,
             'suites' => $suites,
-            'group' => $group,
+            'groups' => $groups,
             'options' => $options,
             'contextId' => $contextId, // Store contextId
         ];
@@ -204,7 +207,7 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($junitLogfile, $filters, $group, $suites, $options);
+        $process = $this->testRunner->run($junitLogfile, $filters, $groups, $suites, $options);
 
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
@@ -279,10 +282,10 @@ class Router implements RouterInterface
         return $this->lastFilters;
     }
 
-    public function getLastGroup(): string
+    public function getLastGroups(): array
     {
         // This now refers to the last global run, not a specific single test run
-        return $this->lastGroup;
+        return $this->lastGroups;
     }
 
     public function getLastOptions(): array

@@ -162,7 +162,7 @@ class ServeCommand extends Command
 
                 $debounceTimer = $loop->addTimer(0.5, function () use ($router, $output) {
                     $output->writeln('<info>Re-running tests due to file changes...</info>');
-                    $router->runTests($router->getLastFilters(), $router->getLastSuites(), $router->getLastGroup(), $router->getLastOptions());
+                    $router->runTests($router->getLastFilters(), $router->getLastSuites(), $router->getLastGroups(), $router->getLastOptions());
                 });
             });
 

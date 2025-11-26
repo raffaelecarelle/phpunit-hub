@@ -2,26 +2,18 @@
 
 namespace PhpUnitHub\TestRunner;
 
+use PhpUnitHub\Util\Composer;
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
 
 use function array_map;
 use function escapeshellarg;
 use function escapeshellcmd;
-use function file_get_contents;
-use function getcwd;
 use function implode;
-use function is_array;
-use function is_readable;
-use function is_string;
-use function json_decode;
-use function preg_match;
 use function preg_quote;
 use function preg_replace;
-use function rtrim;
 use function strtolower;
 use function trim;
-use function var_dump;
 
 class TestRunner
 {
@@ -34,14 +26,14 @@ class TestRunner
      *
      * @param string $junitLogfile The path to the JUnit XML log file.
      * @param string[] $filters An array of filters to apply to the tests (e.g., method names).
-     * @param string $group The test group to run.
+     * @param string[] $groups An array of test groups to run.
      * @param string[] $suites An array of test suites to run.
      * @param array<string, bool> $options An associative array of boolean PHPUnit CLI options (e.g., ['--stop-on-failure' => true]).
      * @return Process The ReactPHP child process.
      */
-    public function run(string $junitLogfile, array $filters = [], string $group = '', array $suites = [], array $options = []): Process
+    public function run(string $junitLogfile, array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
     {
-        $phpunitPath = $this->getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
+        $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
 
         $command = escapeshellcmd($phpunitPath)
             . ' --log-junit ' . escapeshellarg($junitLogfile);
@@ -59,7 +51,7 @@ class TestRunner
         }
 
         // Add --group filter if provided
-        if ($group !== '') {
+        foreach ($groups as $group) {
             $command .= ' --group ' . escapeshellarg($group);
         }
 
@@ -86,32 +78,5 @@ class TestRunner
         $s = strtolower((string) preg_replace('/-+/', '-', (string) $s));
 
         return trim($s, '-');
-    }
-
-    public function getComposerBinDir(string $projectDir = null): string
-    {
-        $projectDir ??= getcwd();
-        $composerFile = rtrim($projectDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'composer.json';
-
-        if (!is_readable($composerFile)) {
-            return $projectDir . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'bin';
-        }
-
-        $data = json_decode(file_get_contents($composerFile), true);
-        if (!is_array($data)) {
-            return $projectDir . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'bin';
-        }
-
-        $binDir = $data['config']['bin-dir'] ?? null;
-        if (!$binDir || !is_string($binDir)) {
-            return $projectDir . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'bin';
-        }
-
-        // Resolve relative paths to absolute
-        if (!preg_match('#^(?:/|[A-Za-z]:\\\\|\\\\)#', $binDir)) {
-            $binDir = $projectDir . DIRECTORY_SEPARATOR . $binDir;
-        }
-
-        return rtrim($binDir, DIRECTORY_SEPARATOR);
     }
 }

@@ -55,6 +55,9 @@ class RouterTest extends TestCase
         return $mockRequest;
     }
 
+    /**
+     * @param array<empty> $sentMessages
+     */
     private function createMockConnection(array &$sentMessages): ConnectionInterface
     {
         $mockConnection = $this->createMock(ConnectionInterface::class);

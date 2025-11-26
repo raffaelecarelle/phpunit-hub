@@ -44,15 +44,17 @@
                 <div v-show="showFilterPanel" @click.stop class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
                     <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
                     <div class="form-group mb-4">
-                        <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Group Filter (--group)</label>
-                        <input type="text" id="group-filter" v-model="groupFilter" placeholder="e.g., @fast, @integration"
-                               class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white">
+                        <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Test Groups</label>
+                        <select id="group-filter" v-model="selectedGroups" multiple
+                                class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
+                            <option v-for="(group, key) in availableGroups" :value="key">{{ group }}</option>
+                        </select>
                     </div>
                     <div class="form-group mb-4">
                         <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
                         <select id="filter-suite" v-model="selectedSuites" multiple
                                 class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
-                            <option v-for="suite in availableSuites" :value="suite">{{ suite }}</option>
+                            <option v-for="(suite, key) in availableSuites" :value="key">{{ suite }}</option>
                         </select>
                     </div>
                     <div class="form-group mb-4">
@@ -120,10 +122,6 @@
                         <span class="text-yellow-500 font-bold">!</span>
                         <span>{{ results ? results.summary.errors : '--' }}</span>
                     </div>
-                    <div class="flex items-center space-x-2 text-gray-400" title="Total">
-                        <span class="font-bold">Σ</span>
-                        <span>{{ totalTestsCount }}</span>
-                    </div>
                 </div>
             </div>
 
@@ -140,7 +138,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6 6h8v8H6z" /></svg>
                         </span>
                         <span v-else @click.stop="runSuiteTests(suite.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}" :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
-                            <svg xmlns="http://www.3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
                         </span>
                     </div>
                 </div>
@@ -260,10 +258,11 @@
             const output = ref([]);
             const results = ref(null);
             const searchQuery = ref('');
-            const groupFilter = ref('');
             const testSuites = ref([]);
             const availableSuites = ref([]);
             const selectedSuites = ref([]);
+            const availableGroups = ref([]);
+            const selectedGroups = ref([]);
             const options = reactive({
                 stopOnDefect: false,
                 stopOnError: false,
@@ -420,6 +419,7 @@
                     });
                     testSuites.value = data.suites;
                     if(data.availableSuites) availableSuites.value = data.availableSuites;
+                    if(data.availableGroups) availableGroups.value = data.availableGroups;
                 } catch (e) { console.error("Failed to fetch tests:", e); }
             };
 
@@ -590,7 +590,7 @@
 
                 const payload = {
                     filters: runOptions.filters || [],
-                    group: groupFilter.value,
+                    groups: selectedGroups.value,
                     suites: selectedSuites.value,
                     options: { ...options },
                     contextId: runOptions.contextId, // Invia il contextId al backend
@@ -673,7 +673,7 @@
 
             return {
                 runningTestIds, stopPending, isAnyTestRunning, isAnyStopPending,
-                activeTab, output, results, searchQuery, groupFilter, testSuites, availableSuites, selectedSuites, options,
+                activeTab, output, results, searchQuery, testSuites, availableSuites, selectedSuites, availableGroups, selectedGroups, options,
                 showFilterPanel, expandedSuites, expandedTestId, hasFailedTests,
                 runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
                 statusFilters, sortOrder, toggleSortTime, resultsView, filteredBySuite, statusCounts, globalView,

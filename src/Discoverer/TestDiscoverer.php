@@ -3,29 +3,26 @@
 namespace PhpUnitHub\Discoverer;
 
 use Exception;
-use PHPUnit\Framework\TestCase;
+use PhpUnitHub\Util\Composer;
 use ReflectionClass;
 use ReflectionException;
-use ReflectionMethod;
-use SimpleXMLElement;
-use Symfony\Component\Finder\Finder;
 
-use function array_unique;
-use function defined;
-use function file_get_contents;
-use function glob;
-use function is_array;
-use function is_dir;
-use function realpath;
-use function sprintf;
+use function file_exists;
+use function is_file;
+use function preg_replace;
+use function substr;
+use function trim;
 
 class TestDiscoverer
 {
     private readonly ?string $configFile;
 
+    private readonly string $phpunitPath;
+
     public function __construct(private readonly string $projectRoot)
     {
         $this->configFile = $this->findConfigFile();
+        $this->phpunitPath = Composer::getComposerBinDir($projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
     }
 
     /**
@@ -39,57 +36,155 @@ class TestDiscoverer
      *             name: string
      *         }>
      *     }>,
-     *     availableSuites: string[]
+     *     availableSuites: string[],
+     *     availableGroups: string[]
      * }
      */
     public function discover(): array
     {
-        if (!$this->configFile) {
-            return ['suites' => [], 'availableSuites' => []];
+        if (!is_file($this->configFile) || !is_file($this->phpunitPath)) {
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => []];
         }
 
         try {
-            $testDirectories = $this->parseTestDirectories($this->configFile);
-            $foundTests = $testDirectories === [] ? [] : $this->findTestsInDirectories($testDirectories);
             $availableSuites = $this->discoverSuites();
+            $availableGroups = $this->discoverGroups();
+            $foundTests = $this->discoverTests();
         } catch (Exception) {
-            return ['suites' => [], 'availableSuites' => []];
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => []];
         }
 
         return [
             'suites' => $foundTests,
             'availableSuites' => $availableSuites,
+            'availableGroups' => $availableGroups,
         ];
     }
 
     /**
      * @return string[]
-     * @throws Exception
+     */
+    private function executePhpUnitCommand(string $command): array
+    {
+        $fullCommand = 'cd ' . escapeshellarg($this->projectRoot) . ' && ' . escapeshellcmd($this->phpunitPath) . ' ' . $command;
+        $output = shell_exec($fullCommand);
+        if ($output === null) {
+            return [];
+        }
+
+        return explode("\n", trim($output));
+    }
+
+    /**
+     * @return string[]
      */
     public function discoverSuites(): array
     {
-        if (!$this->configFile) {
-            return [];
-        }
-
-        $fileContents = file_get_contents($this->configFile);
-        if ($fileContents === false) {
-            throw new Exception(sprintf('Could not read config file: %s', $this->configFile));
-        }
-
-        $xml = new SimpleXMLElement($fileContents);
+        $lines = $this->executePhpUnitCommand('--list-suites');
         $suites = [];
-        $suiteNodes = $xml->xpath('//testsuites/testsuite');
+        $foundList = false;
+        foreach ($lines as $line) {
+            if (str_contains($line, 'Available test suite')) {
+                $foundList = true;
+                continue;
+            }
 
-        if (!is_array($suiteNodes)) { // Changed from === false
-            return [];
-        }
-
-        foreach ($suiteNodes as $suiteNode) {
-            $suites[] = (string) $suiteNode['name'];
+            if ($foundList && str_starts_with($line, ' - ')) {
+                $key = preg_replace('/\s*\(\d+\s*tests?\)$/', '', trim(substr($line, 3)));
+                $suites[$key] = trim(substr($line, 3));
+            }
         }
 
         return $suites;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function discoverGroups(): array
+    {
+        $lines = $this->executePhpUnitCommand('--list-groups');
+        $groups = [];
+        $foundList = false;
+        foreach ($lines as $line) {
+            if (str_contains($line, 'Available test group')) {
+                $foundList = true;
+                continue;
+            }
+
+            if ($foundList && str_starts_with($line, ' - ')) {
+                $key = preg_replace('/\s*\(\d+\s*tests?\)$/', '', trim(substr($line, 3)));
+                $groups[$key] = trim(substr($line, 3));
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @return array<array{
+     *      id: string,
+     *      name: string,
+     *      namespace: string,
+     *      methods: array<array{
+     *          id: string,
+     *          name: string
+     *      }>
+     *  }>
+     */
+    private function discoverTests(): array
+    {
+        $lines = $this->executePhpUnitCommand('--list-tests');
+        $tests = [];
+        $foundList = false;
+        foreach ($lines as $line) {
+            if (str_contains($line, 'Available test')) {
+                $foundList = true;
+                continue;
+            }
+
+            if ($foundList && str_starts_with($line, ' - ')) {
+                $tests[] = trim(substr($line, 3));
+            }
+        }
+
+        $suites = [];
+        foreach ($tests as $test) {
+            if (!str_contains($test, '::')) {
+                continue;
+            }
+
+            [$className, $methodName] = explode('::', $test, 2);
+
+            if (!isset($suites[$className])) {
+                try {
+                    $reflection = new ReflectionClass($className);
+                    $suites[$className] = [
+                        'id' => $className,
+                        'name' => $reflection->getShortName(),
+                        'namespace' => $reflection->getNamespaceName(),
+                        'methods' => [],
+                    ];
+                } catch (ReflectionException) {
+                    $parts = explode('\\', $className);
+                    $shortName = end($parts);
+                    $namespace = implode('\\', array_slice($parts, 0, -1));
+                    $suites[$className] = [
+                        'id' => $className,
+                        'name' => $shortName,
+                        'namespace' => $namespace,
+                        'methods' => [],
+                    ];
+                }
+            }
+
+            $suites[$className]['methods'][] = [
+                'id' => $test,
+                'name' => $methodName,
+            ];
+        }
+
+        return array_values($suites);
     }
 
     private function findConfigFile(): ?string
@@ -102,129 +197,6 @@ class TestDiscoverer
         $main = $this->projectRoot . '/phpunit.xml';
         if (file_exists($main)) {
             return $main;
-        }
-
-        return null;
-    }
-
-    /**
-     * @return string[]
-     * @throws Exception
-     */
-    private function parseTestDirectories(string $configFile): array
-    {
-        $fileContents = file_get_contents($configFile);
-        if ($fileContents === false) {
-            throw new Exception(sprintf('Could not read config file: %s', $configFile));
-        }
-
-        $xml = new SimpleXMLElement($fileContents);
-        $directories = [];
-        $dirNodes = $xml->xpath('//testsuite/directory');
-
-        if (!is_array($dirNodes)) {
-            return [];
-        }
-
-        foreach ($dirNodes as $dirNode) {
-            $pattern = $this->projectRoot . '/' . $dirNode;
-            $globFlag = defined('GLOB_BRACE') ? \GLOB_BRACE : 0;
-            $expandedPaths = glob($pattern, $globFlag);
-
-            if ($expandedPaths === false) {
-                continue;
-            }
-
-            foreach ($expandedPaths as $expandedPath) {
-                $normalizedPath = realpath($expandedPath);
-                if ($normalizedPath !== false && is_dir($normalizedPath)) {
-                    $directories[] = $normalizedPath;
-                }
-            }
-        }
-
-        return array_unique($directories);
-    }
-
-    /**
-     * @param string[] $directories
-     * @return array<array{
-     *      id: string,
-     *      name: string,
-     *      namespace: string,
-     *      methods: array<array{
-     *          id: string,
-     *          name: string
-     *      }>
-     *  }>
-     */
-    private function findTestsInDirectories(array $directories): array
-    {
-        $finder = new Finder();
-        $finder->files()->in($directories)->name('*Test.php');
-
-        $uniqueSuites = []; // Use an associative array to ensure uniqueness by suite ID
-        foreach ($finder as $file) {
-            $className = $this->getClassNameFromFile($file->getRealPath());
-            if (!$className) {
-                continue;
-            }
-
-            try {
-                $reflection = new ReflectionClass($className);
-                if (!$reflection->isInstantiable()) {
-                    continue;
-                }
-
-                if (!$reflection->isSubclassOf(TestCase::class)) {
-                    continue;
-                }
-
-                $methods = [];
-                foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                    if (str_starts_with($method->getName(), 'test')) {
-                        $methods[] = [
-                            'id' => $className . '::' . $method->getName(),
-                            'name' => $method->getName(),
-                        ];
-                    }
-                }
-
-                if ($methods !== []) {
-                    $suiteId = $className; // The class name is a unique identifier for the suite
-                    // Add the suite only if it hasn't been added yet
-                    if (!isset($uniqueSuites[$suiteId])) {
-                        $uniqueSuites[$suiteId] = [
-                            'id' => $className,
-                            'name' => $reflection->getShortName(),
-                            'namespace' => $reflection->getNamespaceName(),
-                            'methods' => $methods,
-                        ];
-                    }
-                }
-            } catch (ReflectionException) {
-                // Could not autoload the class, skip it.
-                continue;
-            }
-        }
-
-        return array_values($uniqueSuites); // Convert back to a numerically indexed array
-    }
-
-    private function getClassNameFromFile(string $filePath): ?string
-    {
-        $content = file_get_contents($filePath);
-        if ($content === false) {
-            return null;
-        }
-
-        if (preg_match('/^namespace\s+([^;]+);/m', $content, $namespaceMatches) &&
-            preg_match('/^class\s+([^{\s]+)/m', $content, $classMatches)) {
-            return trim($namespaceMatches[1]) . '\\' . $classMatches[1];
-        }
-
-        if (preg_match('/^class\s+([^{\s]+)/m', $content, $classMatches)) {
-            return $classMatches[1];
         }
 
         return null;
