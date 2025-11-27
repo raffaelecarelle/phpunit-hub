@@ -89,6 +89,9 @@ That's it! All dependencies will be installed automatically.
     WebSocket server listening on /ws/status
     Serving static files from 'public' directory
     ```
+    
+    **you can change the port with `--port` option and the host with `--host` option**
+
 
 2.  **Open the Web UI**:
     Open your web browser and navigate to **[http://127.0.0.1:8080](http://127.0.0.1:8080)**.
