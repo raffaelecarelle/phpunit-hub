@@ -2,11 +2,11 @@
  * Main Application Logic for PHPUnit Hub
  */
 
-import { computed } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
-import { Store } from './store.js';
-import { ApiClient } from './api.js';
-import { WebSocketManager } from './websocket.js';
-import { updateFavicon } from './utils.js';
+import {computed} from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
+import {Store} from './store.js';
+import {ApiClient} from './api.js';
+import {WebSocketManager} from './websocket.js';
+import {updateFavicon} from './utils.js';
 
 export class App {
     constructor() {
@@ -274,7 +274,7 @@ export class App {
             });
         }
 
-        const result = {
+        return {
             summary: {
                 tests: summary.numberOfTests,
                 assertions: summary.numberOfAssertions,
@@ -288,8 +288,6 @@ export class App {
             },
             suites: transformedSuites,
         };
-
-        return result;
     }
 
     /**
@@ -357,6 +355,7 @@ export class App {
      */
     getStatusCounts() {
         const results = this.getResults();
+        console.log(results);
         if (!results) {
             return { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0 };
         }
@@ -364,16 +363,18 @@ export class App {
         const s = results.summary;
         const counts = {
             passed: 0,
-            failed: s.numberOfFailures || 0,
-            error: s.numberOfErrors || 0,
-            warnings: s.numberOfWarnings || 0,
-            skipped: s.numberOfSkipped || 0,
-            deprecations: s.numberOfDeprecations || 0,
-            incomplete: s.numberOfIncomplete || 0
+            failed: s.failures || 0,
+            error: s.errors || 0,
+            warnings: s.warnings || 0,
+            skipped: s.skipped || 0,
+            deprecations: s.deprecations || 0,
+            incomplete: s.incomplete || 0
         };
 
-        const problems = counts.failed + counts.error + counts.warnings + counts.skipped + counts.incomplete + counts.deprecations;
-        counts.passed = (s.numberOfTests || 0) - problems;
+        // Only subtract actual failures (failed, error, skipped, incomplete) from total
+        // Warnings and deprecations don't prevent a test from being "passed"
+        const actualFailures = counts.failed + counts.error + counts.skipped + counts.incomplete;
+        counts.passed = (s.tests || 0) - actualFailures;
 
         return counts;
     }

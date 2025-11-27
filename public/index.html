@@ -148,7 +148,6 @@
                             <span class="font-bold">{{ suite.name }}</span>
                         </div>
                         <div class="flex items-center">
-                            {{suite.runId}}
                             <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
                             <span v-if="suite.runId && isTestRunning(suite.runId)"
                                   @click.stop="app.stopSingleTest(suite.runId)"
