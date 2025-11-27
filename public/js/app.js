@@ -25,7 +25,9 @@ export class App {
             await this.fetchTests();
             
             // Connect WebSocket
-            this.wsManager = new WebSocketManager('ws://127.0.0.1:8080/ws/status', this.store);
+            const wsHost = window.WS_HOST || '127.0.0.1';
+            const wsPort = window.WS_PORT || '8080';
+            this.wsManager = new WebSocketManager(`ws://${wsHost}:${wsPort}/ws/status`, this.store);
             await this.wsManager.connect();
             
             // Setup resizer

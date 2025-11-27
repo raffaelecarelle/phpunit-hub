@@ -29,6 +29,7 @@ use function pathinfo;
 use function property_exists;
 use function realpath;
 use function sprintf;
+use function str_replace;
 use function sys_get_temp_dir;
 use function unlink;
 use function uniqid;
@@ -66,7 +67,9 @@ class Router implements RouterInterface
         private readonly OutputInterface $output,
         private readonly StatusHandler $statusHandler,
         private readonly TestRunner $testRunner,
-        private readonly TestDiscoverer $testDiscoverer
+        private readonly TestDiscoverer $testDiscoverer,
+        private readonly string $host,
+        private readonly int $port
     ) {
         $this->publicPath = dirname(__DIR__, 2) . '/public';
     }
@@ -160,7 +163,15 @@ class Router implements RouterInterface
             }
 
             if (file_exists($filePath) && is_file($filePath) && str_starts_with(realpath($filePath), $this->publicPath)) {
-                $response = new GuzzleResponse(200, ['Content-Type' => $this->getMimeType($filePath)], file_get_contents($filePath));
+                $content = file_get_contents($filePath);
+                if ($path === '/' || $path === '/index.html') {
+                    $content = str_replace(
+                        ['{{ws_host}}', '{{ws_port}}'],
+                        [$this->host, $this->port],
+                        $content
+                    );
+                }
+                $response = new GuzzleResponse(200, ['Content-Type' => $this->getMimeType($filePath)], $content);
             }
         }
 
