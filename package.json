@@ -5,7 +5,8 @@
     "main": "index.js",
     "scripts": {
         "test": "jest",
-        "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
+        "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --minify",
+        "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
     },
     "keywords": [],
     "author": "",

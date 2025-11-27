@@ -303,7 +303,7 @@
         flex-shrink: 0;
     }
 
-    .status-neutral {
+    .status-neutral, .status-skipped {
         background-color: #6b7280;
     }
 
