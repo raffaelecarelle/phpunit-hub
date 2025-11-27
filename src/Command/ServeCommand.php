@@ -39,13 +39,16 @@ class ServeCommand extends Command
     protected function configure(): void
     {
         $this->setDescription('Starts the PHPUnit GUI server.')
+            ->addOption('host', 'H', InputOption::VALUE_OPTIONAL, 'Host address to bind the server', '127.0.0.1')
+            ->addOption('port', 'p', InputOption::VALUE_OPTIONAL, 'Port to bind the server', '8080')
             ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Enable file watching to re-run tests on changes');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $port = 8080;
         $watch = $input->getOption('watch');
+        $host = $input->getOption('host');
+        $port = $input->getOption('port');
 
         $this->statusHandler ??= new StatusHandler($output);
         $this->wsServer ??= new WsServer($this->statusHandler);
@@ -59,14 +62,14 @@ class ServeCommand extends Command
         );
 
         $httpServer = new HttpServer($router);
-        $socketServer = new SocketServer('127.0.0.1:' . $port, [], $this->loop);
+        $socketServer = new SocketServer($host . ':' . $port, [], $this->loop);
         $ioServer = new IoServer($httpServer, $socketServer, $this->loop);
 
         if ($watch) {
             $this->startFileWatcher($this->loop, $output, $router);
         }
 
-        $output->writeln(sprintf('<info>Starting server on http://127.0.0.1:%d</info>', $port));
+        $output->writeln(sprintf('<info>Starting server on http://%s:%d</info>', $host, $port));
         $output->writeln("API endpoint available at GET /api/tests");
         $output->writeln("API endpoint available at POST /api/run");
         $output->writeln("API endpoint available at POST /api/run-failed");
