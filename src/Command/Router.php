@@ -68,8 +68,8 @@ class Router implements RouterInterface
         private readonly StatusHandler $statusHandler,
         private readonly TestRunner $testRunner,
         private readonly TestDiscoverer $testDiscoverer,
-        private readonly string $host,
-        private readonly int $port
+        private readonly string $host = '127.0.0.1',
+        private readonly string $port = '8080'
     ) {
         $this->publicPath = dirname(__DIR__, 2) . '/public';
     }
@@ -171,6 +171,7 @@ class Router implements RouterInterface
                         $content
                     );
                 }
+
                 $response = new GuzzleResponse(200, ['Content-Type' => $this->getMimeType($filePath)], $content);
             }
         }

@@ -48,7 +48,7 @@ class ServeCommand extends Command
     {
         $watch = $input->getOption('watch');
         $host = $input->getOption('host');
-        $port = (int) $input->getOption('port');
+        $port = $input->getOption('port');
 
         $this->statusHandler ??= new StatusHandler($output);
         $this->wsServer ??= new WsServer($this->statusHandler);
