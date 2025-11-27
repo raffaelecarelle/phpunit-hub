@@ -56,6 +56,7 @@ describe('Store', () => {
             selectedGroups: [],
             options: {
                 displayWarnings: true,
+                resultUpdateMode: 'update',
                 displayDeprecations: true,
                 displaySkipped: true,
                 displayIncomplete: true,

@@ -47,6 +47,20 @@
                         </div>
 
                         <div class="form-group mb-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Result Display Mode</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center text-sm">
+                                    <input type="radio" v-model="store.state.options.resultUpdateMode" value="update" class="mr-2">
+                                    Update (append/merge new test results)
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="radio" v-model="store.state.options.resultUpdateMode" value="reset" class="mr-2">
+                                    Reset (clear all results on each run)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-4">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
                             <div class="space-y-2">
                                 <label class="flex items-center text-sm">
@@ -91,6 +105,13 @@
                         </div>
                     </div>
                 </div>
+
+                <button @click="app.store.clearAllResults()"
+                        :disabled="isAnyTestRunning || !results"
+                        class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500"
+                        title="Clear all test results">
+                    Clear Results
+                </button>
 
                 <button @click="app.runFailedTests()"
                         :disabled="isAnyTestRunning || !hasFailedTests"

@@ -78,12 +78,15 @@ export class App {
      */
     async runTests(runOptions = {}) {
         this.store.state.activeTab = 'results';
-        
+
+        // Filter out frontend-only options that PHPUnit doesn't understand
+        const { resultUpdateMode, ...phpunitOptions } = this.store.state.options;
+
         const payload = {
             filters: runOptions.filters || [],
             groups: this.store.state.selectedGroups,
             suites: this.store.state.selectedSuites,
-            options: { ...this.store.state.options, colors: true },
+            options: { ...phpunitOptions, colors: true },
             contextId: runOptions.contextId || 'global',
         };
 
@@ -223,20 +226,37 @@ export class App {
     }
 
     /**
-     * Get results from current test run
+     * Get results from current test run (or merged results in update mode)
      */
     getResults() {
-        // Get the last completed run ID or the most recent run
-        let runId = this.store.state.lastCompletedRunId;
-        if (!runId) {
-            const keys = Object.keys(this.store.state.realtimeTestRuns);
-            runId = keys[keys.length - 1];
-        }
+        const runs = this.store.state.realtimeTestRuns;
+        const runIds = Object.keys(runs);
 
-        const run = this.store.state.realtimeTestRuns[runId];
-        if (!run) {
+        if (runIds.length === 0) {
             return null;
         }
+
+        // In update mode, merge all completed/finished runs
+        const isUpdateMode = this.store.state.options.resultUpdateMode === 'update';
+
+        if (isUpdateMode) {
+            return this.getMergedResults(runs);
+        } else {
+            // In reset mode, show only the last completed run
+            let runId = this.store.state.lastCompletedRunId;
+            if (!runId) {
+                runId = runIds[runIds.length - 1];
+            }
+            return this.getSingleRunResults(runs[runId]);
+        }
+    }
+
+    /**
+     * Get results from a single run
+     */
+    getSingleRunResults(run) {
+        if (!run) return null;
+
         const summary = run.summary || {
             numberOfTests: 0,
             numberOfAssertions: 0,
@@ -288,6 +308,138 @@ export class App {
             },
             suites: transformedSuites,
         };
+    }
+
+    /**
+     * Get merged results from all test runs
+     */
+    getMergedResults(runs) {
+        const mergedSuites = {};
+        const mergedSummary = {
+            numberOfTests: 0,
+            numberOfAssertions: 0,
+            duration: 0,
+            numberOfFailures: 0,
+            numberOfErrors: 0,
+            numberOfWarnings: 0,
+            numberOfSkipped: 0,
+            numberOfDeprecations: 0,
+            numberOfIncomplete: 0,
+        };
+
+        // Merge all runs
+        for (const runId in runs) {
+            const run = runs[runId];
+
+            // Only merge runs that have completed (or are running with data)
+            // Skip runs that are just initialized but have no test data yet
+            if (Object.keys(run.suites).length === 0) {
+                continue;
+            }
+
+            // Merge suites and tests
+            for (const suiteName in run.suites) {
+                if (!mergedSuites[suiteName]) {
+                    mergedSuites[suiteName] = {
+                        name: suiteName,
+                        tests: {}
+                    };
+                }
+
+                const suiteData = run.suites[suiteName];
+                for (const testId in suiteData.tests) {
+                    // Later runs override earlier runs for the same test
+                    mergedSuites[suiteName].tests[testId] = suiteData.tests[testId];
+                }
+            }
+
+            // Use summary from the last completed run
+            if (run.summary && run.status === 'finished') {
+                mergedSummary.numberOfTests = run.summary.numberOfTests;
+                mergedSummary.numberOfAssertions = run.summary.numberOfAssertions;
+                mergedSummary.duration = run.summary.duration;
+                mergedSummary.numberOfFailures = run.summary.numberOfFailures;
+                mergedSummary.numberOfErrors = run.summary.numberOfErrors;
+                mergedSummary.numberOfWarnings = run.summary.numberOfWarnings;
+                mergedSummary.numberOfSkipped = run.summary.numberOfSkipped;
+                mergedSummary.numberOfDeprecations = run.summary.numberOfDeprecations;
+                mergedSummary.numberOfIncomplete = run.summary.numberOfIncomplete;
+            }
+        }
+
+        // Transform merged suites
+        const transformedSuites = [];
+        for (const suiteName in mergedSuites) {
+            const suiteData = mergedSuites[suiteName];
+            const testcases = [];
+            for (const testId in suiteData.tests) {
+                const testData = suiteData.tests[testId];
+                testcases.push({
+                    name: testData.name,
+                    class: testData.class,
+                    id: testData.id,
+                    time: testData.time || 0,
+                    status: testData.status,
+                    message: testData.message,
+                    trace: testData.trace,
+                    warnings: testData.warnings || [],
+                    deprecations: testData.deprecations || [],
+                });
+            }
+            if (testcases.length > 0) {
+                transformedSuites.push({
+                    name: suiteData.name,
+                    testcases,
+                });
+            }
+        }
+
+        // If no tests found, return null
+        if (transformedSuites.length === 0) {
+            return null;
+        }
+
+        // Calculate actual summary from merged tests
+        const actualSummary = this.calculateSummaryFromTests(transformedSuites);
+
+        return {
+            summary: actualSummary,
+            suites: transformedSuites,
+        };
+    }
+
+    /**
+     * Calculate summary statistics from test data
+     */
+    calculateSummaryFromTests(suites) {
+        const summary = {
+            tests: 0,
+            assertions: 0,
+            time: 0,
+            failures: 0,
+            errors: 0,
+            warnings: 0,
+            skipped: 0,
+            deprecations: 0,
+            incomplete: 0,
+        };
+
+        suites.forEach(suite => {
+            suite.testcases.forEach(tc => {
+                summary.tests++;
+                summary.time += tc.time || 0;
+
+                if (tc.status === 'failed') summary.failures++;
+                else if (tc.status === 'errored') summary.errors++;
+                else if (tc.status === 'skipped') summary.skipped++;
+                else if (tc.status === 'incomplete') summary.incomplete++;
+
+                summary.warnings += tc.warnings?.length || 0;
+                summary.deprecations += tc.deprecations?.length || 0;
+            });
+        });
+
+        return summary;
     }
 
     /**

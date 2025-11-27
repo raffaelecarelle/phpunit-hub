@@ -206,13 +206,22 @@ class Router implements RouterInterface
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
 
+        // Debug: Listen to STDOUT to see normal output
+        $process->stdout->on('data', function ($chunk) use ($runId) {
+            $this->output->writeln(sprintf('[DEBUG STDOUT] Run %s: %s', $runId, trim($chunk)));
+        });
+
         // Listen to STDERR for realtime events
         $buffer = '';
 
         $process->stderr->on('data', function ($chunk) use (&$buffer, $runId) {
+            $this->output->writeln(sprintf('[DEBUG] Received STDERR chunk for run %s: %s bytes', $runId, strlen($chunk)));
+
             $buffer .= $chunk;
             $lines = explode("\n", $buffer);
             $buffer = array_pop($lines); // Keep the last (incomplete) line in the buffer
+
+            $this->output->writeln(sprintf('[DEBUG] Processing %d lines from STDERR', count($lines)));
 
             foreach ($lines as $line) {
                 if ($line === '') {
@@ -223,12 +232,16 @@ class Router implements RouterInterface
                     continue;
                 }
 
+                $this->output->writeln(sprintf('[DEBUG] Processing line: %s', substr($line, 0, 100)));
+
                 // Each line is a JSON object from our RealtimeTestExtension
                 $decodedLine = json_decode($line, true);
                 if ($decodedLine === null) {
                     $this->output->writeln(sprintf('<error>Failed to decode JSON from realtime output: %s</error>', $line));
                     continue;
                 }
+
+                $this->output->writeln(sprintf('[DEBUG] Decoded event: %s', $decodedLine['event'] ?? 'unknown'));
 
                 // Store the summary if it's the execution.ended event
                 if ($decodedLine['event'] === 'execution.ended') {
@@ -237,6 +250,7 @@ class Router implements RouterInterface
 
                 $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line]);
                 if ($jsonBroadcast !== false) {
+                    $this->output->writeln('[DEBUG] Broadcasting realtime event');
                     $this->statusHandler->broadcast($jsonBroadcast);
                 } else {
                     $this->output->writeln('<error>Failed to encode realtime message to JSON for broadcast.</error>');

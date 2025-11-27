@@ -39,7 +39,12 @@ class TestRunner
     public function run(array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
     {
         $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
-        $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
+
+        // Check for phpunit.xml first, then fallback to phpunit.xml.dist (PHPUnit's default behavior)
+        $phpunitXmlPath = getcwd() . '/phpunit.xml';
+        if (!file_exists($phpunitXmlPath)) {
+            $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
+        }
 
         $command = escapeshellcmd($phpunitPath)
             . ' --configuration ' . escapeshellarg($phpunitXmlPath);
