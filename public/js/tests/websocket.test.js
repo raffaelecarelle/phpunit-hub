@@ -19,6 +19,9 @@ class MockStore {
         this.state = {
             realtimeTestRuns: {},
             runningTestIds: {}, // Initialize runningTestIds
+            options: {
+                resultUpdateMode: 'update', // Default to update mode
+            },
         };
         this.initializeTestRun = jest.fn();
         this.handleTestEvent = jest.fn();
@@ -160,21 +163,48 @@ describe('WebSocketManager', () => {
     });
 
     describe('updateFaviconFromRun', () => {
-        test('should set favicon to failure if run has failures', () => {
+        test('should set favicon to failure if run has failures in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 1, numberOfErrors: 0 } };
             wsManager.updateFaviconFromRun('run1');
             expect(Utils.updateFavicon).toHaveBeenCalledWith('failure');
         });
 
-        test('should set favicon to failure if run has errors', () => {
+        test('should set favicon to failure if run has errors in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 1 } };
             wsManager.updateFaviconFromRun('run1');
             expect(Utils.updateFavicon).toHaveBeenCalledWith('failure');
         });
 
-        test('should set favicon to success if run has no failures or errors', () => {
+        test('should set favicon to success if run has no failures or errors in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
             wsManager.updateFaviconFromRun('run1');
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('success');
+        });
+
+        test('should set favicon to failure if any run has failures in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+            store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 1, numberOfErrors: 0 } };
+            store.state.realtimeTestRuns['run2'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
+            wsManager.updateFaviconFromRun('run2'); // Calling on run2 which has no failures
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('failure'); // But should show failure because run1 has failures
+        });
+
+        test('should set favicon to failure if any run has errors in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+            store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
+            store.state.realtimeTestRuns['run2'] = { summary: { numberOfFailures: 0, numberOfErrors: 1 } };
+            wsManager.updateFaviconFromRun('run1'); // Calling on run1 which has no errors
+            expect(Utils.updateFavicon).toHaveBeenCalledWith('failure'); // But should show failure because run2 has errors
+        });
+
+        test('should set favicon to success if all runs pass in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+            store.state.realtimeTestRuns['run1'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
+            store.state.realtimeTestRuns['run2'] = { summary: { numberOfFailures: 0, numberOfErrors: 0 } };
+            wsManager.updateFaviconFromRun('run2');
             expect(Utils.updateFavicon).toHaveBeenCalledWith('success');
         });
 

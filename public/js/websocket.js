@@ -125,7 +125,25 @@ export class WebSocketManager {
      */
     updateFaviconFromRun(runId) {
         const run = this.store.getTestRun(runId);
-        if (run && run.summary) {
+        if (!run || !run.summary) {
+            return;
+        }
+
+        // In update mode, check all runs to determine overall status
+        if (this.store.state.options.resultUpdateMode === 'update') {
+            let hasFailures = false;
+
+            for (const id in this.store.state.realtimeTestRuns) {
+                const r = this.store.state.realtimeTestRuns[id];
+                if (r.summary && (r.summary.numberOfFailures > 0 || r.summary.numberOfErrors > 0)) {
+                    hasFailures = true;
+                    break;
+                }
+            }
+
+            updateFavicon(hasFailures ? 'failure' : 'success');
+        } else {
+            // In reset mode, only consider current run
             if (run.summary.numberOfFailures > 0 || run.summary.numberOfErrors > 0) {
                 updateFavicon('failure');
             } else {
