@@ -148,6 +148,7 @@
                             <span class="font-bold">{{ suite.name }}</span>
                         </div>
                         <div class="flex items-center">
+                            {{suite.runId}}
                             <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
                             <span v-if="suite.runId && isTestRunning(suite.runId)"
                                   @click.stop="app.stopSingleTest(suite.runId)"
@@ -169,30 +170,14 @@
                     </div>
 
                     <ul v-show="store.state.expandedSuites.has(suite.id)" class="ml-2 mt-2 space-y-1">
-                        <li v-for="method in suite.methods" :key="method.id" class="test-item">
+                        <li v-for="method in suite.methods" :key="method.id" class="test-item cursor-pointer" @click.stop="app.runSingleTest(method.id)">
                             <div class="test-item-left w-full">
-                                <span class="status-icon" :class="method.status ? `status-${method.status}` : 'status-neutral'"></span>
+                                <div class="flex items-center">
+                                    <span v-if="method.runId && isTestRunning(method.runId)" class="status-icon spinner"></span>
+                                    <span v-else class="status-icon" :class="method.status ? `status-${method.status}` : 'status-neutral'"></span>
+                                </div>
                                 <div class="flex items-center space-x-2 justify-between w-full">
                                     <span class="test-name">{{ method.name }}</span>
-                                    <div class="flex items-center">
-                                        <div v-if="method.runId && isTestRunning(method.runId)" class="spinner !w-4 !h-4"></div>
-                                        <span v-if="method.runId && isTestRunning(method.runId)"
-                                              @click.stop="app.stopSingleTest(method.runId)"
-                                              class="cursor-pointer text-red-500 hover:text-red-400 ml-2"
-                                              title="Stop this test">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                <path d="M6 6h8v8H6z" />
-                                            </svg>
-                                        </span>
-                                        <span v-else
-                                              @click.stop="app.runSingleTest(method.id)"
-                                              :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(method.runId), 'text-gray-500': isTestStopPending(method.runId)}"
-                                              :title="isTestStopPending(method.runId) ? 'Stopping...' : 'Run this test'">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                            </svg>
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         </li>
