@@ -446,4 +446,44 @@
     .mr-2 {
         margin-right: 0.5rem;
     }
+
+    @keyframes three-dots-loading {
+        0%, 80%, 100% {
+            transform: scale(0);
+        }
+        40% {
+            transform: scale(1.0);
+        }
+    }
+
+    .three-dots-loading {
+        display: inline-block;
+        position: relative;
+        left: -15px;
+    }
+
+    .three-dots-loading div {
+        position: absolute;
+        top: 0;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #fff;
+        animation: three-dots-loading 1.2s linear infinite;
+    }
+
+    .three-dots-loading div:nth-child(1) {
+        left: 0;
+        animation-delay: -0.24s;
+    }
+
+    .three-dots-loading div:nth-child(2) {
+        left: 10px;
+        animation-delay: -0.12s;
+    }
+
+    .three-dots-loading div:nth-child(3) {
+        left: 20px;
+        animation-delay: 0;
+    }
 }
