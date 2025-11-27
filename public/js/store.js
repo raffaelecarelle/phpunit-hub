@@ -63,6 +63,13 @@ export class Store {
             this.resetSidebarTestStatuses();
         }
 
+        // Assign runId to suite if this is a suite-level run
+        this.state.testSuites.forEach(suite => {
+            if (suite.id === contextId) {
+                suite.runId = runId;
+            }
+        });
+
         this.state.activeTab = 'results';
     }
 
