@@ -22,7 +22,9 @@ COPY --from=node:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 COPY . /app
 
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader \
+    && npm install \
+    && chmod +x bin/phpunit-hub
 
 EXPOSE 8080
 
