@@ -119,7 +119,7 @@ export class App {
             console.log('No failed tests to run.');
             return;
         }
-        this.runTests({ filters: failedTestIds, contextId: 'failed' });
+        this.runTests({ filters: failedSuiteIds, contextId: 'failed' });
     }
 
     /**

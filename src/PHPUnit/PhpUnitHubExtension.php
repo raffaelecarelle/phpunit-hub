@@ -56,7 +56,7 @@ class PhpUnitHubExtension implements Extension
 
             public function notify(Passed $event): void
             {
-                ($this->writeEvent)('test.passed', ['test' => $event->test()->id(), 'time' => $event->telemetryInfo()->durationSinceStart()->seconds()]);
+                ($this->writeEvent)('test.passed', ['test' => $event->test()->id(), 'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds()]);
             }
         });
 
@@ -74,7 +74,7 @@ class PhpUnitHubExtension implements Extension
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -93,7 +93,7 @@ class PhpUnitHubExtension implements Extension
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -111,7 +111,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.skipped', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -129,7 +129,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.incomplete', [
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -147,7 +147,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.warning', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -165,7 +165,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.deprecation', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -183,7 +183,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.deprecation', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -201,7 +201,7 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.warning', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
@@ -248,7 +248,7 @@ class PhpUnitHubExtension implements Extension
                         'numberOfIncomplete' => $testResult->numberOfTestMarkedIncompleteEvents(),
                         'numberOfRisky' => $testResult->numberOfTestsWithTestConsideredRiskyEvents(),
                         'numberOfDeprecations' => $testResult->numberOfPhpOrUserDeprecations(),
-                        'duration' => $event->telemetryInfo()->durationSinceStart()->seconds(),
+                        'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                     ],
                 ]);
             }
