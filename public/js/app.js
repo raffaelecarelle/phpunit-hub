@@ -332,6 +332,9 @@ export class App {
             numberOfIncomplete: 0,
         };
 
+        // Track which tests have been seen in summaries to avoid double-counting assertions
+        const testsSeen = new Set();
+
         // Merge all runs
         for (const runId in runs) {
             const run = runs[runId];
@@ -347,28 +350,40 @@ export class App {
                 if (!mergedSuites[suiteName]) {
                     mergedSuites[suiteName] = {
                         name: suiteName,
-                        tests: {}
+                        tests: {},
+                        runIds: []
                     };
                 }
 
                 const suiteData = run.suites[suiteName];
                 for (const testId in suiteData.tests) {
+                    // Track if this is a new test or an override
+                    const isNewTest = !mergedSuites[suiteName].tests[testId];
+
                     // Later runs override earlier runs for the same test
-                    mergedSuites[suiteName].tests[testId] = suiteData.tests[testId];
+                    mergedSuites[suiteName].tests[testId] = {
+                        ...suiteData.tests[testId],
+                        runId: runId
+                    };
+
+                    // Mark this test as seen in this run
+                    if (!testsSeen.has(testId)) {
+                        testsSeen.add(testId);
+                    }
+                }
+
+                // Track which runs contributed to this suite
+                if (!mergedSuites[suiteName].runIds.includes(runId)) {
+                    mergedSuites[suiteName].runIds.push(runId);
                 }
             }
 
-            // Use summary from the last completed run
+            // Accumulate summaries from all completed runs
+            // For assertions and duration, we need to accumulate from each unique run
+            // For other stats, we'll recalculate from merged tests
             if (run.summary && run.status === 'finished') {
-                mergedSummary.numberOfTests = run.summary.numberOfTests;
-                mergedSummary.numberOfAssertions = run.summary.numberOfAssertions;
-                mergedSummary.duration = run.summary.duration;
-                mergedSummary.numberOfFailures = run.summary.numberOfFailures;
-                mergedSummary.numberOfErrors = run.summary.numberOfErrors;
-                mergedSummary.numberOfWarnings = run.summary.numberOfWarnings;
-                mergedSummary.numberOfSkipped = run.summary.numberOfSkipped;
-                mergedSummary.numberOfDeprecations = run.summary.numberOfDeprecations;
-                mergedSummary.numberOfIncomplete = run.summary.numberOfIncomplete;
+                mergedSummary.numberOfAssertions += run.summary.numberOfAssertions || 0;
+                mergedSummary.duration += run.summary.duration || 0;
             }
         }
 
@@ -404,11 +419,21 @@ export class App {
             return null;
         }
 
-        // Calculate actual summary from merged tests
-        const actualSummary = this.calculateSummaryFromTests(transformedSuites);
+        // Calculate counts from merged tests (but keep accumulated assertions and duration)
+        const calculatedSummary = this.calculateSummaryFromTests(transformedSuites);
 
         return {
-            summary: actualSummary,
+            summary: {
+                tests: calculatedSummary.tests,
+                assertions: mergedSummary.numberOfAssertions,
+                time: mergedSummary.duration,
+                failures: calculatedSummary.failures,
+                errors: calculatedSummary.errors,
+                warnings: calculatedSummary.warnings,
+                skipped: calculatedSummary.skipped,
+                deprecations: calculatedSummary.deprecations,
+                incomplete: calculatedSummary.incomplete,
+            },
             suites: transformedSuites,
         };
     }
@@ -433,6 +458,7 @@ export class App {
             suite.testcases.forEach(tc => {
                 summary.tests++;
                 summary.time += tc.time || 0;
+                summary.assertions += tc.assertions || 0;
 
                 if (tc.status === 'failed') summary.failures++;
                 else if (tc.status === 'errored') summary.errors++;
