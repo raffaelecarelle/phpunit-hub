@@ -322,6 +322,14 @@ export class App {
                     group[status]++;
                 }
 
+                // Count warnings and deprecations
+                if (tc.warnings?.length > 0) {
+                    group.warning += tc.warnings.length;
+                }
+                if (tc.deprecations?.length > 0) {
+                    group.deprecation += tc.deprecations.length;
+                }
+
                 // Set hasIssues if any issues are present (warnings array, deprecations array, or non-passed status)
                 if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || status !== 'passed') {
                     group.hasIssues = true;
@@ -355,7 +363,7 @@ export class App {
      */
     getStatusCounts() {
         const results = this.getResults();
-        console.log(results);
+
         if (!results) {
             return { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0 };
         }

@@ -231,13 +231,17 @@
                                         <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
                                         {{ results.summary.warnings }} Warnings
                                     </span>
-                                    <span v-if="results.summary.skipped > 0" class="flex items-center">
+                                    <span v-if="results.summary.skipped > 0 && store.state.options.displaySkipped" class="flex items-center">
                                         <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
                                         {{ results.summary.skipped }} Skipped
                                     </span>
                                     <span v-if="results.summary.deprecations > 0 && store.state.options.displayDeprecations" class="flex items-center">
                                         <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
                                         {{ results.summary.deprecations }} Deprecations
+                                    </span>
+                                    <span v-if="results.summary.incomplete > 0 && store.state.options.displayIncomplete" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                                        {{ results.summary.incomplete }} Incomplete
                                     </span>
                                 </div>
                             </div>
@@ -259,12 +263,19 @@
                                         <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.errored }} Error</span>
                                         <span v-if="group.warning > 0 && store.state.options.displayWarnings" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
                                         <span v-if="group.deprecation > 0 && store.state.options.displayDeprecations" class="px-2 py-0.5 rounded-full bg-purple-800 text-purple-200">{{ group.deprecation }} Deprecations</span>
+                                        <span v-if="group.skipped > 0 && store.state.options.displaySkipped" class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">{{ group.skipped }} Skipped</span>
+                                        <span v-if="group.incomplete > 0 && store.state.options.displayIncomplete" class="px-2 py-0.5 rounded-full bg-yellow-800 text-yellow-200">{{ group.incomplete }} Incomplete</span>
                                         <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
                                     </div>
                                 </div>
                                 <div v-show="store.state.expandedTestcaseGroups.has(group.className)" class="divide-y divide-gray-700">
                                     <!-- Failed/Errored tests -->
-                                    <div v-for="testcase in group.testcases.filter(t => t.status !== 'passed')"
+                                    <div v-for="testcase in group.testcases.filter(t => {
+                                             if (t.status === 'passed') return false;
+                                             if (t.status === 'skipped' && !store.state.options.displaySkipped) return false;
+                                             if (t.status === 'incomplete' && !store.state.options.displayIncomplete) return false;
+                                             return true;
+                                         })"
                                          :key="'test-' + testcase.id"
                                          class="hover:bg-gray-700/50">
                                         <div class="flex items-center p-3 cursor-pointer"
