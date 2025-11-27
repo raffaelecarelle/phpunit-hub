@@ -15,7 +15,6 @@ use Ratchet\Http\HttpServerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use React\ChildProcess\Process;
 use React\EventLoop\Loop;
-use React\Stream\ReadableResourceStream;
 
 use function defined;
 use function dirname;
