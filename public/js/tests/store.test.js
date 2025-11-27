@@ -28,6 +28,8 @@ import { Store } from '../store.js';
 
 describe('Store', () => {
     let store;
+    let run; // Dichiarazione di runId spostata qui
+    const runId = 'run123'; // Dichiarazione di runId spostata qui
 
     beforeEach(() => {
         store = new Store();

@@ -52,6 +52,7 @@ export class App {
             this.buildTestIndex();
         } catch (error) {
             console.error('Failed to fetch tests:', error);
+            throw error; // Re-throw the error
         }
     }
 
@@ -323,15 +324,8 @@ export class App {
                     group[status]++;
                 }
 
-                if (tc.warnings?.length > 0) {
-                    group.warning += tc.warnings.length;
-                    group.hasIssues = true;
-                }
-                if (tc.deprecations?.length > 0) {
-                    group.deprecation += tc.deprecations.length;
-                    group.hasIssues = true;
-                }
-                if (status !== 'passed') {
+                // Set hasIssues if any issues are present (warnings array, deprecations array, or non-passed status)
+                if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || status !== 'passed') {
                     group.hasIssues = true;
                 }
             });
@@ -370,16 +364,16 @@ export class App {
         const s = results.summary;
         const counts = {
             passed: 0,
-            failed: s.failures || 0,
-            error: s.errors || 0,
-            warnings: s.warnings || 0,
-            skipped: s.skipped || 0,
-            deprecations: s.deprecations || 0,
-            incomplete: s.incomplete || 0
+            failed: s.numberOfFailures || 0,
+            error: s.numberOfErrors || 0,
+            warnings: s.numberOfWarnings || 0,
+            skipped: s.numberOfSkipped || 0,
+            deprecations: s.numberOfDeprecations || 0,
+            incomplete: s.numberOfIncomplete || 0
         };
 
         const problems = counts.failed + counts.error + counts.warnings + counts.skipped + counts.incomplete + counts.deprecations;
-        counts.passed = (s.tests || 0) - problems;
+        counts.passed = (s.numberOfTests || 0) - problems;
 
         return counts;
     }
