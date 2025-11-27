@@ -106,9 +106,4 @@ class TestDiscovererTest extends TestCase
         $result = $testDiscoverer->discover();
         $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => []], $result);
     }
-
-    public function testDiscoverWithInvalidConfigFileaaaaa(): void
-    {
-       self::markTestIncomplete('aaaaaaaaaaaaaaaaa');
-    }
 }
