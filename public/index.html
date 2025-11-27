@@ -10,11 +10,15 @@
         window.WS_PORT = '{{ws_port}}';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v={{css_version}}">
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
-    <div id="app" class="flex flex-col h-screen">
+    <div id="app" class="flex flex-col h-screen" v-cloak>
         <!-- Header -->
         <header class="bg-gray-800 shadow-md p-4 flex justify-between items-center z-10 relative">
             <h1 class="text-2xl font-bold text-white">PHPUnit Hub</h1>
@@ -220,61 +224,61 @@
             <main id="main-content" class="flex-1 p-4 flex flex-col">
                 <div class="flex-grow overflow-y-auto">
                     <div v-show="store.state.activeTab === 'results'">
+                        <!-- Status Summary -->
+                        <div class="bg-gray-800 rounded-lg shadow-lg p-4">
+                            <div class="grid grid-cols-3 gap-4 text-center mb-4 border-b border-gray-700 pb-4">
+                                <div>
+                                    <div class="text-sm text-gray-400">Total Tests</div>
+                                    <div class="text-2xl font-bold">{{ results?.summary.tests ?? 0 }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-400">Total Assertions</div>
+                                    <div class="text-2xl font-bold">{{ results?.summary.assertions ?? 0 }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-400">Duration</div>
+                                    <div class="text-2xl font-bold">{{ results?.summary.time.toFixed(2) ?? 0.00 }}s</div>
+                                </div>
+                            </div>
+                            <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
+                                    <span class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                                        {{ statusCounts.passed }} Passed
+                                    </span>
+                                <span v-if="results?.summary.failures > 0" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                        {{ results?.summary.failures }} Failed
+                                    </span>
+                                <span v-if="results?.summary.errors > 0" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                        {{ results?.summary.errors }} Errors
+                                    </span>
+                                <span v-if="results?.summary.warnings > 0 && store.state.options.displayWarnings" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                                        {{ results?.summary.warnings }} Warnings
+                                    </span>
+                                <span v-if="results?.summary.skipped > 0 && store.state.options.displaySkipped" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
+                                        {{ results?.summary.skipped }} Skipped
+                                    </span>
+                                <span v-if="results?.summary.deprecations > 0 && store.state.options.displayDeprecations" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+                                        {{ results?.summary.deprecations }} Deprecations
+                                    </span>
+                                <span v-if="results?.summary.incomplete > 0 && store.state.options.displayIncomplete" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                                        {{ results?.summary.incomplete }} Incomplete
+                                    </span>
+                            </div>
+                        </div>
+
                         <!-- Empty State -->
                         <div v-if="!results" class="text-gray-500 text-center pt-10">
                             Run tests to see the results.
                         </div>
 
                         <!-- Results Content -->
-                        <div v-else class="space-y-2">
-                            <!-- Status Summary -->
-                            <div class="bg-gray-800 rounded-lg shadow-lg p-4">
-                                <div class="grid grid-cols-3 gap-4 text-center mb-4 border-b border-gray-700 pb-4">
-                                    <div>
-                                        <div class="text-sm text-gray-400">Total Tests</div>
-                                        <div class="text-2xl font-bold">{{ results.summary.tests }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm text-gray-400">Total Assertions</div>
-                                        <div class="text-2xl font-bold">{{ results.summary.assertions }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm text-gray-400">Duration</div>
-                                        <div class="text-2xl font-bold">{{ results.summary.time.toFixed(2) }}s</div>
-                                    </div>
-                                </div>
-                                <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
-                                    <span class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-                                        {{ statusCounts.passed }} Passed
-                                    </span>
-                                    <span v-if="results.summary.failures > 0" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-                                        {{ results.summary.failures }} Failed
-                                    </span>
-                                    <span v-if="results.summary.errors > 0" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-                                        {{ results.summary.errors }} Errors
-                                    </span>
-                                    <span v-if="results.summary.warnings > 0 && store.state.options.displayWarnings" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-                                        {{ results.summary.warnings }} Warnings
-                                    </span>
-                                    <span v-if="results.summary.skipped > 0 && store.state.options.displaySkipped" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
-                                        {{ results.summary.skipped }} Skipped
-                                    </span>
-                                    <span v-if="results.summary.deprecations > 0 && store.state.options.displayDeprecations" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
-                                        {{ results.summary.deprecations }} Deprecations
-                                    </span>
-                                    <span v-if="results.summary.incomplete > 0 && store.state.options.displayIncomplete" class="flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
-                                        {{ results.summary.incomplete }} Incomplete
-                                    </span>
-                                </div>
-                            </div>
-
+                        <div v-else class="space-y-2 mt-4">
                             <!-- Spinner during execution -->
                             <div v-if="isAnyTestRunning" class="flex justify-center items-center pt-10">
                                 <div class="spinner-big"></div>

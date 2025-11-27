@@ -20,6 +20,8 @@ use function defined;
 use function dirname;
 use function file_exists;
 use function file_get_contents;
+use function filemtime;
+use function hash_file;
 use function implode;
 use function in_array;
 use function is_file;
@@ -165,9 +167,11 @@ class Router implements RouterInterface
             if (file_exists($filePath) && is_file($filePath) && str_starts_with(realpath($filePath), $this->publicPath)) {
                 $content = file_get_contents($filePath);
                 if ($path === '/' || $path === '/index.html') {
+                    $cssPath = $this->publicPath . '/css/styles.css';
+                    $cssVersion = file_exists($cssPath) ? hash_file('md5', $cssPath) : 'dev';
                     $content = str_replace(
-                        ['{{ws_host}}', '{{ws_port}}'],
-                        [$this->host, $this->port],
+                        ['{{ws_host}}', '{{ws_port}}', '{{css_version}}'],
+                        [$this->host, $this->port, $cssVersion],
                         $content
                     );
                 }

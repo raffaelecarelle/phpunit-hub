@@ -69,6 +69,7 @@ describe('Store', () => {
             stopPending: {},
             realtimeTestRuns: {},
             lastCompletedRunId: null,
+            isLoading: false
         });
     });
 

@@ -1,0 +1,449 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /**
+     * Custom CSS for PHPUnit Hub
+     */
+
+    :root {
+        --color-success: #10B981;
+        --color-failure: #EF4444;
+        --color-warning: #F59E0B;
+        --color-deprecation: #F59E0B;
+        --color-neutral: #6b7280;
+    }
+
+    /* Filter Panel */
+    .filter-panel-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 20;
+        min-width: 350px;
+    }
+
+    /* Suite Header */
+    .suite-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .suite-header:hover {
+        background-color: #374151; /* gray-700 */
+    }
+
+    .suite-arrow {
+        transition: transform 0.2s ease-in-out;
+        margin-right: 8px;
+    }
+
+    .suite-arrow.rotated {
+        transform: rotate(90deg);
+    }
+
+    /* Spinner for running tests */
+    .spinner {
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        width: 10px;
+        height: 10px;
+        animation: spin 1s linear infinite;
+        margin-left: 0;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Test Item */
+    .test-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .test-item:hover {
+        background-color: #374151;
+    }
+
+    .test-item-left {
+        display: flex;
+        align-items: center;
+    }
+
+    /* Status Indicators */
+    .status-icon {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .status-neutral {
+        background-color: #6b7280;
+    }
+
+    .status-passed {
+        background-color: #10B981;
+    }
+
+    .status-failed,
+    .status-errored {
+        background-color: #EF4444;
+    }
+
+    .status-running {
+        background-color: #3498db;
+    }
+
+    .test-name {
+        color: #d1d5db;
+    }
+
+    .test-time {
+        font-size: 0.8em;
+        color: #9ca3af;
+    }
+
+    /* Sort Arrow Animation */
+    .sort-arrow {
+        display: inline-block;
+        transition: transform 220ms cubic-bezier(.4, 0, .2, 1), opacity 220ms ease;
+        transform-origin: center;
+    }
+
+    .sort-arrow.none {
+        opacity: 0.7;
+        transform: rotate(0deg) scale(1);
+    }
+
+    .sort-arrow.asc {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+
+    .sort-arrow.desc {
+        opacity: 1;
+        transform: rotate(180deg) scale(1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #1f2937; /* bg-gray-800 */
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #4b5563; /* bg-gray-600 */
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280; /* bg-gray-500 */
+    }
+
+    /* Output Formatting */
+    .output-line {
+        padding: 2px 8px;
+        margin: 0 -8px;
+    }
+
+    .summary-ok {
+        background-color: rgba(16, 185, 129, 0.2);
+        border-left: 4px solid #10B981;
+        font-weight: bold;
+    }
+
+    .summary-fail {
+        background-color: rgba(239, 68, 68, 0.2);
+        border-left: 4px solid #EF4444;
+        font-weight: bold;
+    }
+
+    .summary-warn {
+        background-color: rgba(245, 158, 11, 0.2);
+        border-left: 4px solid #F59E0B;
+        font-weight: bold;
+    }
+
+    .summary-time {
+        background-color: #374151; /* bg-gray-700 */
+        margin-top: 8px;
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    .failure-block {
+        background-color: rgba(239, 68, 68, 0.05);
+        border-left: 4px solid #b91c1c; /* red-800 */
+        padding-top: 8px;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+    }
+
+    /* Resizer */
+    #resizer {
+        width: 1.5px;
+        cursor: col-resize;
+        background-color: #374151;
+        transition: background-color 0.2s;
+    }
+
+    #resizer:hover {
+        background-color: #3b82f6;
+    }
+
+    /**
+ * Custom CSS for PHPUnit Hub
+ */
+
+    :root {
+        --color-success: #10B981;
+        --color-failure: #EF4444;
+        --color-warning: #F59E0B;
+        --color-deprecation: #F59E0B;
+        --color-neutral: #6b7280;
+    }
+
+    /* Filter Panel */
+    .filter-panel-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 20;
+        min-width: 350px;
+    }
+
+    /* Suite Header */
+    .suite-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .suite-header:hover {
+        background-color: #374151; /* gray-700 */
+    }
+
+    .suite-arrow {
+        transition: transform 0.2s ease-in-out;
+        margin-right: 8px;
+    }
+
+    .suite-arrow.rotated {
+        transform: rotate(90deg);
+    }
+
+    /* Spinner for running tests */
+    .spinner {
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+
+    .spinner-big {
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Test Item */
+    .test-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .test-item:hover {
+        background-color: #374151;
+    }
+
+    .test-item-left {
+        display: flex;
+        align-items: center;
+    }
+
+    /* Status Indicators */
+    .status-icon {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .status-neutral {
+        background-color: #6b7280;
+    }
+
+    .status-passed {
+        background-color: #10B981;
+    }
+
+    .status-failed,
+    .status-errored {
+        background-color: #EF4444;
+    }
+
+    .status-running {
+        background-color: #3498db;
+    }
+
+    .test-name {
+        color: #d1d5db;
+    }
+
+    .test-time {
+        font-size: 0.8em;
+        color: #9ca3af;
+    }
+
+    /* Sort Arrow Animation */
+    .sort-arrow {
+        display: inline-block;
+        transition: transform 220ms cubic-bezier(.4, 0, .2, 1), opacity 220ms ease;
+        transform-origin: center;
+    }
+
+    .sort-arrow.none {
+        opacity: 0.7;
+        transform: rotate(0deg) scale(1);
+    }
+
+    .sort-arrow.asc {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+
+    .sort-arrow.desc {
+        opacity: 1;
+        transform: rotate(180deg) scale(1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #1f2937; /* bg-gray-800 */
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #4b5563; /* bg-gray-600 */
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280; /* bg-gray-500 */
+    }
+
+    /* Output Formatting */
+    .output-line {
+        padding: 2px 8px;
+        margin: 0 -8px;
+    }
+
+    .summary-ok {
+        background-color: rgba(16, 185, 129, 0.2);
+        border-left: 4px solid #10B981;
+        font-weight: bold;
+    }
+
+    .summary-fail {
+        background-color: rgba(239, 68, 68, 0.2);
+        border-left: 4px solid #EF4444;
+        font-weight: bold;
+    }
+
+    .summary-warn {
+        background-color: rgba(245, 158, 11, 0.2);
+        border-left: 4px solid #F59E0B;
+        font-weight: bold;
+    }
+
+    .summary-time {
+        background-color: #374151; /* bg-gray-700 */
+        margin-top: 8px;
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    .failure-block {
+        background-color: rgba(239, 68, 68, 0.05);
+        border-left: 4px solid #b91c1c; /* red-800 */
+        padding-top: 8px;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+    }
+
+    /* Resizer */
+    #resizer {
+        width: 1.5px;
+        cursor: col-resize;
+        background-color: #374151;
+        transition: background-color 0.2s;
+    }
+
+    #resizer:hover {
+        background-color: #3b82f6;
+    }
+
+    /* Utility Classes */
+    .flex-grow {
+        flex-grow: 1;
+    }
+
+    .flex-shrink-0 {
+        flex-shrink: 0;
+    }
+
+    .w-2 {
+        width: 0.5rem;
+    }
+
+    .h-2 {
+        height: 0.5rem;
+    }
+
+    .rounded-full {
+        border-radius: 9999px;
+    }
+
+    .mr-2 {
+        margin-right: 0.5rem;
+    }
+}
