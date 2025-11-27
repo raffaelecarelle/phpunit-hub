@@ -157,25 +157,15 @@ class TestDiscoverer
             [$className, $methodName] = explode('::', $test, 2);
 
             if (!isset($suites[$className])) {
-                try {
-                    $reflection = new ReflectionClass($className);
-                    $suites[$className] = [
-                        'id' => $className,
-                        'name' => $reflection->getShortName(),
-                        'namespace' => $reflection->getNamespaceName(),
-                        'methods' => [],
-                    ];
-                } catch (ReflectionException) {
-                    $parts = explode('\\', $className);
-                    $shortName = end($parts);
-                    $namespace = implode('\\', array_slice($parts, 0, -1));
-                    $suites[$className] = [
-                        'id' => $className,
-                        'name' => $shortName,
-                        'namespace' => $namespace,
-                        'methods' => [],
-                    ];
-                }
+                $parts = explode('\\', $className);
+                $shortName = end($parts);
+                $namespace = implode('\\', array_slice($parts, 0, -1));
+                $suites[$className] = [
+                    'id' => $className,
+                    'name' => $shortName,
+                    'namespace' => $namespace,
+                    'methods' => [],
+                ];
             }
 
             $suites[$className]['methods'][] = [
