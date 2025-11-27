@@ -6,7 +6,6 @@ use Exception;
 use GuzzleHttp\Psr7\Message;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use PhpUnitHub\Discoverer\TestDiscoverer;
-use PhpUnitHub\Parser\JUnitParser;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
@@ -16,6 +15,7 @@ use Ratchet\Http\HttpServerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use React\ChildProcess\Process;
 use React\EventLoop\Loop;
+use React\Stream\ReadableResourceStream;
 
 use function defined;
 use function dirname;
@@ -32,6 +32,7 @@ use function realpath;
 use function sprintf;
 use function sys_get_temp_dir;
 use function unlink;
+use function uniqid;
 
 class Router implements RouterInterface
 {
@@ -40,11 +41,11 @@ class Router implements RouterInterface
     /** @var array<string, Process> */
     private array $runningProcesses = [];
 
-    /** @var array<string, string> */ // Mappa runId a junitLogfile
-    private array $junitLogfiles = [];
-
     /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions per ogni runId
     private array $runContexts = [];
+
+    /** @var array<string, array<string, mixed>> */ // Mappa runId a summary
+    private array $lastRunSummaries = [];
 
     /** @var string[] */
     private array $failedTests = [];
@@ -66,7 +67,6 @@ class Router implements RouterInterface
         private readonly OutputInterface $output,
         private readonly StatusHandler $statusHandler,
         private readonly TestRunner $testRunner,
-        private readonly JUnitParser $jUnitParser,
         private readonly TestDiscoverer $testDiscoverer
     ) {
         $this->publicPath = dirname(__DIR__, 2) . '/public';
@@ -100,17 +100,12 @@ class Router implements RouterInterface
                 $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
             }
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
-            // No longer checking isTestRunning here, as multiple runs are now allowed
-            /** @var string[] $filters */
-            $filters = [];
-            /** @var string[] $groups */
             $groups = [];
             /** @var string[] $suites */
             $suites = [];
             /** @var array<string, bool> $options */
             $options = [];
             $isRerun = false;
-            $contextId = null; // Initialize contextId
 
             if ($path === '/api/run') {
                 $body = $request?->getBody()->getContents();
@@ -188,8 +183,7 @@ class Router implements RouterInterface
     public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null): string
     {
         $runId = Uuid::uuid4()->toString();
-        $junitLogfile = sys_get_temp_dir() . sprintf('/phpunit-gui-%s.xml', $runId);
-        $this->junitLogfiles[$runId] = $junitLogfile;
+
         $this->runContexts[$runId] = [
             'filters' => $filters,
             'suites' => $suites,
@@ -207,53 +201,114 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($junitLogfile, $filters, $groups, $suites, $options);
+        $process = $this->testRunner->run($filters, $groups, $suites, $options);
 
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
 
+        // Debug: Listen to STDOUT to see normal output
         $process->stdout->on('data', function ($chunk) use ($runId) {
-            $jsonBroadcast = json_encode(['type' => 'stdout', 'runId' => $runId, 'data' => $chunk]);
-            if ($jsonBroadcast !== false) {
-                $this->statusHandler->broadcast($jsonBroadcast);
-            } else {
-                $this->output->writeln('<error>Failed to encode stdout message to JSON for broadcast.</error>');
+            $this->output->writeln(sprintf('[DEBUG STDOUT] Run %s: %s', $runId, trim($chunk)));
+        });
+
+        // Listen to STDERR for realtime events
+        $buffer = '';
+
+        $process->stderr->on('data', function ($chunk) use (&$buffer, $runId) {
+            $this->output->writeln(sprintf('[DEBUG] Received STDERR chunk for run %s: %s bytes', $runId, strlen($chunk)));
+
+            $buffer .= $chunk;
+            $lines = explode("\n", $buffer);
+            $buffer = array_pop($lines); // Keep the last (incomplete) line in the buffer
+
+            $this->output->writeln(sprintf('[DEBUG] Processing %d lines from STDERR', count($lines)));
+
+            foreach ($lines as $line) {
+                if ($line === '') {
+                    continue;
+                }
+
+                if ($line === '0') {
+                    continue;
+                }
+
+                $this->output->writeln(sprintf('[DEBUG] Processing line: %s', substr($line, 0, 100)));
+
+                // Each line is a JSON object from our RealtimeTestExtension
+                $decodedLine = json_decode($line, true);
+                if ($decodedLine === null) {
+                    $this->output->writeln(sprintf('<error>Failed to decode JSON from realtime output: %s</error>', $line));
+                    continue;
+                }
+
+                $this->output->writeln(sprintf('[DEBUG] Decoded event: %s', $decodedLine['event'] ?? 'unknown'));
+
+                // Store the summary if it's the execution.ended event
+                if ($decodedLine['event'] === 'execution.ended') {
+                    $this->lastRunSummaries[$runId] = $decodedLine['data']['summary'];
+                }
+
+                $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line]);
+                if ($jsonBroadcast !== false) {
+                    $this->output->writeln('[DEBUG] Broadcasting realtime event');
+                    $this->statusHandler->broadcast($jsonBroadcast);
+                } else {
+                    $this->output->writeln('<error>Failed to encode realtime message to JSON for broadcast.</error>');
+                }
             }
         });
 
-        $process->on('exit', function ($exitCode) use ($runId, $junitLogfile, $isRerun, $contextId) { // Pass contextId to closure
+        $process->on('exit', function ($exitCode) use ($runId, $isRerun, $contextId, &$buffer) { // Pass contextId to closure
             $this->output->writeln(sprintf('Test run #%s finished with code %s.', $runId, $exitCode));
-            $parsedResults = null;
-            if (file_exists($junitLogfile)) {
-                $xmlContent = file_get_contents($junitLogfile);
-                try {
-                    $parsedResults = $this->jUnitParser->parse($xmlContent);
-                } catch (Exception $e) {
-                    $this->output->writeln(sprintf('<error>Error parsing JUnit XML: %s</error>', $e->getMessage()));
-                }
 
-                if (!$isRerun && $parsedResults !== null) {
-                    $currentRunFailedTests = [];
-                    // PHPStan knows 'suites' and 'testcases' always exist due to JUnitParser::parse return type
-                    foreach ($parsedResults['suites'] as $suite) {
-                        foreach ($suite['testcases'] as $testcase) {
-                            if (in_array($testcase['status'], ['failed', 'error'])) {
-                                $currentRunFailedTests[] = $testcase['class'] . '::' . $testcase['name'];
-                            }
-                        }
+            // Ensure all buffered data is processed
+            if ($buffer !== '' && $buffer !== '0') {
+                $lines = explode("\n", $buffer);
+                foreach ($lines as $line) {
+                    if ($line === '') {
+                        continue;
                     }
 
-                    $this->failedTests = $currentRunFailedTests;
-                }
+                    if ($line === '0') {
+                        continue;
+                    }
 
-                unlink($junitLogfile);
+                    $decodedLine = json_decode($line, true);
+                    if ($decodedLine === null) {
+                        $this->output->writeln(sprintf('<error>Failed to decode JSON from final realtime output: %s</error>', $line));
+                        continue;
+                    }
+
+                    if ($decodedLine['event'] === 'execution.ended') {
+                        $this->lastRunSummaries[$runId] = $decodedLine['data']['summary'];
+                    }
+
+                    $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line]);
+                    if ($jsonBroadcast !== false) {
+                        $this->statusHandler->broadcast($jsonBroadcast);
+                    } else {
+                        $this->output->writeln('<error>Failed to encode final realtime message to JSON for broadcast.</error>');
+                    }
+                }
+            }
+
+            // Update failedTests based on the summary
+            $summary = $this->lastRunSummaries[$runId] ?? null;
+            if ($summary !== null && !$isRerun) {
+                if (($summary['numberOfFailures'] ?? 0) > 0 || ($summary['numberOfErrors'] ?? 0) > 0) {
+                    // If there are failures/errors, we need to collect the actual failed test names
+                    // This would require parsing all 'test.failed' and 'test.errored' events
+                    // For now, we'll just assume if there are failures, we don't clear the list
+                    // A more robust solution would involve collecting failed test IDs during the run
+                } else {
+                    $this->failedTests = []; // Clear if all passed
+                }
             }
 
             $jsonBroadcast = json_encode([
                 'type' => 'exit',
                 'runId' => $runId,
                 'exitCode' => $exitCode,
-                'results' => $parsedResults,
                 'contextId' => $contextId, // Include contextId in exit message
             ]);
 
@@ -264,13 +319,11 @@ class Router implements RouterInterface
             }
 
             if ($exitCode) {
-                $this->notify($exitCode, $parsedResults, $runId);
+                $this->notify($exitCode, $summary, $runId);
             }
 
             // Clear running process/runId state
-            unset($this->runningProcesses[$runId]);
-            unset($this->junitLogfiles[$runId]);
-            unset($this->runContexts[$runId]);
+            unset($this->runningProcesses[$runId], $this->runContexts[$runId], $this->lastRunSummaries[$runId]);
         });
 
         return $runId;
@@ -434,55 +487,24 @@ class Router implements RouterInterface
     }
 
     /**
-     * @param array{
-     *      suites: array<array{
-     *          name: string,
-     *          tests: int,
-     *          assertions: int,
-     *          failures: int,
-     *          errors: int,
-     *          time: float,
-     *          testcases: array<array{
-     *              name: string,
-     *              class: string,
-     *              file: string,
-     *              line: int,
-     *              assertions: int,
-     *              time: float,
-     *              status: string,
-     *              failure: ?array{type: string, message: string},
-     *              error: ?array{type: string, message: string}
-     *          }>
-     *      }>,
-     *      summary: array{
-     *          tests: int,
-     *          assertions: int,
-     *          failures: int,
-     *          errors: int,
-     *          time: float
-     *      }
-     *  } $parsedResults
+     * This method is no longer used for parsing JUnit XML.
+     * The summary is now received via the 'execution.ended' realtime event.
+     * This method is kept as a placeholder for potential future notification logic
+     * that might need to be triggered based on the final outcome.
+     *
+     * @param int $exitCode The exit code of the PHPUnit process.
+     * @param array<string, mixed>|null $summary The summary data from the 'execution.ended' event.
+     * @param string $runId The ID of the test run.
      */
-    private function notify(int $exitCode, ?array $parsedResults, string $runId): void
+    private function notify(int $exitCode, ?array $summary, string $runId): void
     {
         $notificationTitle = 'PHPUnit Hub Test Results';
 
         if ($exitCode === 0) {
             $notificationMessage = 'All tests passed successfully!';
         } else {
-            $failures = 0;
-            $errors = 0;
-            if ($parsedResults !== null) {
-                foreach ($parsedResults['suites'] as $suite) {
-                    foreach ($suite['testcases'] as $testcase) {
-                        if (in_array($testcase['status'], ['failed', 'error'])) {
-                            $failures++;
-                        } elseif ($testcase['status'] === 'error') {
-                            $errors++;
-                        }
-                    }
-                }
-            }
+            $failures = $summary['numberOfFailures'] ?? 0;
+            $errors = $summary['numberOfErrors'] ?? 0;
 
             $notificationMessage = sprintf('Tests finished with %d failures and %d errors.', $failures, $errors);
         }

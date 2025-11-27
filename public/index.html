@@ -7,768 +7,418 @@
     <link id="favicon" rel="icon" href="#">
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .filter-panel-dropdown { position: absolute; top: 100%; right: 0; z-index: 20; min-width: 350px; }
-        .suite-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-radius: 4px; transition: background-color 0.2s; }
-        .suite-header:hover { background-color: #374151; } /* gray-700 */
-        .suite-arrow { transition: transform 0.2s ease-in-out; margin-right: 8px; }
-        .suite-arrow.rotated { transform: rotate(90deg); }
-        .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; margin-left: 8px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .test-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-radius: 4px; transition: background-color 0.2s; }
-        .test-item:hover { background-color: #374151; }
-        .test-item-left { display: flex; align-items: center; }
-        .status-icon { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
-        .status-neutral { background-color: #6b7280; }
-        .status-passed { background-color: #10B981; }
-        .status-failed, .status-error { background-color: #EF4444; }
-        .test-name { color: #d1d5db; }
-        .test-time { font-size: 0.8em; color: #9ca3af; }
-        /* Sort arrow animation */
-        .sort-arrow { display: inline-block; transition: transform 220ms cubic-bezier(.4,0,.2,1), opacity 220ms ease; transform-origin: center; }
-        .sort-arrow.none { opacity: 0.7; transform: rotate(0deg) scale(1); }
-        .sort-arrow.asc { opacity: 1; transform: rotate(0deg) scale(1); }
-        .sort-arrow.desc { opacity: 1; transform: rotate(180deg) scale(1); }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1f2937; /* bg-gray-800 */
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4b5563; /* bg-gray-600 */
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280; /* bg-gray-500 */
-        }
-        /* ANSI color classes */
-        .ansi-black { color: #2e3440; }
-        .ansi-red { color: #bf616a; }
-        .ansi-green { color: #a3be8c; }
-        .ansi-yellow { color: #ebcb8b; }
-        .ansi-blue { color: #81a1c1; }
-        .ansi-magenta { color: #b48ead; }
-        .ansi-cyan { color: #88c0d0; }
-        .ansi-white { color: #e5e9f0; }
-        .ansi-bright-black { color: #4c566a; }
-        .ansi-bright-red { color: #bf616a; }
-        .ansi-bright-green { color: #a3be8c; }
-        .ansi-bright-yellow { color: #ebcb8b; }
-        .ansi-bright-blue { color: #81a1c1; }
-        .ansi-bright-magenta { color: #b48ead; }
-        .ansi-bright-cyan { color: #88c0d0; }
-        .ansi-bright-white { color: #eceff4; }
-        .ansi-bg-black { background-color: #2e3440; }
-        .ansi-bg-red { background-color: #bf616a; }
-        .ansi-bg-green { background-color: #a3be8c; }
-        .ansi-bg-yellow { background-color: #ebcb8b; }
-        .ansi-bg-blue { background-color: #81a1c1; }
-        .ansi-bg-magenta { background-color: #b48ead; }
-        .ansi-bg-cyan { background-color: #88c0d0; }
-        .ansi-bg-white { background-color: #e5e9f0; }
-        .ansi-bold { font-weight: bold; }
-        .ansi-underline { text-decoration: underline; }
-
-        /* Custom Output Formatting */
-        .output-line {
-            padding: 2px 8px;
-            margin: 0 -8px; /* Counteract padding to align with container */
-        }
-        .summary-ok {
-            background-color: rgba(16, 185, 129, 0.2); /* bg-green-500 with opacity */
-            border-left: 4px solid #10B981;
-            font-weight: bold;
-        }
-        .summary-fail {
-            background-color: rgba(239, 68, 68, 0.2); /* bg-red-500 with opacity */
-            border-left: 4px solid #EF4444;
-            font-weight: bold;
-        }
-        .summary-warn {
-            background-color: rgba(245, 158, 11, 0.2); /* bg-amber-500 with opacity */
-            border-left: 4px solid #F59E0B;
-            font-weight: bold;
-        }
-        .summary-time {
-            background-color: #374151; /* bg-gray-700 */
-            margin-top: 8px;
-            margin-bottom: 8px;
-            padding: 8px;
-            border-radius: 4px;
-        }
-        .failure-block {
-            background-color: rgba(239, 68, 68, 0.05);
-            border-left: 4px solid #b91c1c; /* red-800 */
-            padding-top: 8px;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
-<div id="app" class="flex flex-col h-screen">
-    <header class="bg-gray-800 shadow-md p-4 flex justify-between items-center z-10 relative">
-        <h1 class="text-2xl font-bold text-white">PHPUnit Hub</h1>
-        <div class="flex items-center space-x-4">
-            <div class="relative">
-                <button @click="toggleFilterPanel" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                    Filters
+    <div id="app" class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gray-800 shadow-md p-4 flex justify-between items-center z-10 relative">
+            <h1 class="text-2xl font-bold text-white">PHPUnit Hub</h1>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <button
+                        @click="toggleFilterPanel"
+                        class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
+                        Filters
+                    </button>
+                    <div v-show="store.state.showFilterPanel"
+                         @click.stop
+                         class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
+                        <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
+
+                        <div class="form-group mb-4">
+                            <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Test Groups</label>
+                            <select id="group-filter"
+                                    v-model="store.state.selectedGroups"
+                                    multiple
+                                    class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
+                                <option v-for="(group, key) in store.state.availableGroups" :value="key">{{ group }}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
+                            <select id="filter-suite"
+                                    v-model="store.state.selectedSuites"
+                                    multiple
+                                    class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
+                                <option v-for="(suite, key) in store.state.availableSuites" :value="key">{{ suite }}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Result Display Mode</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center text-sm">
+                                    <input type="radio" v-model="store.state.options.resultUpdateMode" value="update" class="mr-2">
+                                    Update (append/merge new test results)
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="radio" v-model="store.state.options.resultUpdateMode" value="reset" class="mr-2">
+                                    Reset (clear all results on each run)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.displayWarnings" class="mr-2">
+                                    Show Warnings
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.displayDeprecations" class="mr-2">
+                                    Show Deprecations
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.displaySkipped" class="mr-2">
+                                    Show Skipped
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.displayIncomplete" class="mr-2">
+                                    Show Incomplete
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Stop On Options</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.stopOnDefect" class="mr-2">
+                                    Defect
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.stopOnError" class="mr-2">
+                                    Error
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.stopOnFailure" class="mr-2">
+                                    Failure
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" v-model="store.state.options.stopOnWarning" class="mr-2">
+                                    Warning
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="app.store.clearAllResults()"
+                        :disabled="isAnyTestRunning || !results"
+                        class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500"
+                        title="Clear all test results">
+                    Clear Results
                 </button>
-                <div v-show="showFilterPanel" @click.stop class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                    <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
-                    <div class="form-group mb-4">
-                        <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Test Groups</label>
-                        <select id="group-filter" v-model="selectedGroups" multiple
-                                class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
-                            <option v-for="(group, key) in availableGroups" :value="key">{{ group }}</option>
-                        </select>
-                    </div>
-                    <div class="form-group mb-4">
-                        <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
-                        <select id="filter-suite" v-model="selectedSuites" multiple
-                                class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white h-24">
-                            <option v-for="(suite, key) in availableSuites" :value="key">{{ suite }}</option>
-                        </select>
-                    </div>
-                    <div class="form-group mb-4">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
-                        <div class="space-y-2">
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayWarnings" class="mr-2"> Show Warnings</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayDeprecations" class="mr-2"> Show Deprecations</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displaySkipped" class="mr-2"> Show Skipped</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.displayIncomplete" class="mr-2"> Show Incomplete</label>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Stop On Options</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnDefect" class="mr-2"> Defect</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnError" class="mr-2"> Error</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnFailure" class="mr-2"> Failure</label>
-                            <label class="flex items-center text-sm"><input type="checkbox" v-model="options.stopOnWarning" class="mr-2"> Warning</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <button @click="runFailedTests" :disabled="isAnyTestRunning || !hasFailedTests" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
-                Run Failed
-            </button>
-            <button @click="togglePlayStop" :title="isAnyTestRunning ? 'Stop all test runs' : 'Run all tests'" :disabled="isAnyStopPending" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-60">
-                <span v-if="isAnyStopPending">Stopping...</span>
-                <template v-else>
-                    <span v-if="!isAnyTestRunning">
-                        <!-- Play icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
-                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                        </svg>
-                        <span class="ml-2 align-middle">Run All</span>
-                    </span>
-                    <span v-else>
-                        <!-- Stop icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
-                            <path d="M6 6h8v8H6z" />
-                        </svg>
-                        <span class="ml-2 align-middle">Stop All</span>
-                    </span>
-                </template>
-            </button>
-        </div>
-    </header>
 
-    <div class="flex flex-grow overflow-hidden">
-        <!-- Test Explorer Sidebar -->
-        <aside id="test-sidebar" class="bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
-            <input type="text" v-model="searchQuery" placeholder="Search tests..."
-                   class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 mb-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <div v-if="filteredTestSuites.length === 0" class="text-gray-500">No tests found.</div>
-            <div v-for="suite in filteredTestSuites" :key="suite.id" class="mb-4">
-                <div class="suite-header text-md text-gray-200">
-                    <div @click="toggleSuite(suite.id)" class="flex items-center flex-grow cursor-pointer">
-                        <svg class="suite-arrow w-4 h-4 text-gray-400" :class="{ 'rotated': expandedSuites.has(suite.id) }" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                        <span class="font-bold">{{ suite.name }}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
-                        <span v-if="suite.runId && isTestRunning(suite.runId)" @click.stop="stopSingleTest(suite.runId)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2" title="Stop this suite">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6 6h8v8H6z" /></svg>
+                <button @click="app.runFailedTests()"
+                        :disabled="isAnyTestRunning || !hasFailedTests"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
+                    Run Failed
+                </button>
+
+                <button @click="app.togglePlayStop()"
+                        :title="isAnyTestRunning ? 'Stop all test runs' : 'Run all tests'"
+                        :disabled="isAnyStopPending"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:opacity-60">
+                    <span v-if="isAnyStopPending">Stopping...</span>
+                    <template v-else>
+                        <span v-if="!isAnyTestRunning">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                            <span class="ml-2 align-middle">Run All</span>
                         </span>
-                        <span v-else @click.stop="runSuiteTests(suite.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}" :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+                        <span v-else>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block">
+                                <path d="M6 6h8v8H6z" />
+                            </svg>
+                            <span class="ml-2 align-middle">Stop All</span>
                         </span>
-                    </div>
+                    </template>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <div class="flex flex-grow overflow-hidden">
+            <!-- Test Explorer Sidebar -->
+            <aside id="test-sidebar" class="bg-gray-800 p-4 overflow-y-auto border-r border-gray-700 w-80">
+                <input type="text"
+                       v-model="store.state.searchQuery"
+                       placeholder="Search tests..."
+                       class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 mb-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                <div v-if="filteredTestSuites.length === 0" class="text-gray-500">
+                    No tests found.
                 </div>
-                <ul v-show="expandedSuites.has(suite.id)" class="ml-2 mt-2 space-y-1">
-                    <li v-for="method in suite.methods" :key="method.id" class="test-item">
-                        <div class="test-item-left w-full">
-                            <span class="status-icon" :class="method.status ? `status-${method.status}` : 'status-neutral'"></span>
-                            <div class="flex items-center space-x-2 justify-between w-full">
-                                <span class="test-name">{{ method.name }}</span>
-                                <div class="flex items-center">
-                                    <div v-if="method.runId && isTestRunning(method.runId)" class="spinner !w-4 !h-4"></div>
-                                    <span v-if="method.runId && isTestRunning(method.runId)" @click.stop="stopSingleTest(method.runId)" class="cursor-pointer text-red-500 hover:text-red-400 ml-2" title="Stop this test">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6 6h8v8H6z" /></svg>
-                                    </span>
-                                    <span v-else @click.stop="runSingleTest(method.id)" :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(method.runId), 'text-gray-500': isTestStopPending(method.runId)}" :title="isTestStopPending(method.runId) ? 'Stopping...' : 'Run this test'">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
-                                    </span>
-                                </div>
-                            </div>
+
+                <div v-for="suite in filteredTestSuites" :key="suite.id" class="mb-4">
+                    <div class="suite-header text-md text-gray-200">
+                        <div @click="toggleSuite(suite.id)" class="flex items-center flex-grow cursor-pointer">
+                            <svg class="suite-arrow w-4 h-4 text-gray-400"
+                                 :class="{ 'rotated': store.state.expandedSuites.has(suite.id) }"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 viewBox="0 0 24 24"
+                                 xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                            <span class="font-bold">{{ suite.name }}</span>
                         </div>
-                    </li>
-                </ul>
-            </div>
-        </aside>
+                        <div class="flex items-center">
+                            <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
+                            <span v-if="suite.runId && isTestRunning(suite.runId)"
+                                  @click.stop="app.stopSingleTest(suite.runId)"
+                                  class="cursor-pointer text-red-500 hover:text-red-400 ml-2"
+                                  title="Stop this suite">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                    <path d="M6 6h8v8H6z" />
+                                </svg>
+                            </span>
+                            <span v-else
+                                  @click.stop="app.runSuiteTests(suite.id)"
+                                  :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}"
+                                  :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
 
-        <div id="resizer" class="w-1.5 cursor-col-resize bg-gray-700 hover:bg-blue-600 transition-colors duration-200"></div>
-
-        <!-- Main Content -->
-        <main id="main-content" class="flex-1 p-4 flex flex-col">
-            <div class="flex-shrink-0 border-b border-gray-700">
-                <nav class="-mb-px flex space-x-4">
-                    <button @click="activeTab = 'results'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
-                        Results
-                    </button>
-                    <button @click="activeTab = 'output'" :class="['whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm', activeTab === 'output' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-400']">
-                        Output
-                    </button>
-                </nav>
-            </div>
-            <div class="flex-grow overflow-y-auto pt-4">
-                <div v-show="activeTab === 'results'">
-                    <div v-if="!results" class="text-gray-500 text-center pt-10">Run tests to see the results.</div>
-                    <div v-else class="space-y-2">
-                        <!-- Execution Summary -->
-                        <div class="bg-gray-800 rounded-lg shadow-lg p-4">
-                            <div class="grid grid-cols-3 gap-4 text-center mb-4 border-b border-gray-700 pb-4">
-                                <div>
-                                    <div class="text-sm text-gray-400">Total Tests</div>
-                                    <div class="text-2xl font-bold">{{ results.summary.tests }}</div>
+                    <ul v-show="store.state.expandedSuites.has(suite.id)" class="ml-2 mt-2 space-y-1">
+                        <li v-for="method in suite.methods" :key="method.id" class="test-item cursor-pointer" @click.stop="app.runSingleTest(method.id)">
+                            <div class="test-item-left w-full">
+                                <div class="flex items-center">
+                                    <span v-if="method.runId && isTestRunning(method.runId)" class="status-icon spinner"></span>
+                                    <span v-else class="status-icon" :class="method.status ? `status-${method.status}` : 'status-neutral'"></span>
                                 </div>
-                                <div>
-                                    <div class="text-sm text-gray-400">Total Assertions</div>
-                                    <div class="text-2xl font-bold">{{ results.summary.assertions }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-sm text-gray-400">Duration</div>
-                                    <div class="text-2xl font-bold">{{ results.summary.time.toFixed(2) }}s</div>
+                                <div class="flex items-center space-x-2 justify-between w-full">
+                                    <span class="test-name">{{ method.name }}</span>
                                 </div>
                             </div>
-                            <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
-                                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>{{ statusCounts.passed }} Passed</span>
-                                <span v-if="statusCounts.failed > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>{{ statusCounts.failed }} Failed</span>
-                                <span v-if="statusCounts.error > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>{{ statusCounts.error }} Errors</span>
-                                <span v-if="results.summary.warnings > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>{{ results.summary.warnings }} Warnings</span>
-                                <span v-if="results.summary.skipped > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>{{ results.summary.skipped }} Skipped</span>
-                                <span v-if="results.summary.deprecations > 0" class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>{{ results.summary.deprecations }} Deprecations</span>
-                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Resizer -->
+            <div id="resizer" class="w-1.5 cursor-col-resize bg-gray-700 hover:bg-blue-600 transition-colors duration-200"></div>
+
+            <!-- Main Content -->
+            <main id="main-content" class="flex-1 p-4 flex flex-col">
+                <div class="flex-grow overflow-y-auto">
+                    <div v-show="store.state.activeTab === 'results'">
+                        <!-- Empty State -->
+                        <div v-if="!results" class="text-gray-500 text-center pt-10">
+                            Run tests to see the results.
                         </div>
 
-                        <!-- Grouped Test Results -->
-                        <div v-for="group in groupedResults" :key="group.className" class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                            <!-- TestCase Group Header -->
-                            <div @click="toggleTestcaseGroup(group.className)" class="flex items-center justify-between bg-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-600">
-                                <div class="flex items-center">
-                                    <svg class="w-5 h-5 mr-2 text-gray-400 transition-transform" :class="{ 'rotate-90': expandedTestcaseGroups.has(group.className) }" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                                    <span class="font-bold text-white">{{ group.className }}</span>
+                        <!-- Results Content -->
+                        <div v-else class="space-y-2">
+                            <!-- Status Summary -->
+                            <div class="bg-gray-800 rounded-lg shadow-lg p-4">
+                                <div class="grid grid-cols-3 gap-4 text-center mb-4 border-b border-gray-700 pb-4">
+                                    <div>
+                                        <div class="text-sm text-gray-400">Total Tests</div>
+                                        <div class="text-2xl font-bold">{{ results.summary.tests }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-gray-400">Total Assertions</div>
+                                        <div class="text-2xl font-bold">{{ results.summary.assertions }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-gray-400">Duration</div>
+                                        <div class="text-2xl font-bold">{{ results.summary.time.toFixed(2) }}s</div>
+                                    </div>
                                 </div>
-                                <div class="flex items-center space-x-4 text-sm">
-                                    <span v-if="group.failed > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.failed }} Failed</span>
-                                    <span v-if="group.error > 0" class="px-2 py-0.5 rounded-full bg-yellow-900 text-yellow-300">{{ group.error }} Error</span>
-                                    <span v-if="group.warning > 0" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
-                                    <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
+                                <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
+                                    <span class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                                        {{ statusCounts.passed }} Passed
+                                    </span>
+                                    <span v-if="results.summary.failures > 0" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                        {{ results.summary.failures }} Failed
+                                    </span>
+                                    <span v-if="results.summary.errors > 0" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                        {{ results.summary.errors }} Errors
+                                    </span>
+                                    <span v-if="results.summary.warnings > 0 && store.state.options.displayWarnings" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                                        {{ results.summary.warnings }} Warnings
+                                    </span>
+                                    <span v-if="results.summary.skipped > 0 && store.state.options.displaySkipped" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-gray-500 mr-2"></span>
+                                        {{ results.summary.skipped }} Skipped
+                                    </span>
+                                    <span v-if="results.summary.deprecations > 0 && store.state.options.displayDeprecations" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+                                        {{ results.summary.deprecations }} Deprecations
+                                    </span>
+                                    <span v-if="results.summary.incomplete > 0 && store.state.options.displayIncomplete" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+                                        {{ results.summary.incomplete }} Incomplete
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Testcases for this group -->
-                            <div v-show="expandedTestcaseGroups.has(group.className)" class="divide-y divide-gray-700">
-                                <!-- Problematic tests -->
-                                <template v-for="testcase in group.testcases.filter(t => t.status !== 'passed')">
-                                    <div @click="toggleDetails(testcase)" class="flex items-center p-3 cursor-pointer hover:bg-gray-700/[.5]">
+                            <!-- Grouped Results -->
+                            <div v-for="group in groupedResults" :key="group.className" class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                                <div class="flex items-center justify-between bg-gray-700 px-4 py-3 cursor-pointer hover:bg-gray-600"
+                                     @click="toggleTestcaseGroup(group.className)">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-gray-400 transition-transform"
+                                             :class="{ 'rotate-90': store.state.expandedTestcaseGroups.has(group.className) }"
+                                             viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span class="font-bold text-white">{{ group.className }}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-4 text-sm">
+                                        <span v-if="group.failed > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.failed }} Failed</span>
+                                        <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.errored }} Error</span>
+                                        <span v-if="group.warning > 0 && store.state.options.displayWarnings" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
+                                        <span v-if="group.deprecation > 0 && store.state.options.displayDeprecations" class="px-2 py-0.5 rounded-full bg-purple-800 text-purple-200">{{ group.deprecation }} Deprecations</span>
+                                        <span v-if="group.skipped > 0 && store.state.options.displaySkipped" class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">{{ group.skipped }} Skipped</span>
+                                        <span v-if="group.incomplete > 0 && store.state.options.displayIncomplete" class="px-2 py-0.5 rounded-full bg-yellow-800 text-yellow-200">{{ group.incomplete }} Incomplete</span>
+                                        <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
+                                    </div>
+                                </div>
+                                <div v-show="store.state.expandedTestcaseGroups.has(group.className)" class="divide-y divide-gray-700">
+                                    <!-- Failed/Errored tests -->
+                                    <div v-for="testcase in group.testcases.filter(t => {
+                                             if (t.status === 'passed') return false;
+                                             if (t.status === 'skipped' && !store.state.options.displaySkipped) return false;
+                                             if (t.status === 'incomplete' && !store.state.options.displayIncomplete) return false;
+                                             return true;
+                                         })"
+                                         :key="'test-' + testcase.id"
+                                         class="hover:bg-gray-700/50">
+                                        <div class="flex items-center p-3 cursor-pointer"
+                                             @click="toggleTestDetails(testcase)">
+                                            <div class="w-28 flex-shrink-0 pl-3">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                                      :class="{
+                                                          'bg-red-900 text-red-300': testcase.status === 'failed' || testcase.status === 'errored',
+                                                          'bg-gray-700 text-gray-300': testcase.status === 'skipped',
+                                                          'bg-yellow-800 text-yellow-200': testcase.status === 'incomplete'
+                                                      }">
+                                                    {{ testcase.status }}
+                                                </span>
+                                            </div>
+                                            <div class="flex-grow">
+                                                <div class="text-sm text-white">{{ testcase.name }}</div>
+                                            </div>
+                                            <div class="w-28 text-right flex-shrink-0 pr-3">
+                                                <span class="text-sm text-gray-400">{{ testcase.time?.toFixed(4) }}s</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name"
+                                             class="bg-gray-900 p-4 space-y-3">
+                                            <div v-if="testcase.message">
+                                                <h4 :class="{'text-red-400': testcase.status === 'failed' || testcase.status === 'errored'}" class="font-bold text-md mb-2">{{ testcase.message }}</h4>
+                                                <pre v-if="testcase.trace" class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded overflow-x-auto">{{ testcase.trace }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Passed tests with warnings/deprecations (if filters are enabled) -->
+                                    <div v-for="testcase in group.testcases.filter(t => t.status === 'passed' && ((store.state.options.displayWarnings && t.warnings?.length > 0) || (store.state.options.displayDeprecations && t.deprecations?.length > 0)))">
+                                        <div @click="toggleTestDetails(testcase)" class="flex items-center p-3 cursor-pointer hover:bg-gray-700/[.5]">
+                                            <div class="w-28 flex-shrink-0 pl-3">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300">passed</span>
+                                            </div>
+                                            <div class="flex-grow">
+                                                <div class="text-sm text-white">{{ testcase.name }}</div>
+                                                <div class="text-xs text-gray-400 mt-1">
+                                                    <span v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0" class="text-amber-400">⚠ {{ testcase.warnings.length }} warning(s)</span>
+                                                    <span v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0" class="text-purple-400 ml-2">⚠ {{ testcase.deprecations.length }} deprecation(s)</span>
+                                                </div>
+                                            </div>
+                                            <div class="w-28 text-right flex-shrink-0 pr-3">
+                                                <span class="text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name" class="bg-gray-900 p-4 space-y-3">
+                                            <div v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0">
+                                                <h5 class="font-bold text-sm text-amber-400 mb-2">Warnings ({{ testcase.warnings.length }})</h5>
+                                                <div v-for="(warning, idx) in testcase.warnings" :key="'w-'+idx" class="bg-amber-900/20 border-l-4 border-amber-500 p-2 mb-2">
+                                                    <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ warning }}</pre>
+                                                </div>
+                                            </div>
+                                            <div v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0">
+                                                <h5 class="font-bold text-sm text-purple-400 mb-2">Deprecations ({{ testcase.deprecations.length }})</h5>
+                                                <div v-for="(deprecation, idx) in testcase.deprecations" :key="'d-'+idx" class="bg-purple-900/20 border-l-4 border-purple-500 p-2 mb-2">
+                                                    <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ deprecation }}</pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Passed tests summary -->
+                                    <div v-if="group.passed > 0" class="flex items-center p-3">
                                         <div class="w-28 flex-shrink-0 pl-3">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="statusClass(testcase.status)">{{ testcase.status }}</span>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300">passed</span>
                                         </div>
                                         <div class="flex-grow">
-                                            <div class="text-sm text-white">{{ testcase.name }}</div>
+                                            <div class="text-sm text-gray-400">{{ group.passed }} test(s) passed</div>
                                         </div>
-                                        <div class="w-28 text-right flex-shrink-0 pr-3">
-                                            <span class="text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</span>
-                                        </div>
-                                    </div>
-                                    <div v-if="isExpanded(testcase)" class="bg-gray-900 p-4">
-                                        <h4 class="font-bold text-md mb-2" :class="{'text-red-400': testcase.status === 'failed', 'text-yellow-400': testcase.status === 'error'}">{{ testcase.failure ? testcase.failure.type : testcase.error.type }}</h4>
-                                        <pre class="font-mono text-sm text-white whitespace-pre-wrap bg-black p-3 rounded">{{ testcase.failure ? testcase.failure.message : testcase.error.message }}</pre>
-                                    </div>
-                                </template>
-                                <!-- Passed tests summary -->
-                                <div v-if="group.passed > 0" class="flex items-center p-3">
-                                    <div class="w-28 flex-shrink-0 pl-3">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300">passed</span>
-                                    </div>
-                                    <div class="flex-grow">
-                                        <div class="text-sm text-gray-400">{{ group.passed }} test(s) passed</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div v-show="activeTab === 'output'" class="bg-black p-4 rounded-lg font-mono text-sm h-full overflow-y-scroll">
-                    <div v-for="(line, index) in output" :key="index" v-html="line.html" :class="line.blockClass"></div>
-                </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
-</div>
 
-<script>
-    const { createApp, ref, reactive, onMounted, computed } = Vue
+    <script type="module">
+        import { createApp, onMounted } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
+        import { App } from './js/app.js';
 
-    createApp({
-        setup() {
-            const runningTestIds = reactive({});
-            const stopPending = reactive({});
+        const app = new App();
 
-            const activeTab = ref('results');
-            const output = ref([]);
-            const results = ref(null);
-            const searchQuery = ref('');
-            const testSuites = ref([]);
-            const availableSuites = ref([]);
-            const selectedSuites = ref([]);
-            const availableGroups = ref([]);
-            const selectedGroups = ref([]);
-            const options = reactive({
-                displayWarnings: true,
-                displayDeprecations: true,
-                displaySkipped: true,
-                displayIncomplete: true,
-                stopOnDefect: false,
-                stopOnError: false,
-                stopOnFailure: false,
-                stopOnWarning: false,
-            });
-            const showFilterPanel = ref(false);
-            const expandedSuites = ref(new Set());
-            const expandedTestId = ref(null);
-            const expandedTestcaseGroups = ref(new Set());
-            let ws = null;
-            let inFailureBlock = false;
+        createApp({
+            setup() {
+                const computedVals = app.getComputedValues();
 
-            const favicons = {
-                neutral: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#6b7280"/></svg>`,
-                success: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#10B981"/><polyline points="9 16, 14 21, 23 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-                failure: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#EF4444"/><line x1="11" y1="11" x2="21" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="21" y1="11" x2="11" y2="21" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>`
-            };
+                onMounted(async () => {
+                    await app.initialize();
+                });
 
-            const statusCounts = computed(() => {
-                const counts = { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0 };
-                if (!results.value) return counts;
-
-                const s = results.value.summary;
-                counts.failed = s.failures || 0;
-                counts.error = s.errors || 0;
-                counts.warnings = s.warnings || 0;
-                counts.skipped = s.skipped || 0;
-                counts.deprecations = s.deprecations || 0;
-                counts.incomplete = s.incomplete || 0;
-
-                const problems = counts.failed + counts.error + counts.warnings + counts.skipped + counts.incomplete + (s.deprecations || 0);
-                counts.passed = (s.tests || 0) - problems;
-
-                return counts;
-            });
-
-            const hasFailedTests = computed(() => results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0));
-
-            const filteredTestSuites = computed(() => {
-                if (!searchQuery.value) return testSuites.value;
-                const lower = searchQuery.value.toLowerCase();
-                return testSuites.value.map(suite => {
-                    const methods = suite.methods.filter(m => m.name.toLowerCase().includes(lower));
-                    if (suite.name.toLowerCase().includes(lower)) {
-                        return { ...suite, methods: suite.methods };
-                    }
-                    if (methods.length > 0) {
-                        return { ...suite, methods };
-                    }
-                    return null;
-                }).filter(Boolean);
-            });
-
-            const isAnyTestRunning = computed(() => Object.keys(runningTestIds).length > 0);
-            const isAnyStopPending = computed(() => Object.keys(stopPending).length > 0);
-
-            const updateFavicon = (status = 'neutral') => {
-                const favicon = document.getElementById('favicon');
-                if (favicon) {
-                    const svg = favicons[status] || favicons.neutral;
-                    const dataUri = `data:image/svg+xml;base64,${btoa(svg)}`;
-                    favicon.href = dataUri;
-                }
-            };
-
-            const toggleFilterPanel = () => { showFilterPanel.value = !showFilterPanel.value; };
-            const toggleSuite = (suiteId) => {
-                if (expandedSuites.value.has(suiteId)) expandedSuites.value.delete(suiteId);
-                else expandedSuites.value.add(suiteId);
-            };
-            const toggleDetails = (testcase) => {
-                if (testcase.status === 'passed') return;
-                const id = `${testcase.class}::${testcase.name}`;
-                expandedTestId.value = expandedTestId.value === id ? null : id;
-            };
-            const isExpanded = (testcase) => `${testcase.class}::${testcase.name}` === expandedTestId.value;
-
-            const toggleTestcaseGroup = (className) => {
-                const newSet = new Set(expandedTestcaseGroups.value);
-                if (newSet.has(className)) {
-                    newSet.delete(className);
-                } else {
-                    newSet.add(className);
-                }
-                expandedTestcaseGroups.value = newSet;
-            };
-
-            const statusClass = (status) => {
-                status = status || 'passed';
                 return {
-                    'bg-green-900 text-green-300': status === 'passed',
-                    'bg-red-900 text-red-300': status === 'failed',
-                    'bg-yellow-900 text-yellow-300': status === 'error',
-                    'bg-amber-800 text-amber-200': status === 'warning' || status === 'deprecation',
-                    'bg-gray-700 text-gray-300': status === 'skipped' || status === 'incomplete',
+                    app,
+                    store: app.store,
+                    results: computedVals.results,
+                    groupedResults: computedVals.groupedResults,
+                    statusCounts: computedVals.statusCounts,
+                    filteredTestSuites: computedVals.filteredTestSuites,
+                    isAnyTestRunning: computedVals.isAnyTestRunning,
+                    isAnyStopPending: computedVals.isAnyStopPending,
+                    hasFailedTests: computedVals.hasFailedTests,
+
+                    // Methods
+                    toggleSuite: (suiteId) => app.store.toggleSuiteExpansion(suiteId),
+                    toggleTestcaseGroup: (className) => app.store.toggleTestcaseGroupExpansion(className),
+                    toggleTestDetails: (testcase) => {
+                        const isExpandable = testcase.status !== 'passed' ||
+                                            (testcase.warnings?.length > 0) ||
+                                            (testcase.deprecations?.length > 0);
+                        if (!isExpandable) return;
+                        const id = `${testcase.class}::${testcase.name}`;
+                        app.store.setExpandedTest(app.store.state.expandedTestId === id ? null : id);
+                    },
+                    toggleFilterPanel: () => app.store.toggleFilterPanel(),
+                    isTestRunning: (runId) => app.store.state.runningTestIds[runId] === true,
+                    isTestStopPending: (runId) => app.store.state.stopPending[runId] === true,
                 };
-            };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
 
-            const isTestRunning = (runId) => runningTestIds[runId] === true;
-            const isTestStopPending = (runId) => stopPending[runId] === true;
-
-            const runSingleTest = (testId) => runTests({ filters: [testId], contextId: testId });
-            const runSuiteTests = (suiteId) => runTests({ filters: [suiteId], contextId: suiteId });
-            const runAllTests = () => runTests({ filters: searchQuery.value ? [searchQuery.value] : [], contextId: 'global' });
-            const runFailedTests = () => runTests({ endpoint: '/api/run-failed', contextId: 'failed' });
-
-            const stopSingleTest = async (runId) => {
-                stopPending[runId] = true;
-                try {
-                    const res = await fetch(`/api/stop-single-test/${runId}`, { method: 'POST' });
-                    if (!res.ok) {
-                        const text = await res.text();
-                        output.value.push({ html: `<span class="text-red-400">Failed to stop test run ${runId}: ${text}</span>` });
-                        delete stopPending[runId];
-                    } else {
-                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for test run ${runId}...</span>` });
-                    }
-                } catch (e) {
-                    output.value.push({ html: `<span class="text-red-400">Failed to send stop request for ${runId}: ${e.message}</span>` });
-                    delete stopPending[runId];
-                }
-            };
-
-            const stopTests = async () => {
-                Object.keys(runningTestIds).forEach(runId => { stopPending[runId] = true; });
-                try {
-                    const res = await fetch('/api/stop', { method: 'POST' });
-                    if (!res.ok) {
-                        const text = await res.text();
-                        output.value.push({ html: `<span class="text-red-400">Failed to stop all tests: ${text}</span>` });
-                        Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
-                    } else {
-                        output.value.push({ html: `<span class="text-yellow-300">Stop requested for all tests...</span>` });
-                    }
-                } catch (e) {
-                    output.value.push({ html: `<span class="text-red-400">Failed to send stop all request: ${e.message}</span>` });
-                    Object.keys(runningTestIds).forEach(runId => { delete stopPending[runId]; });
-                }
-            };
-
-            const togglePlayStop = () => {
-                if (isAnyTestRunning.value) stopTests();
-                else runAllTests();
-            };
-
-            const fetchTests = async () => {
-                try {
-                    const response = await fetch('/api/tests');
-                    const data = await response.json();
-                    data.suites.forEach(suite => {
-                        suite.runId = null;
-                        suite.methods.forEach(method => {
-                            method.time = null;
-                            method.status = null;
-                            method.runId = null;
-                        });
-                    });
-                    testSuites.value = data.suites;
-                    if(data.availableSuites) availableSuites.value = data.availableSuites;
-                    if(data.availableGroups) availableGroups.value = data.availableGroups;
-                } catch (e) { console.error("Failed to fetch tests:", e); }
-            };
-
-            const connectWebSocket = () => {
-                ws = new WebSocket('ws://127.0.0.1:8080/ws/status');
-                ws.onmessage = (event) => handleWebSocketMessage(JSON.parse(event.data));
-                ws.onclose = () => {
-                    Object.keys(runningTestIds).forEach(k => delete runningTestIds[k]);
-                    Object.keys(stopPending).forEach(k => delete stopPending[k]);
-                    updateFavicon('neutral');
-                };
-            };
-
-            const formatAnsiToHtml = (text) => {
-                const ansiRegex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
-                const colorMap = {
-                    '30': 'black', '31': 'red', '32': 'green', '33': 'yellow',
-                    '34': 'blue', '35': 'magenta', '36': 'cyan', '37': 'white',
-                    '90': 'bright-black', '91': 'bright-red', '92': 'bright-green', '93': 'bright-yellow',
-                    '94': 'bright-blue', '95': 'bright-magenta', '96': 'bright-cyan', '97': 'bright-white'
-                };
-                const styleMap = { '1': 'bold', '4': 'underline' };
-
-                let openSpans = 0;
-                const escapedText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-                return escapedText.replace(ansiRegex, (match) => {
-                    if (match === '\u001b[0m') {
-                        const closingTags = '</span>'.repeat(openSpans);
-                        openSpans = 0;
-                        return closingTags;
-                    }
-                    const codes = match.slice(2, -1).split(';');
-                    const classes = [];
-                    codes.forEach(code => {
-                        if (colorMap[code]) classes.push(`ansi-${colorMap[code]}`);
-                        else if (styleMap[code]) classes.push(`ansi-${styleMap[code]}`);
-                    });
-                    if (classes.length > 0) {
-                        openSpans++;
-                        return `<span class="${classes.join(' ')}">`;
-                    }
-                    return '';
-                }) + '</span>'.repeat(openSpans);
-            };
-
-            const handleWebSocketMessage = (message) => {
-                switch (message.type) {
-                    case 'start':
-                        output.value = [];
-                        inFailureBlock = false;
-                        results.value = null;
-                        expandedTestId.value = null;
-                        testSuites.value.forEach(s => s.methods.forEach(m => { m.time = null; m.status = null; }));
-                        updateFavicon('neutral');
-                        runningTestIds[message.runId] = true;
-                        delete stopPending[message.runId];
-                        if (message.contextId) {
-                            testSuites.value.forEach(suite => {
-                                if (suite.id === message.contextId) suite.runId = message.runId;
-                                suite.methods.forEach(method => {
-                                    if (method.id === message.contextId) method.runId = message.runId;
-                                });
-                            });
-                        }
-                        break;
-                    case 'stopped':
-                        output.value.push({ html: `<span class="text-yellow-300">Test run ${message.runId} stopped by user.</span>` });
-                        delete runningTestIds[message.runId];
-                        delete stopPending[message.runId];
-                        testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) suite.runId = null;
-                            suite.methods.forEach(method => {
-                                if (method.runId === message.runId) method.runId = null;
-                            });
-                        });
-                        if (Object.keys(runningTestIds).length === 0) updateFavicon('neutral');
-                        break;
-                    case 'stdout': {
-                        const data = message.data;
-                        const progressRegex = /^[.FESIWDR\s]+$/;
-                        if (progressRegex.test(data) && data.trim().length > 0) {
-                            // Ignore progress characters, we are not displaying them
-                            return;
-                        }
-
-                        let blockClass = 'output-line';
-                        if (data.startsWith('Time:')) {
-                            blockClass += ' summary-time';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('OK, but there were issues!')) {
-                            blockClass += ' summary-warn';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('FAILURES!')) {
-                            blockClass += ' summary-fail';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('OK (')) {
-                            blockClass += ' summary-ok';
-                            inFailureBlock = false;
-                        } else if (data.startsWith('There was') || data.match(/^\d+\)/)) {
-                            inFailureBlock = true;
-                        }
-
-                        if (inFailureBlock) {
-                            blockClass += ' failure-block';
-                        }
-                        
-                        output.value.push({ html: formatAnsiToHtml(data), blockClass });
-                        break;
-                    }
-                    case 'exit':
-                        inFailureBlock = false;
-                        if (message.results) {
-                            results.value = message.results;
-                            const resultsMap = new Map();
-                            message.results.suites.forEach(s => s.testcases.forEach(tc => resultsMap.set(`${tc.class}::${tc.name}`, { time: tc.time, status: tc.status })));
-                            testSuites.value.forEach(s => s.methods.forEach(m => {
-                                if (resultsMap.has(m.id)) {
-                                    const res = resultsMap.get(m.id);
-                                    m.time = res.time;
-                                    m.status = res.status;
-                                }
-                            }));
-                            // This needs to be after results.value is set, but before it's returned from setup
-                            const groupsWithIssues = groupedResults.value.filter(g => g.hasIssues).map(g => g.className);
-                            expandedTestcaseGroups.value = new Set(groupsWithIssues);
-                        }
-                        delete runningTestIds[message.runId];
-                        delete stopPending[message.runId];
-                        testSuites.value.forEach(suite => {
-                            if (suite.runId === message.runId) suite.runId = null;
-                            suite.methods.forEach(method => {
-                                if (method.runId === message.runId) method.runId = null;
-                            });
-                        });
-                        if (Object.keys(runningTestIds).length === 0) {
-                            if (results.value && (results.value.summary.failures > 0 || results.value.summary.errors > 0)) {
-                                updateFavicon('failure');
-                            } else if (results.value) {
-                                updateFavicon('success');
-                            } else {
-                                updateFavicon('neutral');
-                            }
-                        }
-                        activeTab.value = 'results';
-                        break;
-                }
-            };
-
-            const groupedResults = computed(() => {
-                if (!results.value) return [];
-
-                const groups = {};
-
-                results.value.suites.forEach(suite => {
-                    suite.testcases.forEach(tc => {
-                        if (!groups[tc.class]) {
-                            groups[tc.class] = {
-                                className: tc.class,
-                                testcases: [],
-                                passed: 0, failed: 0, error: 0, skipped: 0, warning: 0, deprecation: 0, incomplete: 0,
-                                hasIssues: false
-                            };
-                        }
-                        const group = groups[tc.class];
-                        group.testcases.push(tc);
-                        const status = tc.status || 'passed';
-                        if (group[status] !== undefined) {
-                            group[status]++;
-                        }
-                        if (status !== 'passed') {
-                            group.hasIssues = true;
-                        }
-                    });
-                });
-
-                const sortedGroups = Object.values(groups).sort((a, b) => {
-                    if (a.hasIssues && !b.hasIssues) return -1;
-                    if (!a.hasIssues && b.hasIssues) return 1;
-                    return a.className.localeCompare(b.className);
-                });
-
-                sortedGroups.forEach(group => {
-                    group.testcases.sort((a, b) => {
-                        const statusOrder = { 'failed': 1, 'error': 2, 'warning': 3, 'deprecation': 4, 'skipped': 5, 'incomplete': 6, 'passed': 7 };
-                        const statusA = statusOrder[a.status || 'passed'] || 99;
-                        const statusB = statusOrder[b.status || 'passed'] || 99;
-                        if (statusA !== statusB) {
-                            return statusA - statusB;
-                        }
-                        return a.name.localeCompare(b.name);
-                    });
-                });
-
-                return sortedGroups;
-            });
-
-            const runTests = async (runOptions = {}) => {
-                activeTab.value = 'output';
-                const endpoint = runOptions.endpoint || '/api/run';
-                const payload = {
-                    filters: runOptions.filters || [],
-                    groups: selectedGroups.value,
-                    suites: selectedSuites.value,
-                    options: { ...options, colors: true },
-                    contextId: runOptions.contextId,
-                };
-                try {
-                    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) {
-                        const text = await response.text();
-                        output.value.push({ html: `<span class="text-red-400">Error: ${text}</span>` });
-                        updateFavicon('failure');
-                    }
-                } catch (error) {
-                    output.value.push({ html: `<span class="text-red-400">API request failed: ${error.message}</span>` });
-                    updateFavicon('failure');
-                }
-            };
-
-            onMounted(() => {
-                connectWebSocket();
-                fetchTests();
-                updateFavicon();
-                const resizer = document.getElementById('resizer');
-                const sidebar = document.getElementById('test-sidebar');
-                if (resizer && sidebar) {
-                    let isResizing = false;
-                    resizer.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        isResizing = true;
-                        document.body.style.cursor = 'col-resize';
-                        document.body.style.userSelect = 'none';
-                        const mouseMoveHandler = (e) => {
-                            if (!isResizing) return;
-                            const sidebarWidth = e.clientX;
-                            if (sidebarWidth > 200 && sidebarWidth < window.innerWidth - 200) {
-                                sidebar.style.width = `${sidebarWidth}px`;
-                            }
-                        };
-                        const mouseUpHandler = () => {
-                            isResizing = false;
-                            document.body.style.cursor = '';
-                            document.body.style.userSelect = '';
-                            document.removeEventListener('mousemove', mouseMoveHandler);
-                            document.removeEventListener('mouseup', mouseUpHandler);
-                        };
-                        document.addEventListener('mousemove', mouseMoveHandler);
-                        document.addEventListener('mouseup', mouseUpHandler);
-                    });
-                }
-            });
-
-            return {
-                runningTestIds, stopPending, isAnyTestRunning, isAnyStopPending,
-                activeTab, output, results, searchQuery, testSuites, availableSuites, selectedSuites, availableGroups, selectedGroups, options,
-                showFilterPanel, expandedSuites, expandedTestId, hasFailedTests,
-                runAllTests, runFailedTests, toggleSuite, runSingleTest, runSuiteTests, filteredTestSuites, toggleFilterPanel, toggleDetails, isExpanded,
-                statusCounts,
-                stopTests, togglePlayStop, stopSingleTest, isTestRunning, isTestStopPending,
-                groupedResults, expandedTestcaseGroups, toggleTestcaseGroup, statusClass
-              };
-          }
-      }).mount('#app');
- </script>
- </body>
- </html>

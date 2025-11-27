@@ -17,6 +17,8 @@ RUN docker-php-ext-install xml mbstring zip
 WORKDIR /app
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=node:latest /usr/local/bin /usr/local/bin
+COPY --from=node:latest /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 COPY . /app
 

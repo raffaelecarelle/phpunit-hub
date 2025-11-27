@@ -20,6 +20,13 @@ function phpunit(): int
 }
 
 #[\Castor\Attribute\AsTask]
+function jest(): int
+{
+    return exit_code(dockerize('npm test'));
+
+}
+
+#[\Castor\Attribute\AsTask]
 
 function phpcs_fix(): int
 {
@@ -44,7 +51,7 @@ function rector(): int
 #[\Castor\Attribute\AsTask]
 function pre_commit(): int
 {
-    return phpstan() + rector() + phpcs_fix() + phpunit();
+    return phpstan() + rector() + phpcs_fix() + phpunit() + jest();
 }
 
 function dockerize(string $command): string
