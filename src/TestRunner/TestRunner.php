@@ -9,17 +9,11 @@ use React\EventLoop\LoopInterface;
 use function array_map;
 use function escapeshellarg;
 use function escapeshellcmd;
-use function file_get_contents;
-use function file_put_contents;
 use function implode;
 use function preg_quote;
 use function preg_replace;
-use function str_replace;
 use function strtolower;
-use function sys_get_temp_dir;
 use function trim;
-use function uniqid;
-use function var_dump;
 
 class TestRunner
 {

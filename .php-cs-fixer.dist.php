@@ -9,6 +9,6 @@ return (new PhpCsFixer\Config())
     ->setRules([
         '@PSR12' => true,
         '@PHP81Migration' => true,
+        'no_unused_imports' => true,
     ])
-    ->setFinder($finder)
-    ;
+    ->setFinder($finder);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace PhpUnitHub\PHPUnit;
 
-use Closure;
 use PHPUnit\Event\Test\DeprecationTriggered;
 use PHPUnit\Event\Test\PhpDeprecationTriggered;
 use PHPUnit\Event\Test\PhpWarningTriggered;

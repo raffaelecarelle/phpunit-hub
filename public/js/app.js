@@ -220,7 +220,21 @@ export class App {
      */
     getComputedValues() {
         return {
-            isAnyTestRunning: computed(() => Object.keys(this.store.state.runningTestIds).length > 0),
+            isAnyTestRunning: computed(() => {
+                // Check if there are any tests running
+                const runningCount = Object.keys(this.store.state.runningTestIds).length;
+                if (runningCount === 0) return false;
+
+                // Check if any running test hasn't received execution.ended yet
+                for (const runId in this.store.state.runningTestIds) {
+                    const run = this.store.state.realtimeTestRuns[runId];
+                    if (!run || !run.executionEnded) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }),
             isAnyStopPending: computed(() => Object.keys(this.store.state.stopPending).length > 0),
             hasFailedTests: computed(() => this.store.hasFailedTests()),
             results: computed(() => this.getResults()),

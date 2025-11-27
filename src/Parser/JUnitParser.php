@@ -3,7 +3,6 @@
 namespace PhpUnitHub\Parser;
 
 use Exception;
-use SimpleXMLElement;
 
 class JUnitParser
 {

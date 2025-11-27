@@ -59,6 +59,7 @@ export class Store {
             suites: {},
             summary: null,
             failedTestIds: new Set(),
+            executionEnded: false,
         };
         this.state.runningTestIds[runId] = true;
         delete this.state.stopPending[runId];
@@ -250,6 +251,7 @@ export class Store {
      */
     handleExecutionEnded(run, eventData, runId) {
         run.summary = eventData.data.summary;
+        run.executionEnded = true;
         this.state.lastCompletedRunId = runId;
     }
 

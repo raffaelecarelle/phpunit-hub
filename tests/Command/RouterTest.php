@@ -4,7 +4,6 @@ namespace PhpUnitHub\Tests\Command;
 
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\Router;
-use PhpUnitHub\Parser\JUnitParser;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;

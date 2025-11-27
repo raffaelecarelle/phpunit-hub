@@ -84,6 +84,7 @@ describe('Store', () => {
             expect(store.state.realtimeTestRuns[runId]).toEqual({
                 status: 'running',
                 contextId: contextId,
+                executionEnded: false,
                 suites: {},
                 summary: null,
                 failedTestIds: new Set(),

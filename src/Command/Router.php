@@ -20,10 +20,8 @@ use function defined;
 use function dirname;
 use function file_exists;
 use function file_get_contents;
-use function filemtime;
 use function hash_file;
 use function implode;
-use function in_array;
 use function is_file;
 use function json_decode;
 use function json_encode;
@@ -32,9 +30,6 @@ use function property_exists;
 use function realpath;
 use function sprintf;
 use function str_replace;
-use function sys_get_temp_dir;
-use function unlink;
-use function uniqid;
 
 class Router implements RouterInterface
 {
