@@ -454,8 +454,8 @@ describe('App', () => {
                             { id: 't2', name: 'testB', class: 'ClassA', status: 'failed' },
                             { id: 't3', name: 'testC', class: 'ClassA', status: 'errored' },
                             { id: 't4', name: 'testD', class: 'ClassA', status: 'skipped' },
-                            { id: 't5', name: 'testE', class: 'ClassA', status: 'warning', warnings: ['w1'] },
-                            { id: 't6', name: 'testF', class: 'ClassA', status: 'deprecation', deprecations: ['d1'] },
+                            { id: 't5', name: 'testE', class: 'ClassA', status: 'passed', warnings: ['w1', 'w2'] },
+                            { id: 't6', name: 'testF', class: 'ClassA', status: 'passed', deprecations: ['d1'] },
                             { id: 't7', name: 'testG', class: 'ClassA', status: 'incomplete' },
                         ]
                     }
@@ -464,12 +464,12 @@ describe('App', () => {
 
             const grouped = app.getGroupedResults();
             const classA = grouped[0];
-            expect(classA.passed).toBe(1);
+            expect(classA.passed).toBe(3); // testA, testE, testF are passed
             expect(classA.failed).toBe(1);
             expect(classA.errored).toBe(1);
             expect(classA.skipped).toBe(1);
-            expect(classA.warning).toBe(1);
-            expect(classA.deprecation).toBe(1);
+            expect(classA.warning).toBe(2); // 2 warnings in testE
+            expect(classA.deprecation).toBe(1); // 1 deprecation in testF
             expect(classA.incomplete).toBe(1);
             expect(classA.hasIssues).toBe(true);
         });
@@ -486,19 +486,19 @@ describe('App', () => {
         test('should correctly calculate status counts', () => {
             jest.spyOn(app, 'getResults').mockReturnValueOnce({
                 summary: {
-                    numberOfTests: 10,
-                    numberOfFailures: 2,
-                    numberOfErrors: 1,
-                    numberOfWarnings: 3,
-                    numberOfSkipped: 1,
-                    numberOfDeprecations: 1,
-                    numberOfIncomplete: 1,
+                    tests: 10,
+                    failures: 2,
+                    errors: 1,
+                    warnings: 3,
+                    skipped: 1,
+                    deprecations: 1,
+                    incomplete: 1,
                 }
             });
 
             const counts = app.getStatusCounts();
             expect(counts).toEqual({
-                passed: 1, // 10 total - (2f + 1e + 3w + 1s + 1d + 1i) = 1
+                passed: 5, // 10 total - (2f + 1e + 1s + 1i) = 5 (warnings and deprecations don't affect passed count)
                 failed: 2,
                 error: 1,
                 warnings: 3,
