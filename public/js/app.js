@@ -44,6 +44,7 @@ export class App {
      * Fetch available tests
      */
     async fetchTests() {
+        this.store.state.isLoading = true;
         try {
             const data = await this.api.fetchTests();
             this.store.state.testSuites = data.suites;
@@ -55,6 +56,8 @@ export class App {
         } catch (error) {
             console.error('Failed to fetch tests:', error);
             throw error; // Re-throw the error
+        } finally {
+            this.store.state.isLoading = false;
         }
     }
 

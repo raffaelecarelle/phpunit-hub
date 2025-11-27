@@ -14,6 +14,7 @@ export class Store {
             availableGroups: [],
             
             // UI state
+            isLoading: false,
             searchQuery: '',
             expandedSuites: new Set(),
             expandedTestcaseGroups: new Set(),
