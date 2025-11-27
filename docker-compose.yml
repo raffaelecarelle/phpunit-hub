@@ -20,7 +20,7 @@ services:
         network_mode: host
         # Command to start the PHPUnit Hub server
         # You can add --watch to enable automatic test re-runs
-        command: bin/phpunit-hub --port=8081 #--watch
+        command: bin/phpunit-hub #--watch
         # If you want to keep the container running for debugging or to view logs
         # stdin_open: true
         # tty: true
