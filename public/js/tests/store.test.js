@@ -92,8 +92,23 @@ describe('Store', () => {
             expect(store.state.activeTab).toBe('results');
         });
 
-        test('should reset sidebar and expanded state for global/failed context', () => {
+        test('should reset sidebar and expanded state for failed context', () => {
             const runId = 'run123';
+            store.state.expandedTestId = 'someTest';
+            store.state.expandedTestcaseGroups.add('someGroup');
+            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
+
+            const resetSidebarSpy = jest.spyOn(store, 'resetSidebarTestStatuses');
+
+            store.initializeTestRun(runId, 'failed');
+            expect(store.state.expandedTestId).toBeNull();
+            expect(store.state.expandedTestcaseGroups.size).toBe(0);
+            expect(resetSidebarSpy).toHaveBeenCalled();
+        });
+
+        test('should reset sidebar and expanded state for global context in reset mode', () => {
+            const runId = 'run123';
+            store.state.options.resultUpdateMode = 'reset';
             store.state.expandedTestId = 'someTest';
             store.state.expandedTestcaseGroups.add('someGroup');
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
@@ -104,10 +119,21 @@ describe('Store', () => {
             expect(store.state.expandedTestId).toBeNull();
             expect(store.state.expandedTestcaseGroups.size).toBe(0);
             expect(resetSidebarSpy).toHaveBeenCalled();
+        });
 
-            resetSidebarSpy.mockClear();
-            store.initializeTestRun(runId, 'failed');
-            expect(resetSidebarSpy).toHaveBeenCalled();
+        test('should not reset sidebar for global context in update mode', () => {
+            const runId = 'run123';
+            store.state.options.resultUpdateMode = 'update';
+            store.state.expandedTestId = 'someTest';
+            store.state.expandedTestcaseGroups.add('someGroup');
+            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
+
+            const resetSidebarSpy = jest.spyOn(store, 'resetSidebarTestStatuses');
+
+            store.initializeTestRun(runId, 'global');
+            expect(store.state.expandedTestId).toBe('someTest');
+            expect(store.state.expandedTestcaseGroups.size).toBe(1);
+            expect(resetSidebarSpy).not.toHaveBeenCalled();
         });
 
         test('should not reset sidebar for other context IDs', () => {
@@ -353,6 +379,48 @@ describe('Store', () => {
             store.handleTestCompleted(run, eventData, runId);
             expect(run.failedTestIds.has(testId)).toBe(false);
         });
+
+        test('should remove test from all runs failedTestIds in update mode when test passes', () => {
+            store.state.options.resultUpdateMode = 'update';
+
+            // Create another run with the same failed test
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+            const run2 = store.state.realtimeTestRuns[runId2];
+            run2.failedTestIds.add(testId);
+
+            // Mark test as failed in current run
+            run.failedTestIds.add(testId);
+
+            // Now pass the test in current run
+            const eventData = { event: 'test.passed', data: { test: testId } };
+            store.handleTestCompleted(run, eventData, runId);
+
+            // Test should be removed from both runs
+            expect(run.failedTestIds.has(testId)).toBe(false);
+            expect(run2.failedTestIds.has(testId)).toBe(false);
+        });
+
+        test('should not remove test from other runs in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
+
+            // Create another run with the same failed test
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+            const run2 = store.state.realtimeTestRuns[runId2];
+            run2.failedTestIds.add(testId);
+
+            // Mark test as failed in current run
+            run.failedTestIds.add(testId);
+
+            // Now pass the test in current run
+            const eventData = { event: 'test.passed', data: { test: testId } };
+            store.handleTestCompleted(run, eventData, runId);
+
+            // Test should be removed only from current run
+            expect(run.failedTestIds.has(testId)).toBe(false);
+            expect(run2.failedTestIds.has(testId)).toBe(true);
+        });
     });
 
     describe('handleExecutionEnded', () => {
@@ -566,12 +634,14 @@ describe('Store', () => {
     });
 
     describe('getFailedTestIds', () => {
-        test('should return an empty array if no last completed run', () => {
+        test('should return an empty array if no runs in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             store.state.lastCompletedRunId = null;
             expect(store.getFailedTestIds()).toEqual([]);
         });
 
-        test('should return failed test IDs from the last completed run', () => {
+        test('should return failed test IDs from the last completed run in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             const runId = 'run123';
             store.initializeTestRun(runId, 'global');
             store.state.lastCompletedRunId = runId;
@@ -580,15 +650,51 @@ describe('Store', () => {
 
             expect(store.getFailedTestIds()).toEqual(['test1', 'test2']);
         });
+
+        test('should return failed test IDs from all runs in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+
+            const runId1 = 'run123';
+            store.initializeTestRun(runId1, 'global');
+            store.state.realtimeTestRuns[runId1].failedTestIds.add('test1');
+            store.state.realtimeTestRuns[runId1].failedTestIds.add('test2');
+
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+            store.state.realtimeTestRuns[runId2].failedTestIds.add('test3');
+
+            const failedIds = store.getFailedTestIds();
+            expect(failedIds).toContain('test1');
+            expect(failedIds).toContain('test2');
+            expect(failedIds).toContain('test3');
+            expect(failedIds.length).toBe(3);
+        });
+
+        test('should deduplicate failed test IDs across runs in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+
+            const runId1 = 'run123';
+            store.initializeTestRun(runId1, 'global');
+            store.state.realtimeTestRuns[runId1].failedTestIds.add('test1');
+
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+            store.state.realtimeTestRuns[runId2].failedTestIds.add('test1'); // Same test
+
+            const failedIds = store.getFailedTestIds();
+            expect(failedIds).toEqual(['test1']); // Should be deduplicated
+        });
     });
 
     describe('hasFailedTests', () => {
-        test('should return false if no last completed run', () => {
+        test('should return false if no last completed run in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             store.state.lastCompletedRunId = null;
             expect(store.hasFailedTests()).toBe(false);
         });
 
-        test('should return true if the last completed run has failed tests', () => {
+        test('should return true if the last completed run has failed tests in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             const runId = 'run123';
             store.initializeTestRun(runId, 'global');
             store.state.lastCompletedRunId = runId;
@@ -597,12 +703,58 @@ describe('Store', () => {
             expect(store.hasFailedTests()).toBe(true);
         });
 
-        test('should return false if the last completed run has no failed tests', () => {
+        test('should return false if the last completed run has no failed tests in reset mode', () => {
+            store.state.options.resultUpdateMode = 'reset';
             const runId = 'run123';
             store.initializeTestRun(runId, 'global');
             store.state.lastCompletedRunId = runId;
 
             expect(store.hasFailedTests()).toBe(false);
+        });
+
+        test('should return true if any run has failed tests in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+
+            const runId1 = 'run123';
+            store.initializeTestRun(runId1, 'global');
+            store.state.realtimeTestRuns[runId1].failedTestIds.add('test1');
+
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+            // No failed tests in run2
+
+            expect(store.hasFailedTests()).toBe(true);
+        });
+
+        test('should return false if no runs have failed tests in update mode', () => {
+            store.state.options.resultUpdateMode = 'update';
+
+            const runId1 = 'run123';
+            store.initializeTestRun(runId1, 'global');
+
+            const runId2 = 'run456';
+            store.initializeTestRun(runId2, 'global');
+
+            expect(store.hasFailedTests()).toBe(false);
+        });
+    });
+
+    describe('clearAllResults', () => {
+        test('should clear all test runs and reset state', () => {
+            const runId = 'run123';
+            store.initializeTestRun(runId, 'global');
+            store.state.lastCompletedRunId = runId;
+            store.state.expandedTestId = 'someTest';
+            store.state.expandedTestcaseGroups.add('someGroup');
+            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
+
+            store.clearAllResults();
+
+            expect(store.state.realtimeTestRuns).toEqual({});
+            expect(store.state.lastCompletedRunId).toBeNull();
+            expect(store.state.expandedTestId).toBeNull();
+            expect(store.state.expandedTestcaseGroups.size).toBe(0);
+            expect(store.state.testSuites[0].methods[0].status).toBeNull();
         });
     });
 });
