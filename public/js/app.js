@@ -440,7 +440,7 @@ export class App {
             summary: {
                 tests: calculatedSummary.tests,
                 assertions: mergedSummary.numberOfAssertions,
-                time: mergedSummary.duration,
+                time: calculatedSummary.time,
                 failures: calculatedSummary.failures,
                 errors: calculatedSummary.errors,
                 warnings: calculatedSummary.warnings,
