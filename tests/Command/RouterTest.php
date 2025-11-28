@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\Command;
 
+use ReflectionObject;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\Router;
 use PhpUnitHub\Discoverer\TestDiscoverer;
@@ -76,7 +77,7 @@ class RouterTest extends TestCase
         $process = $this->createMockProcess(true);
         $mockProcess2 = $this->createMockProcess(true);
 
-        $reflectionObject = new \ReflectionObject($router);
+        $reflectionObject = new ReflectionObject($router);
         $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
         $reflectionProperty->setValue($router, [
             'run-id-1' => $process,
@@ -100,7 +101,7 @@ class RouterTest extends TestCase
         $process = $this->createMockProcess(true);
         $mockProcessToKeep = $this->createMockProcess(false); // Should not be terminated
 
-        $reflectionObject = new \ReflectionObject($router);
+        $reflectionObject = new ReflectionObject($router);
         $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
         $reflectionProperty->setValue($router, [
             'run-id-to-terminate' => $process,
@@ -139,7 +140,7 @@ class RouterTest extends TestCase
         $router = $this->createRouter();
 
         $mockProcess = $this->createMockProcess(false); // No terminate expected
-        $reflectionObject = new \ReflectionObject($router);
+        $reflectionObject = new ReflectionObject($router);
         $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
         $reflectionProperty->setValue($router, [
             'some-other-run-id' => $mockProcess,

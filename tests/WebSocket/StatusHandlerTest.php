@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\WebSocket;
 
+use ReflectionClass;
 use Exception;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -50,7 +51,7 @@ class StatusHandlerTest extends TestCase
         $this->statusHandler->onOpen($testConnection);
 
         // Use reflection to access the private connections property
-        $reflectionClass = new \ReflectionClass($this->statusHandler);
+        $reflectionClass = new ReflectionClass($this->statusHandler);
         $reflectionProperty = $reflectionClass->getProperty('connections');
         /** @var SplObjectStorage<ConnectionInterface, null> $connections */
         $connections = $reflectionProperty->getValue($this->statusHandler);
@@ -68,7 +69,7 @@ class StatusHandlerTest extends TestCase
 
         $statusHandler->onOpen($testConnection);
 
-        $reflectionClass = new \ReflectionClass($statusHandler);
+        $reflectionClass = new ReflectionClass($statusHandler);
         $reflectionProperty = $reflectionClass->getProperty('connections');
         /** @var SplObjectStorage<ConnectionInterface, null> $connections */
         $connections = $reflectionProperty->getValue($statusHandler);
@@ -102,7 +103,7 @@ class StatusHandlerTest extends TestCase
 
         $this->statusHandler->onClose($testConnection);
 
-        $reflectionClass = new \ReflectionClass($this->statusHandler);
+        $reflectionClass = new ReflectionClass($this->statusHandler);
         $reflectionProperty = $reflectionClass->getProperty('connections');
         /** @var SplObjectStorage<ConnectionInterface, null> $connections */
         $connections = $reflectionProperty->getValue($this->statusHandler);
@@ -120,7 +121,7 @@ class StatusHandlerTest extends TestCase
 
         $statusHandler->onClose($testConnection);
 
-        $reflectionClass = new \ReflectionClass($statusHandler);
+        $reflectionClass = new ReflectionClass($statusHandler);
         $reflectionProperty = $reflectionClass->getProperty('connections');
         /** @var SplObjectStorage<ConnectionInterface, null> $connections */
         $connections = $reflectionProperty->getValue($statusHandler);

@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\Discoverer;
 
+use ReflectionClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use Symfony\Component\Filesystem\Filesystem;
@@ -59,7 +60,7 @@ class TestDiscovererTest extends TestCase
 
     private function getPrivateProperty(object $object, string $propertyName): mixed
     {
-        $reflectionClass = new \ReflectionClass($object);
+        $reflectionClass = new ReflectionClass($object);
         $reflectionProperty = $reflectionClass->getProperty($propertyName);
         return $reflectionProperty->getValue($object);
     }

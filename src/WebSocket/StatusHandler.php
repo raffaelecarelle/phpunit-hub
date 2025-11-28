@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\WebSocket;
 
+use Ratchet\WebSocket\WsConnection;
 use Exception;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
@@ -21,7 +22,7 @@ class StatusHandler implements MessageComponentInterface
     public function onOpen(ConnectionInterface $conn): void
     {
         $this->connections->offsetSet($conn);
-        /** @var \Ratchet\WebSocket\WsConnection $conn */
+        /** @var WsConnection $conn */
         // @phpstan-ignore-next-line
         $this->output?->writeln(sprintf('New connection! (%s)', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }
@@ -34,7 +35,7 @@ class StatusHandler implements MessageComponentInterface
     public function onClose(ConnectionInterface $conn): void
     {
         $this->connections->offsetUnset($conn);
-        /** @var \Ratchet\WebSocket\WsConnection $conn */
+        /** @var WsConnection $conn */
         // @phpstan-ignore-next-line
         $this->output?->writeln(sprintf('Connection %s has disconnected', $conn->resourceId), OutputInterface::VERBOSITY_VERBOSE);
     }

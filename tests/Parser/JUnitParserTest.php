@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\Parser;
 
+use PHPUnit\Framework\ExpectationFailedException;
 use Exception;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Parser\JUnitParser;
@@ -133,7 +134,7 @@ class JUnitParserTest extends TestCase
                             'time' => 0.001,
                             'status' => 'failed',
                             'failure' => [
-                                'type' => \PHPUnit\Framework\ExpectationFailedException::class,
+                                'type' => ExpectationFailedException::class,
                                 'message' => 'Failed asserting that false is true.' . "\n" . '/path/to/FailedTest.php:12',
                             ],
                             'error' => null,
@@ -258,7 +259,7 @@ class JUnitParserTest extends TestCase
                             'time' => 0.001,
                             'status' => 'failed',
                             'failure' => [
-                                'type' => \PHPUnit\Framework\ExpectationFailedException::class,
+                                'type' => ExpectationFailedException::class,
                                 'message' => 'Failed.' . "\n" . '/path/to/MixedTest.php:17',
                             ],
                             'error' => null,

@@ -10,5 +10,6 @@ return (new PhpCsFixer\Config())
         '@PSR12' => true,
         '@PHP81Migration' => true,
         'no_unused_imports' => true,
+        'fully_qualified_strict_types' => true,
     ])
     ->setFinder($finder);

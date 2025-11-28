@@ -5,6 +5,7 @@ use Rector\Config\RectorConfig;
 return RectorConfig::configure()
     ->withPhpVersion(80100)
     ->withPaths(['src', 'tests'])
+    ->withImportNames()
     ->withSets([
         \Rector\Set\ValueObject\LevelSetList::UP_TO_PHP_81,
         \Rector\Set\ValueObject\SetList::CODE_QUALITY,

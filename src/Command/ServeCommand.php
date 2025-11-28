@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Command;
 
+use React\EventLoop\TimerInterface;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
@@ -158,7 +159,7 @@ class ServeCommand extends Command
                     $output->writeln(sprintf('<comment>File change detected: %s</comment>', $line));
                 }
 
-                if ($debounceTimer instanceof \React\EventLoop\TimerInterface) {
+                if ($debounceTimer instanceof TimerInterface) {
                     $loop->cancelTimer($debounceTimer);
                 }
 
