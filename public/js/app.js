@@ -79,9 +79,11 @@ export class App {
     }
 
     /**
-     * Run tests with options
+     * Internal method to run tests.
+     * Use runTests for public API.
+     * @private
      */
-    async runTests(runOptions = {}) {
+    async _runTests(runOptions = {}) {
         this.store.state.activeTab = 'results';
 
         // Filter out frontend-only options that PHPUnit doesn't understand
@@ -96,11 +98,23 @@ export class App {
         };
 
         try {
-            await this.api.runTests(payload);
+            // Decide whether to run in chunks
+            if (payload.filters.length > 10) { // Threshold for chunking
+                await this.api.runTestsInChunks(payload);
+            } else {
+                await this.api.runTests(payload);
+            }
         } catch (error) {
             console.error('Failed to run tests:', error);
             updateFavicon('failure');
         }
+    }
+
+    /**
+     * Run tests with options. This is the main entry point for running tests.
+     */
+    runTests(runOptions = {}) {
+        this._runTests(runOptions);
     }
 
     /**
@@ -276,7 +290,7 @@ export class App {
     getSingleRunResults(run) {
         if (!run) return null;
 
-        const summary = run.summary || {
+        const defaultSummary = {
             numberOfTests: 0,
             numberOfAssertions: 0,
             duration: 0,
@@ -287,6 +301,7 @@ export class App {
             numberOfDeprecations: 0,
             numberOfIncomplete: 0,
         };
+        const summary = { ...defaultSummary, ...(run.summary || {}) };
 
         // Transform suites data
         const transformedSuites = [];
