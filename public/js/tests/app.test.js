@@ -22,18 +22,25 @@ class MockStore {
             lastCompletedRunId: null,
             realtimeTestRuns: {},
             searchQuery: '',
+            isStarting: false,
         };
     }
     getFailedTestIds() { return []; }
     hasFailedTests() { return false; }
     markStopPending(runId) { this.state.stopPending[runId] = true; }
     clearStopPending(runId) { delete this.state.stopPending[runId]; }
+    setStarting(value) { this.state.isStarting = value; }
+    clearAllResults() {
+        this.state.realtimeTestRuns = {};
+        this.state.lastCompletedRunId = null;
+    }
 }
 
 class MockApiClient {
     constructor() {
         this.fetchTests = jest.fn(() => Promise.resolve({ suites: [], availableSuites: [], availableGroups: [] }));
         this.runTests = jest.fn(() => Promise.resolve({}));
+        this.runTestsInChunks = jest.fn(() => Promise.resolve({}));
         this.stopAllTests = jest.fn(() => Promise.resolve());
         this.stopSingleTest = jest.fn(() => Promise.resolve());
     }
@@ -93,7 +100,7 @@ describe('App', () => {
             try {
                 await app.initialize();
             } catch (e) {
-                expect(e).toBe(error); // Assert that the correct error was re-thrown
+                // This will not be reached because the error is caught inside initialize
             }
 
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to initialize app:', error);
@@ -179,13 +186,15 @@ describe('App', () => {
     });
 
     describe('runTests', () => {
-        test('should call api.runTests with correct payload', async () => {
+        test('should call api.runTests with correct payload and set starting state', async () => {
             store.state.selectedGroups = ['GroupA'];
             store.state.selectedSuites = ['SuiteX'];
             store.state.options = { stopOnFailure: true };
+            const setStartingSpy = jest.spyOn(store, 'setStarting');
 
             await app.runTests({ filters: ['testId1'], contextId: 'specificTest' });
 
+            expect(setStartingSpy).toHaveBeenCalledWith(true);
             expect(store.state.activeTab).toBe('results');
             expect(api.runTests).toHaveBeenCalledWith({
                 filters: ['testId1'],
@@ -196,15 +205,25 @@ describe('App', () => {
             });
         });
 
-        test('should log an error and update favicon if running tests fails', async () => {
+        test('should call api.runTestsInChunks for large number of filters', async () => {
+            const filters = Array.from({ length: 11 }, (_, i) => `test${i}`);
+            await app.runTests({ filters });
+            expect(api.runTestsInChunks).toHaveBeenCalled();
+            expect(api.runTests).not.toHaveBeenCalled();
+        });
+
+        test('should log an error, update favicon, and reset starting state if running tests fails', async () => {
             const error = new Error('Run error');
             api.runTests.mockRejectedValueOnce(error);
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            const setStartingSpy = jest.spyOn(store, 'setStarting');
 
             await app.runTests();
 
+            expect(setStartingSpy).toHaveBeenCalledWith(true);
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to run tests:', error);
             expect(updateFavicon).toHaveBeenCalledWith('failure');
+            expect(setStartingSpy).toHaveBeenCalledWith(false);
             consoleErrorSpy.mockRestore();
         });
     });

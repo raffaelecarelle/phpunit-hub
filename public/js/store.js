@@ -30,6 +30,7 @@ export class Store {
             
             // UI state
             isLoading: false,
+            isStarting: false,
             searchQuery: '',
             expandedSuites: new Set(),
             expandedTestcaseGroups: new Set(),
@@ -108,10 +109,15 @@ export class Store {
         this.state.options.displayMode = mode;
     }
 
+    setStarting(isStarting) {
+        this.state.isStarting = isStarting;
+    }
+
     /**
      * Initialize a new test run
      */
     initializeTestRun(runId, contextId) {
+        this.state.isStarting = false;
         // Determine if we should reset results
         // Always reset for 'global' runs in reset mode, or for 'failed' runs (to show only re-run tests)
         const shouldReset = (this.state.options.resultUpdateMode === 'reset' && contextId === 'global') ||
@@ -343,6 +349,7 @@ export class Store {
         delete this.state.runningTestIds[runId];
         delete this.state.stopPending[runId];
         this.updateSidebarAfterRun(runId);
+        this.state.isStarting = false;
         updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
     }
 
@@ -389,6 +396,7 @@ export class Store {
         }
         delete this.state.runningTestIds[runId];
         delete this.state.stopPending[runId];
+        this.state.isStarting = false;
         this.updateSidebarAfterRun(runId);
     }
 

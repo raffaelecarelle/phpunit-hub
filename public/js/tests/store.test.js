@@ -44,6 +44,7 @@ describe('Store', () => {
     test('should initialize with correct default state', () => {
         expect(store.state).toEqual({
             testSuites: [],
+            isStarting: false,
             availableSuites: [],
             availableGroups: [],
             searchQuery: '',

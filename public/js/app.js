@@ -84,6 +84,7 @@ export class App {
      * @private
      */
     async _runTests(runOptions = {}) {
+        this.store.setStarting(true);
         this.store.state.activeTab = 'results';
 
         // In update mode, clear results for "Run All" or "Run Failed"
@@ -114,6 +115,8 @@ export class App {
         } catch (error) {
             console.error('Failed to run tests:', error);
             updateFavicon('failure');
+        } finally {
+            this.store.setStarting(false);
         }
     }
 
@@ -242,6 +245,8 @@ export class App {
     getComputedValues() {
         return {
             isAnyTestRunning: computed(() => {
+                console.log(this.store.state.isStarting);
+                if (this.store.state.isStarting) return true;
                 // Check if there are any tests running
                 const runningCount = Object.keys(this.store.state.runningTestIds).length;
                 if (runningCount === 0) return false;
