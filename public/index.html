@@ -342,7 +342,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="w-28 text-right flex-shrink-0 pr-3">
-                                                    <span class="text-sm text-gray-400">{{ testcase.time?.toFixed(4) }}s</span>
+                                                    <span class="text-sm text-gray-400">{{ formatDuration(testcase.time) }}s</span>
                                                 </div>
                                             </div>
                                             <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name"
@@ -379,7 +379,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="w-28 text-right flex-shrink-0 pr-3">
-                                                    <span class="text-sm text-gray-400">{{ testcase.time.toFixed(4) }}s</span>
+                                                    <span class="text-sm text-gray-400">{{ formatDuration(testcase.time) }}s</span>
                                                 </div>
                                             </div>
                                             <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name" class="bg-gray-900 p-4 space-y-3">
