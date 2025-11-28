@@ -87,7 +87,7 @@ export class App {
         this.store.state.activeTab = 'results';
 
         // Filter out frontend-only options that PHPUnit doesn't understand
-        const { resultUpdateMode, ...phpunitOptions } = this.store.state.options;
+        const { resultUpdateMode, displayMode, ...phpunitOptions } = this.store.state.options;
 
         const payload = {
             filters: runOptions.filters || [],
@@ -253,6 +253,7 @@ export class App {
             hasFailedTests: computed(() => this.store.hasFailedTests()),
             results: computed(() => this.getResults()),
             groupedResults: computed(() => this.getGroupedResults()),
+            individualResults: computed(() => this.getIndividualResults()),
             statusCounts: computed(() => this.getStatusCounts()),
             filteredTestSuites: computed(() => this.getFilteredTestSuites()),
         };
@@ -573,9 +574,9 @@ export class App {
 
         sortedGroups.forEach(group => {
             group.testcases.sort((a, b) => {
+                const durationA = a.duration || 0;
+                const durationB = b.duration || 0;
                 if (this.store.state.sortBy === 'duration') {
-                    const durationA = a.duration || 0;
-                    const durationB = b.duration || 0;
                     if (durationA !== durationB) {
                         return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
                     }
@@ -586,11 +587,61 @@ export class App {
                 if (statusA !== statusB) {
                     return statusA - statusB;
                 }
-                return a.name.localeCompare(b.name);
+                return durationB - durationA;
             });
         });
 
         return sortedGroups;
+    }
+
+    /**
+     * Get individual results, sorted by time
+     */
+    getIndividualResults() {
+        const results = this.getResults();
+        if (!results) return [];
+
+        let allTests = [];
+        results.suites.forEach(suite => {
+            allTests.push(...suite.testcases);
+        });
+
+        // Filter based on options
+        allTests = allTests.filter(t => {
+            if (t.status === 'skipped' && !this.store.state.options.displaySkipped) return false;
+            if (t.status === 'incomplete' && !this.store.state.options.displayIncomplete) return false;
+            if (t.warnings?.length > 0 && !this.store.state.options.displayWarnings) {
+                // if it's just a warning and we hide them, don't show if it passed
+                if (t.status === 'passed') return false;
+            }
+            if (t.deprecations?.length > 0 && !this.store.state.options.displayDeprecations) {
+                if (t.status === 'passed') return false;
+            }
+            return true;
+        });
+
+        // Sort by duration, descending
+        allTests.sort((a, b) => {
+            const durationA = a.duration || 0;
+            const durationB = b.duration || 0;
+
+            if (this.store.state.sortBy === 'duration') {
+                if (durationA !== durationB) {
+                    return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
+                }
+            }
+
+            const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'skipped': 4, 'warning': 5, 'deprecation': 6, 'passed': 7 };
+            const statusA = statusOrder[a.status || 'passed'] || 99;
+            const statusB = statusOrder[b.status || 'passed'] || 99;
+            if (statusA !== statusB) {
+                return statusA - statusB;
+            }
+
+            return durationB - durationA; // Default to duration descending if statuses are equal
+        });
+
+        return allTests;
     }
 
     /**

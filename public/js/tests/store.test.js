@@ -57,6 +57,7 @@ describe('Store', () => {
             selectedSuites: [],
             selectedGroups: [],
             options: {
+                displayMode: 'default',
                 displayWarnings: true,
                 resultUpdateMode: 'update',
                 displayDeprecations: true,

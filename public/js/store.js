@@ -37,6 +37,7 @@ export class Store {
                 stopOnFailure: false,
                 stopOnWarning: false,
                 resultUpdateMode: 'update', // 'update' (append/merge) or 'reset' (clear all)
+                displayMode: 'default', // 'default' or 'individual'
             },
             
             // Test runs
@@ -54,6 +55,10 @@ export class Store {
             this.state.sortBy = sortBy;
             this.state.sortDirection = 'desc';
         }
+    }
+
+    setDisplayMode(mode) {
+        this.state.options.displayMode = mode;
     }
 
     /**
