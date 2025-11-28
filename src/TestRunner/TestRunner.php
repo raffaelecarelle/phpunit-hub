@@ -40,7 +40,11 @@ class TestRunner
             $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
         }
 
-        $command = escapeshellcmd($phpunitPath)
+        // We use `exec` to replace the shell process with the phpunit process.
+        // This ensures that when we call `terminate()` on the ReactPHP Process object,
+        // the signal is sent directly to `phpunit` rather than the intermediate shell,
+        // preventing orphaned processes.
+        $command = 'exec ' . escapeshellcmd($phpunitPath)
             . ' --configuration ' . escapeshellarg($phpunitXmlPath);
 
         // Always enable colors
