@@ -89,6 +89,7 @@ describe('Store', () => {
                 executionEnded: false,
                 suites: {},
                 summary: null,
+                sumOfDurations: 0,
                 failedTestIds: new Set(),
             });
             expect(store.state.runningTestIds[runId]).toBe(true);
@@ -203,7 +204,7 @@ describe('Store', () => {
         test('should call handleTestFinished for test.finished event', () => {
             const eventData = { event: 'test.finished', data: { test: 'SuiteA::testMethod', duration: 0.1 } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestFinished).toHaveBeenCalledWith(run, eventData);
+            expect(store.handleTestFinished).toHaveBeenCalledWith(run, eventData, 'run123');
         });
 
         test('should call handleExecutionEnded for execution.ended event', () => {

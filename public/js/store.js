@@ -62,7 +62,7 @@ export class Store {
     initializeTestRun(runId, contextId) {
         // Determine if we should reset results
         // Always reset for 'global' runs in reset mode, or for 'failed' runs (to show only re-run tests)
-        const shouldReset = this.state.options.resultUpdateMode === 'reset' ||
+        const shouldReset = (this.state.options.resultUpdateMode === 'reset' && contextId === 'global') ||
                           contextId === 'failed';
 
         this.state.realtimeTestRuns[runId] = {
@@ -72,6 +72,7 @@ export class Store {
             summary: null,
             failedTestIds: new Set(),
             executionEnded: false,
+            sumOfDurations: 0,
         };
         this.state.runningTestIds[runId] = true;
         delete this.state.stopPending[runId];
@@ -124,7 +125,7 @@ export class Store {
                 this.handleTestCompleted(run, eventData, runId);
                 break;
             case 'test.finished':
-                this.handleTestFinished(run, eventData);
+                this.handleTestFinished(run, eventData, runId);
                 break;
             case 'execution.ended':
                 this.handleExecutionEnded(run, eventData, runId);
@@ -261,7 +262,7 @@ export class Store {
         }
     }
 
-    handleTestFinished(run, eventData) {
+    handleTestFinished(run, eventData, runId) {
         const { suiteName } = parseTestId(eventData.data.test);
         const testId = eventData.data.test;
 
@@ -269,6 +270,13 @@ export class Store {
             const test = run.suites[suiteName].tests[testId];
             test.duration = eventData.data.duration;
             test.assertions = eventData.data.assertions;
+            run.sumOfDurations += test.duration;
+
+            // Also update the sidebar with the final duration.
+            // The status might have already been set by handleTestCompleted.
+            if (test.status) {
+                this.updateSidebarTestStatus(suiteName, testId, test.status, test.duration, runId);
+            }
         }
     }
 

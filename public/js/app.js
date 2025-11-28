@@ -333,7 +333,7 @@ export class App {
             summary: {
                 tests: summary.numberOfTests,
                 assertions: summary.numberOfAssertions,
-                time: summary.duration,
+                time: run.sumOfDurations > 0 ? run.sumOfDurations : summary.duration,
                 failures: summary.numberOfFailures,
                 errors: summary.numberOfErrors,
                 warnings: summary.numberOfWarnings,
