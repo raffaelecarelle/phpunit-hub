@@ -4,7 +4,21 @@ declare(strict_types=1);
 
 namespace PhpUnitHub\PHPUnit;
 
+use PHPUnit\Event\Test\PreparedSubscriber;
+use Closure;
+use PHPUnit\Event\Test\PassedSubscriber;
+use PHPUnit\Event\Test\FailedSubscriber;
+use PHPUnit\Event\Test\ErroredSubscriber;
+use PHPUnit\Event\Test\SkippedSubscriber;
+use PHPUnit\Event\Test\MarkedIncompleteSubscriber;
+use PHPUnit\Event\Test\WarningTriggeredSubscriber;
+use PHPUnit\Event\Test\DeprecationTriggeredSubscriber;
+use PHPUnit\Event\Test\PhpDeprecationTriggeredSubscriber;
+use PHPUnit\Event\Test\PhpWarningTriggeredSubscriber;
+use PHPUnit\Event\TestSuite\StartedSubscriber;
+use PHPUnit\Event\TestRunner\FinishedSubscriber;
 use PHPUnit\Event\Test\DeprecationTriggered;
+use PHPUnit\Event\Test\Finished;
 use PHPUnit\Event\Test\PhpDeprecationTriggered;
 use PHPUnit\Event\Test\PhpWarningTriggered;
 use PHPUnit\Runner\Extension\Facade;
@@ -21,6 +35,7 @@ use PHPUnit\Runner\Extension\Extension;
 use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use PHPUnit\TestRunner\TestResult\Facade as TestResultFacade;
+use PHPUnit\Event\Test\FinishedSubscriber as TestFinishedSubscriber;
 
 class PhpUnitHubExtension implements Extension
 {
@@ -32,8 +47,8 @@ class PhpUnitHubExtension implements Extension
         };
 
         // Register individual subscribers for each event type
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PreparedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements PreparedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -46,8 +61,8 @@ class PhpUnitHubExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PassedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements PassedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -56,12 +71,12 @@ class PhpUnitHubExtension implements Extension
 
             public function notify(Passed $event): void
             {
-                ($this->writeEvent)('test.passed', ['test' => $event->test()->id(), 'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds()]);
+                ($this->writeEvent)('test.passed', ['test' => $event->test()->id()]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\FailedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements FailedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -74,13 +89,12 @@ class PhpUnitHubExtension implements Extension
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\ErroredSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements ErroredSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -93,13 +107,12 @@ class PhpUnitHubExtension implements Extension
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\SkippedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements SkippedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -111,13 +124,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.skipped', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\MarkedIncompleteSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements MarkedIncompleteSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -129,13 +141,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.incomplete', [
                     'test' => $event->test()->id(),
                     'message' => $event->throwable()->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\WarningTriggeredSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements WarningTriggeredSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -147,13 +158,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.warning', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\DeprecationTriggeredSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements DeprecationTriggeredSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -165,13 +175,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.deprecation', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PhpDeprecationTriggeredSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements PhpDeprecationTriggeredSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -183,13 +192,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.deprecation', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\Test\PhpWarningTriggeredSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements PhpWarningTriggeredSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -201,13 +209,12 @@ class PhpUnitHubExtension implements Extension
                 ($this->writeEvent)('test.warning', [
                     'test' => $event->test()->id(),
                     'message' => $event->message(),
-                    'time' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\TestSuite\StartedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements StartedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -225,8 +232,8 @@ class PhpUnitHubExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements \PHPUnit\Event\TestRunner\FinishedSubscriber {
-            private readonly \Closure $writeEvent;
+        $facade->registerSubscriber(new class ($writeEvent) implements FinishedSubscriber {
+            private readonly Closure $writeEvent;
 
             public function __construct(callable $writeEvent)
             {
@@ -250,6 +257,24 @@ class PhpUnitHubExtension implements Extension
                         'numberOfDeprecations' => $testResult->numberOfPhpOrUserDeprecations(),
                         'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                     ],
+                ]);
+            }
+        });
+
+        $facade->registerSubscriber(new class ($writeEvent) implements TestFinishedSubscriber {
+            private readonly Closure $writeEvent;
+
+            public function __construct(callable $writeEvent)
+            {
+                $this->writeEvent = $writeEvent(...);
+            }
+
+            public function notify(Finished $event): void
+            {
+                ($this->writeEvent)('test.finished', [
+                    'test' => $event->test()->id(),
+                    'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
+                    'assertions' => $event->numberOfAssertionsPerformed(),
                 ]);
             }
         });

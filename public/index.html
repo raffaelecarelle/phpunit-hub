@@ -242,7 +242,7 @@
                                 </div>
                                 <div>
                                     <div class="text-sm text-gray-400">Duration</div>
-                                    <div class="text-2xl font-bold">{{ formatDuration(results?.summary.time) }}</div>
+                                    <div class="text-2xl font-bold">{{ formatNanoseconds(results?.summary.time) }}</div>
                                 </div>
                             </div>
                             <div class="flex justify-center flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -342,7 +342,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="w-28 text-right flex-shrink-0 pr-3">
-                                                    <span class="text-sm text-gray-400">{{ formatDuration(testcase.time) }}s</span>
+                                                    <span class="text-sm" :class="{'text-yellow-400': (testcase.duration / 1000000000) > 0.5 }">{{ formatNanoseconds(testcase.duration) }}</span>
                                                 </div>
                                             </div>
                                             <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name"
@@ -379,7 +379,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="w-28 text-right flex-shrink-0 pr-3">
-                                                    <span class="text-sm text-gray-400">{{ formatDuration(testcase.time) }}s</span>
+                                                    <span class="text-sm" :class="{'text-yellow-400': (testcase.duration / 1000000000) > 0.5}">{{ formatNanoseconds(testcase.duration) }}</span>
                                                 </div>
                                             </div>
                                             <div v-if="store.state.expandedTestId === testcase.class + '::' + testcase.name" class="bg-gray-900 p-4 space-y-3">
@@ -455,7 +455,7 @@
                     toggleFilterPanel: () => app.store.toggleFilterPanel(),
                     isTestRunning: (runId) => app.store.state.runningTestIds[runId] === true,
                     isTestStopPending: (runId) => app.store.state.stopPending[runId] === true,
-                    formatDuration: (nanoseconds) => {
+                    formatNanoseconds: (nanoseconds) => {
                         if (nanoseconds === undefined || nanoseconds === null) {
                             return '0.00ms';
                         }

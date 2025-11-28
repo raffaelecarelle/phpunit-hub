@@ -52,6 +52,8 @@ describe('Store', () => {
             expandedTestId: null,
             showFilterPanel: false,
             activeTab: 'results',
+            sortBy: 'default',
+            sortDirection: 'desc',
             selectedSuites: [],
             selectedGroups: [],
             options: {
@@ -164,6 +166,7 @@ describe('Store', () => {
             jest.spyOn(store, 'handleTestPrepared');
             jest.spyOn(store, 'handleTestWarningOrDeprecation');
             jest.spyOn(store, 'handleTestCompleted');
+            jest.spyOn(store, 'handleTestFinished');
             jest.spyOn(store, 'handleExecutionEnded');
         });
 
@@ -195,6 +198,12 @@ describe('Store', () => {
             const eventData = { event: 'test.passed', data: { test: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
             expect(store.handleTestCompleted).toHaveBeenCalledWith(run, eventData, runId);
+        });
+
+        test('should call handleTestFinished for test.finished event', () => {
+            const eventData = { event: 'test.finished', data: { test: 'SuiteA::testMethod', duration: 0.1 } };
+            store.handleTestEvent(runId, eventData);
+            expect(store.handleTestFinished).toHaveBeenCalledWith(run, eventData);
         });
 
         test('should call handleExecutionEnded for execution.ended event', () => {
@@ -248,9 +257,10 @@ describe('Store', () => {
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod']).toEqual({
                 id: 'SuiteA::testMethod',
                 name: 'testMethod',
+                assertions: 0,
                 class: 'SuiteA',
                 status: 'running',
-                time: null, message: null, trace: null,
+                duration: null, message: null, trace: null,
                 warnings: [], deprecations: [],
             });
             expect(store.state.testSuites[0].methods[0].status).toBe('running');
@@ -323,7 +333,7 @@ describe('Store', () => {
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {
-                    [testId]: { id: testId, status: 'running', warnings: [], deprecations: [] }
+                    [testId]: { id: testId, status: 'running', warnings: [], deprecations: [], duration: null }
                 },
                 passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0, hasIssues: false,
             };
@@ -331,17 +341,15 @@ describe('Store', () => {
         });
 
         test('should update test status and suite counts for passed test', () => {
-            const eventData = { event: 'test.passed', data: { test: testId, time: 0.5 } };
+            const eventData = { event: 'test.passed', data: { test: testId } };
             store.handleTestCompleted(run, eventData, runId);
 
             const test = run.suites['SuiteA'].tests[testId];
             expect(test.status).toBe('passed');
-            expect(test.time).toBe(0.5);
             expect(run.suites['SuiteA'].passed).toBe(1);
             expect(run.failedTestIds.has(testId)).toBe(false);
             expect(run.suites['SuiteA'].hasIssues).toBe(false);
             expect(store.state.testSuites[0].methods[0].status).toBe('passed');
-            expect(store.state.testSuites[0].methods[0].time).toBe(0.5);
             expect(store.state.testSuites[0].methods[0].runId).toBeNull();
         });
 
@@ -427,6 +435,27 @@ describe('Store', () => {
         });
     });
 
+    describe('handleTestFinished', () => {
+        let run;
+        const testId = 'SuiteA::testMethod';
+        beforeEach(() => {
+            store.initializeTestRun('run123', 'global');
+            run = store.state.realtimeTestRuns[runId];
+            run.suites['SuiteA'] = {
+                name: 'SuiteA',
+                tests: {
+                    [testId]: { id: testId, duration: null }
+                }
+            };
+        });
+
+        test('should update the duration of a test', () => {
+            const eventData = { event: 'test.finished', data: { test: testId, duration: 1.23 } };
+            store.handleTestFinished(run, eventData);
+            expect(run.suites['SuiteA'].tests[testId].duration).toBe(1.23);
+        });
+    });
+
     describe('handleExecutionEnded', () => {
         let run;
         const runId = 'run123';
@@ -459,15 +488,15 @@ describe('Store', () => {
 
         beforeEach(() => {
             store.state.testSuites = [
-                { id: suiteId, methods: [{ id: testId, status: null, time: null, runId: null }] }
+                { id: suiteId, methods: [{ id: testId, status: null, duration: null, runId: null }] }
             ];
         });
 
-        test('should update status, time, and runId for a matching test', () => {
+        test('should update status, duration, and runId for a matching test', () => {
             store.updateSidebarTestStatus(suiteId, testId, 'running', 1.23, runId);
             const method = store.state.testSuites[0].methods[0];
             expect(method.status).toBe('running');
-            expect(method.time).toBe(1.23);
+            expect(method.duration).toBe(1.23);
             expect(method.runId).toBe(runId);
         });
 
@@ -490,15 +519,15 @@ describe('Store', () => {
     describe('resetSidebarTestStatuses', () => {
         beforeEach(() => {
             store.state.testSuites = [
-                { id: 'SuiteA', methods: [{ id: 'test1', status: 'passed', time: 0.5, runId: 'run1' }] },
-                { id: 'SuiteB', methods: [{ id: 'test2', status: 'failed', time: 1.0, runId: 'run1' }] },
+                { id: 'SuiteA', methods: [{ id: 'test1', status: 'passed', duration: 0.5, runId: 'run1' }] },
+                { id: 'SuiteB', methods: [{ id: 'test2', status: 'failed', duration: 1.0, runId: 'run1' }] },
             ];
         });
 
-        test('should reset status, time, and runId for all tests in sidebar', () => {
+        test('should reset status, duration, and runId for all tests in sidebar', () => {
             store.resetSidebarTestStatuses();
-            expect(store.state.testSuites[0].methods[0]).toEqual({ id: 'test1', status: null, time: null, runId: null });
-            expect(store.state.testSuites[1].methods[0]).toEqual({ id: 'test2', status: null, time: null, runId: null });
+            expect(store.state.testSuites[0].methods[0]).toEqual({ id: 'test1', status: null, duration: null, runId: null });
+            expect(store.state.testSuites[1].methods[0]).toEqual({ id: 'test2', status: null, duration: null, runId: null });
         });
     });
 

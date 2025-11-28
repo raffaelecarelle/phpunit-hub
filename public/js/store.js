@@ -21,6 +21,8 @@ export class Store {
             expandedTestId: null,
             showFilterPanel: false,
             activeTab: 'results',
+            sortBy: 'default', // 'default' or 'duration'
+            sortDirection: 'desc', // 'asc' or 'desc'
             
             // Filter options
             selectedSuites: [],
@@ -44,6 +46,16 @@ export class Store {
             lastCompletedRunId: null,
         });
     }
+
+    setSortBy(sortBy) {
+        if (this.state.sortBy === sortBy) {
+            this.state.sortDirection = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.state.sortBy = sortBy;
+            this.state.sortDirection = 'desc';
+        }
+    }
+
     /**
      * Initialize a new test run
      */
@@ -111,6 +123,9 @@ export class Store {
             case 'test.incomplete':
                 this.handleTestCompleted(run, eventData, runId);
                 break;
+            case 'test.finished':
+                this.handleTestFinished(run, eventData);
+                break;
             case 'execution.ended':
                 this.handleExecutionEnded(run, eventData, runId);
                 break;
@@ -165,7 +180,8 @@ export class Store {
             name: testName,
             class: suiteName,
             status: 'running',
-            time: null,
+            duration: null,
+            assertions: 0,
             message: null,
             trace: null,
             warnings: [],
@@ -211,7 +227,6 @@ export class Store {
             const status = eventData.event.replace('test.', '');
             
             test.status = status;
-            test.time = eventData.data.time;
             test.message = eventData.data.message || null;
             test.trace = eventData.data.trace || null;
 
@@ -242,7 +257,18 @@ export class Store {
             }
 
             // Update sidebar
-            this.updateSidebarTestStatus(suiteName, testId, status, eventData.data.time, runId);
+            this.updateSidebarTestStatus(suiteName, testId, status, test.duration, runId);
+        }
+    }
+
+    handleTestFinished(run, eventData) {
+        const { suiteName } = parseTestId(eventData.data.test);
+        const testId = eventData.data.test;
+
+        if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
+            const test = run.suites[suiteName].tests[testId];
+            test.duration = eventData.data.duration;
+            test.assertions = eventData.data.assertions;
         }
     }
 
@@ -269,7 +295,7 @@ export class Store {
                 suite.methods?.forEach(method => {
                     if (method.id === testId) {
                         method.status = status;
-                        if (time !== null) method.time = time;
+                        if (time !== null) method.duration = time;
                         if (runId) method.runId = runId;
                         if (status !== 'running') {
                             method.runId = null;
@@ -287,7 +313,7 @@ export class Store {
         this.state.testSuites.forEach(suite => {
             suite.methods?.forEach(method => {
                 method.status = null;
-                method.time = null;
+                method.duration = null;
                 method.runId = null;
             });
         });

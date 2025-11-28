@@ -314,7 +314,8 @@ export class App {
                     name: testData.name,
                     class: testData.class,
                     id: testData.id,
-                    time: testData.time || 0,
+                    duration: testData.duration || 0,
+                    assertions: testData.assertions || 0,
                     status: testData.status,
                     message: testData.message,
                     trace: testData.trace,
@@ -383,7 +384,6 @@ export class App {
                         runIds: []
                     };
                 }
-
                 const suiteData = run.suites[suiteName];
                 for (const testId in suiteData.tests) {
                     // Track if this is a new test or an override
@@ -411,7 +411,6 @@ export class App {
             // For assertions and duration, we need to accumulate from each unique run
             // For other stats, we'll recalculate from merged tests
             if (run.summary && run.status === 'finished') {
-                mergedSummary.numberOfAssertions += run.summary.numberOfAssertions || 0;
                 mergedSummary.duration += run.summary.duration || 0;
             }
         }
@@ -427,7 +426,8 @@ export class App {
                     name: testData.name,
                     class: testData.class,
                     id: testData.id,
-                    time: testData.time || 0,
+                    duration: testData.duration || 0,
+                    assertions: testData.assertions || 0,
                     status: testData.status,
                     message: testData.message,
                     trace: testData.trace,
@@ -454,8 +454,8 @@ export class App {
         return {
             summary: {
                 tests: calculatedSummary.tests,
-                assertions: mergedSummary.numberOfAssertions,
-                time: mergedSummary.duration !== 0 ? mergedSummary.duration : calculatedSummary.time,
+                assertions: calculatedSummary.assertions,
+                time: calculatedSummary.time,
                 failures: calculatedSummary.failures,
                 errors: calculatedSummary.errors,
                 warnings: calculatedSummary.warnings,
@@ -486,7 +486,7 @@ export class App {
         suites.forEach(suite => {
             suite.testcases.forEach(tc => {
                 summary.tests++;
-                summary.time += tc.time || 0;
+                summary.time += tc.duration || 0;
                 summary.assertions += tc.assertions || 0;
 
                 if (tc.status === 'failed') summary.failures++;
@@ -573,6 +573,14 @@ export class App {
 
         sortedGroups.forEach(group => {
             group.testcases.sort((a, b) => {
+                if (this.store.state.sortBy === 'duration') {
+                    const durationA = a.duration || 0;
+                    const durationB = b.duration || 0;
+                    if (durationA !== durationB) {
+                        return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
+                    }
+                }
+
                 const statusA = statusOrder[a.status || 'passed'] || 99;
                 const statusB = statusOrder[b.status || 'passed'] || 99;
                 if (statusA !== statusB) {

@@ -33,7 +33,7 @@ class MockStore {
 class MockApiClient {
     constructor() {
         this.fetchTests = jest.fn(() => Promise.resolve({ suites: [], availableSuites: [], availableGroups: [] }));
-        this.runTests = jest.fn(() => Promise.resolve());
+        this.runTests = jest.fn(() => Promise.resolve({}));
         this.stopAllTests = jest.fn(() => Promise.resolve());
         this.stopSingleTest = jest.fn(() => Promise.resolve());
     }
@@ -381,7 +381,7 @@ describe('App', () => {
                     {
                         name: 'SuiteA',
                         testcases: [
-                            { id: 'test1', name: 'testMethod', class: 'ClassA', time: 0, status: 'passed', message: undefined, trace: undefined, warnings: [], deprecations: [] }
+                            { id: 'test1', name: 'testMethod',  assertions: 0, class: 'ClassA', duration: 0, status: 'passed', message: undefined, trace: undefined, warnings: [], deprecations: [] }
                         ]
                     }
                 ]
@@ -409,7 +409,7 @@ describe('App', () => {
             // The original test expected results.summary.numberOfTests to be 2,
             // but the mock data for run2 only specifies numberOfTests: 2 in summary,
             // and the getResults method transforms it to 'tests'.
-            // Also, the suites transformation sets time to 0 if not present.
+            // Also, the suites transformation sets duration to 0 if not present.
             expect(results.summary.tests).toBe(2);
             expect(results.suites[0].name).toBe('SuiteB');
         });
