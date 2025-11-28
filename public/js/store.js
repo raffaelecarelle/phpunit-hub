@@ -257,6 +257,7 @@ export class Store {
         delete this.state.runningTestIds[runId];
         delete this.state.stopPending[runId];
         this.updateSidebarAfterRun(runId);
+        updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
     }
 
     /**
