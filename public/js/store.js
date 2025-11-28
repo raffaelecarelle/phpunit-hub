@@ -50,7 +50,12 @@ export class Store {
 
     setSortBy(sortBy) {
         if (this.state.sortBy === sortBy) {
-            this.state.sortDirection = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
+            if (this.state.sortDirection === 'desc') {
+                this.state.sortDirection = 'asc';
+            } else {
+                this.state.sortBy = 'default';
+                this.state.sortDirection = 'desc';
+            }
         } else {
             this.state.sortBy = sortBy;
             this.state.sortDirection = 'desc';

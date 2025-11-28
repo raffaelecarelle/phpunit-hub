@@ -27,7 +27,7 @@
                     <button
                         @click="toggleFilterPanel"
                         class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
-                        Filters
+                        Filters / Settings
                     </button>
                     <div v-show="store.state.showFilterPanel"
                          @click.stop
@@ -306,6 +306,18 @@
                             <!-- Individual Test Results -->
                             <template v-if="!isAnyTestRunning && store.state.options.displayMode === 'individual'">
                                 <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                                    <!-- Header -->
+                                    <div class="flex items-center p-3 bg-gray-700/50 text-xs text-gray-400 uppercase font-semibold">
+                                        <div class="w-28 flex-shrink-0 pl-3">Status</div>
+                                        <div class="flex-grow">Test Case</div>
+                                        <div class="w-28 text-right flex-shrink-0 pr-3 cursor-pointer" @click="app.store.setSortBy('duration')">
+                                            Duration
+                                            <span v-if="store.state.sortBy === 'duration'">
+                                                <span v-if="store.state.sortDirection === 'asc'">▲</span>
+                                                <span v-else>▼</span>
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div class="divide-y divide-gray-700">
                                         <div v-for="testcase in individualResults"
                                              :key="'individual-test-' + testcase.id"

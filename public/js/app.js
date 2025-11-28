@@ -626,9 +626,7 @@ export class App {
             const durationB = b.duration || 0;
 
             if (this.store.state.sortBy === 'duration') {
-                if (durationA !== durationB) {
-                    return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
-                }
+                return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
             }
 
             const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'skipped': 4, 'warning': 5, 'deprecation': 6, 'passed': 7 };
