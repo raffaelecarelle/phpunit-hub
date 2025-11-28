@@ -499,7 +499,7 @@
     </div>
 
     <script type="module">
-        import { createApp, onMounted } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
+        import { createApp, onMounted, watch } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
         import { App } from './js/app.js';
 
         const app = new App();
@@ -516,6 +516,11 @@
                         }
                     });
                 });
+
+                // Watch for changes in filters and options, and save them to localStorage
+                watch(() => [app.store.state.options, app.store.state.selectedSuites, app.store.state.selectedGroups], (newState, oldState) => {
+                    app.store.saveState();
+                }, { deep: true });
 
                 return {
                     app,

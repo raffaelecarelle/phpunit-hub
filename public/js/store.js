@@ -5,6 +5,8 @@
 import { reactive } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
 import {parseTestId, updateFavicon} from './utils.js';
 
+const STORAGE_KEY = 'phpunit-hub-settings';
+
 export class Store {
     constructor() {
         this.state = reactive({
@@ -46,6 +48,44 @@ export class Store {
             realtimeTestRuns: {},
             lastCompletedRunId: null,
         });
+
+        this.loadState();
+    }
+
+    /**
+     * Load state from localStorage
+     */
+    loadState() {
+        const savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) {
+            try {
+                const parsedState = JSON.parse(savedState);
+                if (parsedState.options) {
+                    this.state.options = { ...this.state.options, ...parsedState.options };
+                }
+                if (Array.isArray(parsedState.selectedSuites)) {
+                    this.state.selectedSuites = parsedState.selectedSuites;
+                }
+                if (Array.isArray(parsedState.selectedGroups)) {
+                    this.state.selectedGroups = parsedState.selectedGroups;
+                }
+            } catch (e) {
+                console.error('Failed to load state from localStorage', e);
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+    }
+
+    /**
+     * Save state to localStorage
+     */
+    saveState() {
+        const stateToSave = {
+            options: this.state.options,
+            selectedSuites: this.state.selectedSuites,
+            selectedGroups: this.state.selectedGroups,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     }
 
     setSortBy(sortBy) {
