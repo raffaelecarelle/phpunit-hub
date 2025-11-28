@@ -549,15 +549,30 @@ export class App {
             });
         });
 
+        const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'skipped': 4, 'warning': 5, 'deprecation': 6, 'passed': 7 };
+
+        // Determine suite status
+        Object.values(groups).forEach(group => {
+            let highestPriorityStatus = statusOrder['passed']; // Start with the lowest priority
+            group.testcases.forEach(tc => {
+                const tcStatus = tc.status || 'passed';
+                const priority = statusOrder[tcStatus];
+                if (priority && priority < highestPriorityStatus) {
+                    highestPriorityStatus = priority;
+                }
+            });
+            group.suiteStatus = highestPriorityStatus;
+        });
+
         const sortedGroups = Object.values(groups).sort((a, b) => {
-            if (a.hasIssues && !b.hasIssues) return -1;
-            if (!a.hasIssues && b.hasIssues) return 1;
+            if (a.suiteStatus !== b.suiteStatus) {
+                return a.suiteStatus - b.suiteStatus;
+            }
             return a.className.localeCompare(b.className);
         });
 
         sortedGroups.forEach(group => {
             group.testcases.sort((a, b) => {
-                const statusOrder = { 'failed': 1, 'errored': 2, 'warning': 3, 'deprecation': 4, 'skipped': 5, 'incomplete': 6, 'passed': 7 };
                 const statusA = statusOrder[a.status || 'passed'] || 99;
                 const statusB = statusOrder[b.status || 'passed'] || 99;
                 if (statusA !== statusB) {
