@@ -86,6 +86,13 @@ export class App {
     async _runTests(runOptions = {}) {
         this.store.state.activeTab = 'results';
 
+        // In update mode, clear results for "Run All" or "Run Failed"
+        if (this.store.state.options.resultUpdateMode === 'update') {
+            if (runOptions.contextId === 'global' || runOptions.contextId === 'failed') {
+                this.store.clearAllResults();
+            }
+        }
+
         // Filter out frontend-only options that PHPUnit doesn't understand
         const { resultUpdateMode, displayMode, ...phpunitOptions } = this.store.state.options;
 
