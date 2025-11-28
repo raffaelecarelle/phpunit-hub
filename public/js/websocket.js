@@ -108,7 +108,6 @@ export class WebSocketManager {
      * Handle test exit event
      */
     handleTestExit(message) {
-        this.store.finishTestRun(message.runId);
         this.updateFaviconFromRun(message.runId);
     }
 

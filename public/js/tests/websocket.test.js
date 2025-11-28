@@ -25,7 +25,6 @@ class MockStore {
         };
         this.initializeTestRun = jest.fn();
         this.handleTestEvent = jest.fn();
-        this.finishTestRun = jest.fn();
         this.stopTestRun = jest.fn();
         this.clearRunningTests = jest.fn();
         this.getTestRun = jest.fn((runId) => this.state.realtimeTestRuns[runId]);
@@ -129,7 +128,6 @@ describe('WebSocketManager', () => {
             const message = { type: 'exit', runId: '123' };
             const updateFaviconSpy = jest.spyOn(wsManager, 'updateFaviconFromRun');
             wsManager.handleMessage(message);
-            expect(store.finishTestRun).toHaveBeenCalledWith('123');
             expect(updateFaviconSpy).toHaveBeenCalledWith('123');
         });
 

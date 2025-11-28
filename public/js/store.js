@@ -3,7 +3,7 @@
  */
 
 import { reactive } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
-import { parseTestId } from './utils.js';
+import {parseTestId, updateFavicon} from './utils.js';
 
 export class Store {
     constructor() {
@@ -98,7 +98,7 @@ export class Store {
                 this.handleSuiteStarted(run, eventData);
                 break;
             case 'test.prepared':
-                this.handleTestPrepared(run, eventData);
+                this.handleTestPrepared(run, eventData, runId);
                 break;
             case 'test.warning':
             case 'test.deprecation':
@@ -140,7 +140,7 @@ export class Store {
     /**
      * Handle test.prepared event
      */
-    handleTestPrepared(run, eventData) {
+    handleTestPrepared(run, eventData, runId) {
         const { suiteName, testName } = parseTestId(eventData.data.test);
         
         if (!run.suites[suiteName]) {
@@ -173,7 +173,7 @@ export class Store {
         };
 
         // Update sidebar
-        this.updateSidebarTestStatus(suiteName, eventData.data.test, 'running');
+        this.updateSidebarTestStatus(suiteName, eventData.data.test, 'running', null, runId);
     }
 
     /**
@@ -252,7 +252,11 @@ export class Store {
     handleExecutionEnded(run, eventData, runId) {
         run.summary = eventData.data.summary;
         run.executionEnded = true;
+        run.status = 'finished';
         this.state.lastCompletedRunId = runId;
+        delete this.state.runningTestIds[runId];
+        delete this.state.stopPending[runId];
+        this.updateSidebarAfterRun(runId);
     }
 
     /**
@@ -266,6 +270,9 @@ export class Store {
                         method.status = status;
                         if (time !== null) method.time = time;
                         if (runId) method.runId = runId;
+                        if (status !== 'running') {
+                            method.runId = null;
+                        }
                     }
                 });
             }
@@ -283,19 +290,6 @@ export class Store {
                 method.runId = null;
             });
         });
-    }
-
-    /**
-     * Finish a test run
-     */
-    finishTestRun(runId) {
-        const run = this.state.realtimeTestRuns[runId];
-        if (run) {
-            run.status = 'finished';
-        }
-        delete this.state.runningTestIds[runId];
-        delete this.state.stopPending[runId];
-        this.updateSidebarAfterRun(runId);
     }
 
     /**
@@ -445,5 +439,6 @@ export class Store {
         this.state.expandedTestId = null;
         this.state.expandedTestcaseGroups = new Set();
         this.resetSidebarTestStatuses();
+        updateFavicon('neutral');
     }
 }
