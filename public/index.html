@@ -25,7 +25,7 @@
             <div class="flex items-center space-x-4">
                 <div class="relative">
                     <button
-                        @click="toggleFilterPanel"
+                        @click.stop="toggleFilterPanel"
                         class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
                         Filters / Settings
                     </button>
@@ -510,6 +510,11 @@
 
                 onMounted(async () => {
                     await app.initialize();
+                    document.addEventListener('click', () => {
+                        if (app.store.state.showFilterPanel) {
+                            app.store.toggleFilterPanel();
+                        }
+                    });
                 });
 
                 return {
