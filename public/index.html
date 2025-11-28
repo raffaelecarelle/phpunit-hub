@@ -32,9 +32,12 @@
                     <div v-show="store.state.showFilterPanel"
                          @click.stop
                          class="filter-panel-dropdown bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-md font-semibold text-white mb-3">Advanced Filters</h3>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-white">Filters & Settings</h3>
+                            <button @click="app.store.clearFilters()" class="text-sm text-blue-400 hover:text-blue-300">Clear Filters</button>
+                        </div>
 
-                        <div class="form-group mb-4">
+                        <div class="form-group">
                             <label for="group-filter" class="block text-sm font-medium text-gray-300 mb-1">Test Groups</label>
                             <select id="group-filter"
                                     v-model="store.state.selectedGroups"
@@ -44,7 +47,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group mb-4">
+                        <div class="form-group">
                             <label for="filter-suite" class="block text-sm font-medium text-gray-300 mb-1">Test Suites</label>
                             <select id="filter-suite"
                                     v-model="store.state.selectedSuites"
@@ -54,13 +57,13 @@
                             </select>
                         </div>
 
-                        <div class="form-group mb-4">
+                        <div class="form-group">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Result Update Mode</label>
                             <div class="space-y-2">
                                 <label class="flex items-center text-sm">
                                     <input type="radio" v-model="store.state.options.resultUpdateMode" value="update" class="mr-2">
                                     Update (append/merge new test results)
-                                </label>
+                                 </label>
                                 <label class="flex items-center text-sm">
                                     <input type="radio" v-model="store.state.options.resultUpdateMode" value="reset" class="mr-2">
                                     Reset (clear all results on each run)
@@ -68,7 +71,7 @@
                             </div>
                         </div>
 
-                        <div class="form-group mb-4">
+                        <div class="form-group">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Display Mode</label>
                             <div class="space-y-2">
                                 <label class="flex items-center text-sm">
@@ -82,9 +85,9 @@
                             </div>
                         </div>
 
-                        <div class="form-group mb-4">
+                        <div class="form-group">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Output Options</label>
-                            <div class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
                                 <label class="flex items-center text-sm">
                                     <input type="checkbox" v-model="store.state.options.displayWarnings" class="mr-2">
                                     Show Warnings

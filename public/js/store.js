@@ -8,6 +8,19 @@ import {parseTestId, updateFavicon} from './utils.js';
 const STORAGE_KEY = 'phpunit-hub-settings';
 
 export class Store {
+    static defaultOptions = {
+        displayWarnings: true,
+        displayDeprecations: true,
+        displaySkipped: true,
+        displayIncomplete: true,
+        stopOnDefect: false,
+        stopOnError: false,
+        stopOnFailure: false,
+        stopOnWarning: false,
+        resultUpdateMode: 'update', // 'update' (append/merge) or 'reset' (clear all)
+        displayMode: 'default', // 'default' or 'individual'
+    };
+    
     constructor() {
         this.state = reactive({
             // Test suites
@@ -29,18 +42,7 @@ export class Store {
             // Filter options
             selectedSuites: [],
             selectedGroups: [],
-            options: {
-                displayWarnings: true,
-                displayDeprecations: true,
-                displaySkipped: true,
-                displayIncomplete: true,
-                stopOnDefect: false,
-                stopOnError: false,
-                stopOnFailure: false,
-                stopOnWarning: false,
-                resultUpdateMode: 'update', // 'update' (append/merge) or 'reset' (clear all)
-                displayMode: 'default', // 'default' or 'individual'
-            },
+            options: { ...Store.defaultOptions },
             
             // Test runs
             runningTestIds: {},
@@ -525,5 +527,14 @@ export class Store {
         this.state.expandedTestcaseGroups = new Set();
         this.resetSidebarTestStatuses();
         updateFavicon('neutral');
+    }
+
+    /**
+     * Clear all filters
+     */
+    clearFilters() {
+        this.state.selectedSuites = [];
+        this.state.selectedGroups = [];
+        this.state.options = { ...Store.defaultOptions };
     }
 }
