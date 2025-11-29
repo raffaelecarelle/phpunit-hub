@@ -106,12 +106,7 @@ export class App {
         };
 
         try {
-            // Decide whether to run in chunks
-            if (payload.filters.length > 10) { // Threshold for chunking
-                await this.api.runTestsInChunks(payload);
-            } else {
-                await this.api.runTests(payload);
-            }
+            await this.api.runTests(payload);
         } catch (error) {
             console.error('Failed to run tests:', error);
             updateFavicon('failure');
