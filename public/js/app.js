@@ -245,7 +245,6 @@ export class App {
     getComputedValues() {
         return {
             isAnyTestRunning: computed(() => {
-                console.log(this.store.state.isStarting);
                 if (this.store.state.isStarting) return true;
                 // Check if there are any tests running
                 const runningCount = Object.keys(this.store.state.runningTestIds).length;
