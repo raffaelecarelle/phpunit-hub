@@ -44,38 +44,6 @@ export class ApiClient {
     }
 
     /**
-     * Run tests in chunks to avoid large request bodies.
-     */
-    async runTestsInChunks(payload, chunkSize = 10) {
-        const tests = payload.tests || [];
-        if (tests.length === 0) {
-            return this.runTests(payload);
-        }
-
-        const chunks = [];
-        for (let i = 0; i < tests.length; i += chunkSize) {
-            chunks.push(tests.slice(i, i + chunkSize));
-        }
-
-        const results = [];
-        for (const chunk of chunks) {
-            const chunkPayload = { ...payload, tests: chunk };
-            try {
-                const result = await this.runTests(chunkPayload);
-                results.push(result);
-            } catch (error) {
-                console.error('Failed to run a chunk of tests:', error);
-                // Decide if you want to stop on the first error or continue
-                // For now, we continue
-            }
-        }
-
-        // Aggregate results if necessary, or just return the last one
-        // For now, we return the result of the last chunk
-        return results.length > 0 ? results[results.length - 1] : null;
-    }
-
-    /**
      * Stop all tests
      */
     async stopAllTests() {

@@ -40,7 +40,6 @@ class MockApiClient {
     constructor() {
         this.fetchTests = jest.fn(() => Promise.resolve({ suites: [], availableSuites: [], availableGroups: [] }));
         this.runTests = jest.fn(() => Promise.resolve({}));
-        this.runTestsInChunks = jest.fn(() => Promise.resolve({}));
         this.stopAllTests = jest.fn(() => Promise.resolve());
         this.stopSingleTest = jest.fn(() => Promise.resolve());
     }
@@ -203,13 +202,6 @@ describe('App', () => {
                 options: { stopOnFailure: true, colors: true },
                 contextId: 'specificTest',
             });
-        });
-
-        test('should call api.runTestsInChunks for large number of filters', async () => {
-            const filters = Array.from({ length: 11 }, (_, i) => `test${i}`);
-            await app.runTests({ filters });
-            expect(api.runTestsInChunks).toHaveBeenCalled();
-            expect(api.runTests).not.toHaveBeenCalled();
         });
 
         test('should log an error, update favicon, and reset starting state if running tests fails', async () => {

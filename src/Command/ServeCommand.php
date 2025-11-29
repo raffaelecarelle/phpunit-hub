@@ -6,7 +6,7 @@ use React\EventLoop\TimerInterface;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
-use PhpUnitHub\Http\CustomHttpServer;
+use PhpUnitHub\Http\DecoratedHttpServer;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
 use React\ChildProcess\Process;
@@ -64,9 +64,9 @@ class ServeCommand extends Command
             $port
         );
 
-        $customHttpServer = new CustomHttpServer($router, 1024 * 1024); // 1MB max request size
+        $decoratedHttpServer = new DecoratedHttpServer($router, 1024 * 1024); // 1MB max request size
         $socketServer = new SocketServer($host . ':' . $port, [], $this->loop);
-        $ioServer = new IoServer($customHttpServer, $socketServer, $this->loop);
+        $ioServer = new IoServer($decoratedHttpServer, $socketServer, $this->loop);
 
         if ($watch) {
             $this->startFileWatcher($this->loop, $output, $router);
