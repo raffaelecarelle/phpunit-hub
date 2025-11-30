@@ -45,7 +45,8 @@ class TestRunner
         // This ensures that when we call `terminate()` on the ReactPHP Process object,
         // the signal is sent directly to `phpunit` rather than the intermediate shell,
         // preventing orphaned processes.
-        $command = 'exec ' . escapeshellcmd($phpunitPath)
+        // We also increase the memory limit, as code coverage can be memory-intensive.
+        $command = 'exec php -d memory_limit=-1 ' . escapeshellcmd($phpunitPath)
             . ' --configuration ' . escapeshellarg($phpunitXmlPath);
 
         // Always enable colors
@@ -83,7 +84,7 @@ class TestRunner
         }
 
         if ($coverage) {
-            $command .= ' --coverage-xml ' . escapeshellarg(getcwd() . '/coverage-xml');
+            $command .= ' --coverage-clover ' . escapeshellarg(getcwd() . '/clover.xml');
         }
 
         $process = new Process($command);

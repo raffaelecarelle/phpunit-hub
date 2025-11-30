@@ -512,9 +512,9 @@
                     </div>
                 </div>
                 <div v-show="store.state.activeTab === 'coverage'">
-                    <div v-if="isAnyTestRunning && store.state.coverage" class="flex justify-center items-center pt-10">
+                    <div v-if="store.state.isCoverageLoading" class="flex flex-col justify-center items-center pt-10">
                         <div class="spinner-big"></div>
-                        <span class="ml-4 text-gray-400">Generating coverage report...</span>
+                        <div class="mt-4 text-gray-400">Generating coverage report...</div>
                     </div>
                     <div v-else-if="!store.state.coverageReport || store.state.coverageReport.files.length === 0" class="text-gray-500 text-center pt-10">
                         Run tests with coverage enabled to see the report.

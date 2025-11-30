@@ -54,6 +54,7 @@ export class Store {
 
             // Coverage
             coverageReport: null,
+            isCoverageLoading: false,
         });
 
         this.loadState();
@@ -556,5 +557,9 @@ export class Store {
 
     setCoverageReport(report) {
         this.state.coverageReport = report;
+    }
+
+    setCoverageLoading(isLoading) {
+        this.state.isCoverageLoading = isLoading;
     }
 }

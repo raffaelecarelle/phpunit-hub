@@ -549,7 +549,7 @@ class Router implements RouterInterface
 
     private function getCoverage(string $runId): GuzzleResponse
     {
-        $coveragePath = getcwd() . '/coverage-xml/index.xml';
+        $coveragePath = getcwd() . '/clover.xml';
         $coverage = new Coverage($coveragePath);
         $data = $coverage->parse();
 

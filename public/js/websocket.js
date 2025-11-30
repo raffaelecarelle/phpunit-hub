@@ -100,6 +100,10 @@ export class WebSocketManager {
         try {
             const event = JSON.parse(message.data);
             this.store.handleTestEvent(message.runId, event);
+
+            if (event.event === 'execution.ended' && this.store.state.coverage) {
+                this.store.setCoverageLoading(true);
+            }
         } catch (error) {
             console.error('Failed to parse realtime event:', error, message.data);
         }
@@ -110,7 +114,6 @@ export class WebSocketManager {
      */
     handleTestExit(message) {
         this.updateFaviconFromRun(message.runId);
-        console.log(this.store.state.coverage);
         if (this.store.state.coverage) {
             this.app.fetchCoverageReport(message.runId);
         }

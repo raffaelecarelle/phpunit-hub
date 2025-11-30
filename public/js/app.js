@@ -704,6 +704,8 @@ export class App {
             this.store.setCoverageReport(report);
         } catch (error) {
             console.error('Failed to fetch coverage report:', error);
+        } finally {
+            this.store.setCoverageLoading(false);
         }
     }
 
