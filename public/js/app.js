@@ -23,16 +23,16 @@ export class App {
         try {
             // Fetch tests
             await this.fetchTests();
-            
+
             // Connect WebSocket
             const wsHost = window.WS_HOST || '127.0.0.1';
             const wsPort = window.WS_PORT || '8080';
-            this.wsManager = new WebSocketManager(`ws://${wsHost}:${wsPort}/ws/status`, this.store);
+            this.wsManager = new WebSocketManager(`ws://${wsHost}:${wsPort}/ws/status`, this.store, this);
             await this.wsManager.connect();
-            
+
             // Setup resizer
             this.setupResizer();
-            
+
             // Update favicon
             updateFavicon('neutral');
         } catch (error) {
@@ -50,7 +50,7 @@ export class App {
             this.store.state.testSuites = data.suites;
             this.store.state.availableSuites = data.availableSuites || [];
             this.store.state.availableGroups = data.availableGroups || [];
-            
+
             // Build test index
             this.buildTestIndex();
         } catch (error) {
@@ -102,6 +102,7 @@ export class App {
             groups: this.store.state.selectedGroups,
             suites: this.store.state.selectedSuites,
             options: { ...phpunitOptions, colors: true },
+            coverage: this.store.state.coverage,
             contextId: runOptions.contextId || 'global',
         };
 
@@ -202,7 +203,7 @@ export class App {
     setupResizer() {
         const resizer = document.getElementById('resizer');
         const sidebar = document.getElementById('test-sidebar');
-        
+
         if (!resizer || !sidebar) return;
 
         let isResizing = false;
@@ -695,5 +696,25 @@ export class App {
             }
             return null;
         }).filter(Boolean);
+    }
+
+    async fetchCoverageReport(runId) {
+        try {
+            const report = await this.api.fetchCoverage(runId);
+            this.store.setCoverageReport(report);
+        } catch (error) {
+            console.error('Failed to fetch coverage report:', error);
+        }
+    }
+
+    async showFileContent(filePath) {
+        try {
+            const content = await this.api.fetchFileContent(filePath);
+            // This is a simplified version. A real implementation would
+            // open a modal or a new view to show the file content with highlighting.
+            alert(content);
+        } catch (error) {
+            console.error('Failed to fetch file content:', error);
+        }
     }
 }

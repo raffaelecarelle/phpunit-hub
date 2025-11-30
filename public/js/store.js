@@ -20,14 +20,14 @@ export class Store {
         resultUpdateMode: 'update', // 'update' (append/merge) or 'reset' (clear all)
         displayMode: 'default', // 'default' or 'individual'
     };
-    
+
     constructor() {
         this.state = reactive({
             // Test suites
             testSuites: [],
             availableSuites: [],
             availableGroups: [],
-            
+
             // UI state
             isLoading: false,
             isStarting: false,
@@ -39,17 +39,21 @@ export class Store {
             activeTab: 'results',
             sortBy: 'default', // 'default' or 'duration'
             sortDirection: 'desc', // 'asc' or 'desc'
-            
+
             // Filter options
             selectedSuites: [],
             selectedGroups: [],
             options: { ...Store.defaultOptions },
-            
+            coverage: false,
+
             // Test runs
             runningTestIds: {},
             stopPending: {},
             realtimeTestRuns: {},
             lastCompletedRunId: null,
+
+            // Coverage
+            coverageReport: null,
         });
 
         this.loadState();
@@ -121,7 +125,7 @@ export class Store {
         // Determine if we should reset results
         // Always reset for 'global' runs in reset mode, or for 'failed' runs (to show only re-run tests)
         const shouldReset = (this.state.options.resultUpdateMode === 'reset' && contextId === 'global') ||
-                          contextId === 'failed';
+            contextId === 'failed';
 
         this.state.realtimeTestRuns[runId] = {
             status: 'running',
@@ -216,7 +220,7 @@ export class Store {
      */
     handleTestPrepared(run, eventData, runId) {
         const { suiteName, testName } = parseTestId(eventData.data.test);
-        
+
         if (!run.suites[suiteName]) {
             run.suites[suiteName] = {
                 name: suiteName,
@@ -284,7 +288,7 @@ export class Store {
         if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
             const test = run.suites[suiteName].tests[testId];
             const status = eventData.event.replace('test.', '');
-            
+
             test.status = status;
             test.message = eventData.data.message || null;
             test.trace = eventData.data.trace || null;
@@ -544,5 +548,13 @@ export class Store {
         this.state.selectedSuites = [];
         this.state.selectedGroups = [];
         this.state.options = { ...Store.defaultOptions };
+    }
+
+    setActiveTab(tab) {
+        this.state.activeTab = tab;
+    }
+
+    setCoverageReport(report) {
+        this.state.coverageReport = report;
     }
 }

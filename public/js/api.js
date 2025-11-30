@@ -78,4 +78,38 @@ export class ApiClient {
             throw error;
         }
     }
+
+    /**
+     * Fetch coverage report
+     */
+    async fetchCoverage(runId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/coverage/${runId}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch coverage report');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch coverage report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Fetch file content
+     */
+    async fetchFileContent(filePath) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/file-content?path=${encodeURIComponent(filePath)}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch file content');
+            }
+            return await response.text();
+        } catch (error) {
+            console.error('Failed to fetch file content:', error);
+            throw error;
+        }
+    }
 }

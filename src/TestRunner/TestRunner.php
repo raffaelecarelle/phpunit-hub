@@ -28,9 +28,10 @@ class TestRunner
      * @param string[] $groups An array of test groups to run.
      * @param string[] $suites An array of test suites to run.
      * @param array<string, bool> $options An associative array of boolean PHPUnit CLI options (e.g., ['--stop-on-failure' => true]).
+     * @param bool $coverage Whether to run with code coverage.
      * @return Process The ReactPHP child process.
      */
-    public function run(array $filters = [], array $groups = [], array $suites = [], array $options = []): Process
+    public function run(array $filters = [], array $groups = [], array $suites = [], array $options = [], bool $coverage = false): Process
     {
         $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
 
@@ -79,6 +80,10 @@ class TestRunner
                 // Assuming the option name from the frontend matches the PHPUnit CLI flag
                 $command .= ' ' . escapeshellarg($option);
             }
+        }
+
+        if ($coverage) {
+            $command .= ' --coverage-xml ' . escapeshellarg(getcwd() . '/coverage-xml');
         }
 
         $process = new Process($command);

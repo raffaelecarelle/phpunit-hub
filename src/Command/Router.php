@@ -5,6 +5,7 @@ namespace PhpUnitHub\Command;
 use Exception;
 use GuzzleHttp\Psr7\Message;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
+use PhpUnitHub\Coverage\Coverage;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
@@ -105,6 +106,7 @@ class Router implements RouterInterface
             /** @var array<string, bool> $options */
             $options = [];
             $isRerun = false;
+            $coverage = false;
 
             if ($path === '/api/run') {
                 $body = $request?->getBody()->getContents();
@@ -113,6 +115,7 @@ class Router implements RouterInterface
                 $groups = $payload['groups'] ?? [];
                 $suites = $payload['suites'] ?? [];
                 $options = $payload['options'] ?? [];
+                $coverage = $payload['coverage'] ?? false;
                 $contextId = $payload['contextId'] ?? null; // Get contextId from payload
                 $this->lastFilters = $filters;
                 $this->lastSuites = $suites;
@@ -139,7 +142,7 @@ class Router implements RouterInterface
                 $contextId = $payload['contextId'] ?? 'failed';
             }
 
-            $runId = $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId);
+            $runId = $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage);
             $jsonResponse = json_encode(['message' => 'Test run started.', 'runId' => $runId]);
             if ($jsonResponse === false) {
                 $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.']));
@@ -153,6 +156,15 @@ class Router implements RouterInterface
             $parts = explode('/', (string) $path);
             $runId = end($parts);
             $response = $this->stopSingleTest($runId);
+        } elseif (str_starts_with((string) $path, '/api/coverage/') && $method === 'GET') {
+            $parts = explode('/', (string) $path);
+            $runId = end($parts);
+            $response = $this->getCoverage($runId);
+        } elseif ($path === '/api/file-content' && $method === 'GET') {
+            $queryParams = [];
+            parse_str($request?->getUri()->getQuery(), $queryParams);
+            $filePath = $queryParams['path'] ?? null;
+            $response = $this->getFileContent($filePath);
         } else {
             $filePath = $this->publicPath . $path;
             if ($path === '/') {
@@ -188,9 +200,10 @@ class Router implements RouterInterface
      * @param string[] $groups
      * @param array<string, bool> $options
      * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
+     * @param bool $coverage
      * @return string The runId of the started test process.
      */
-    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null): string
+    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): string
     {
         $runId = Uuid::uuid4()->toString();
 
@@ -200,6 +213,7 @@ class Router implements RouterInterface
             'groups' => $groups,
             'options' => $options,
             'contextId' => $contextId, // Store contextId
+            'coverage' => $coverage,
         ];
 
         $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
@@ -211,7 +225,7 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($filters, $groups, $suites, $options);
+        $process = $this->testRunner->run($filters, $groups, $suites, $options, $coverage);
 
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
@@ -333,7 +347,7 @@ class Router implements RouterInterface
             }
 
             // Clear running process/runId state
-            unset($this->runningProcesses[$runId], $this->runContexts[$runId], $this->lastRunSummaries[$runId]);
+            unset($this->runningProcesses[$runId]);
         });
 
         return $runId;
@@ -531,5 +545,38 @@ class Router implements RouterInterface
                 $this->output->writeln(sprintf('<info>Notification sent for run #%s: "%s - %s"</info>', $runId, $notificationTitle, $notificationMessage));
             }
         });
+    }
+
+    private function getCoverage(string $runId): GuzzleResponse
+    {
+        $coveragePath = getcwd() . '/coverage-xml/index.xml';
+        $coverage = new Coverage($coveragePath);
+        $data = $coverage->parse();
+
+        if (empty($data)) {
+            return new GuzzleResponse(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'Coverage report not found or failed to parse.']));
+        }
+
+        return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data));
+    }
+
+    private function getFileContent(?string $filePath): GuzzleResponse
+    {
+        if ($filePath === null) {
+            return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'File path not provided.']));
+        }
+
+        $realPath = realpath($filePath);
+        if ($realPath === false || !str_starts_with($realPath, getcwd())) {
+            return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.']));
+        }
+
+        if (!file_exists($realPath)) {
+            return new GuzzleResponse(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'File not found.']));
+        }
+
+        $content = file_get_contents($realPath);
+
+        return new GuzzleResponse(200, ['Content-Type' => 'text/plain'], $content);
     }
 }
