@@ -64,7 +64,7 @@ class ServeCommand extends Command
             $port
         );
 
-        $decoratedHttpServer = new DecoratedHttpServer($router, 1024 * 1024); // 1MB max request size
+        $decoratedHttpServer = new DecoratedHttpServer($router, 50 * 1024 * 1024); // 50MB max request size
         $socketServer = new SocketServer($host . ':' . $port, [], $this->loop);
         $ioServer = new IoServer($decoratedHttpServer, $socketServer, $this->loop);
 
