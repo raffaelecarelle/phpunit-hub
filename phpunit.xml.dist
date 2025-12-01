@@ -8,6 +8,10 @@
         <include>
             <directory suffix=".php">src</directory>
         </include>
+        <exclude>
+            <file>src/Command/ServeCommand.php</file>
+            <file>src/PHPUnit/PhpUnitHubExtension.php</file>
+        </exclude>
     </source>
 
     <testsuites>

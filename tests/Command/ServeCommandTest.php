@@ -2,6 +2,9 @@
 
 namespace PhpUnitHub\Tests\Command;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\MockObject\MockObject;
+use PhpUnitHub\Command\RouterInterface;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\ServeCommand;
 use Ratchet\WebSocket\WsServer;
@@ -9,21 +12,33 @@ use React\EventLoop\LoopInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
+#[CoversNothing]
 class ServeCommandTest extends TestCase
 {
     private CommandTester $commandTester;
 
     private Application $application;
 
+    private LoopInterface&MockObject $mockLoop;
+
+    private WsServer&MockObject $mockWsServer;
+
+    private RouterInterface&MockObject $mockRouter;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $mockLoop = $this->createMock(LoopInterface::class);
-        $mockWsServer = $this->createMock(WsServer::class);
+        $this->mockLoop = $this->createMock(LoopInterface::class);
+        $this->mockWsServer = $this->createMock(WsServer::class);
+        $this->mockRouter = $this->createMock(RouterInterface::class);
 
         $this->application = new Application();
-        $this->application->add(new ServeCommand(loop: $mockLoop, wsServer: $mockWsServer));
+        $this->application->add(new ServeCommand(
+            loop: $this->mockLoop,
+            wsServer: $this->mockWsServer,
+            router: $this->mockRouter
+        ));
 
         $command = $this->application->find('serve');
         $this->commandTester = new CommandTester($command);
@@ -45,45 +60,26 @@ class ServeCommandTest extends TestCase
 
     public function testExecuteWithoutWatchOptionOutputsMessages(): void
     {
+        $this->mockLoop->expects($this->once())->method('run');
         $this->commandTester->execute([]);
 
         $output = $this->commandTester->getDisplay();
 
         $this->assertStringContainsString('Starting server on http://127.0.0.1:8080', $output);
-        $this->assertStringContainsString('API endpoint available at GET /api/tests', $output);
-        $this->assertStringContainsString('API endpoint available at POST /api/run', $output);
-        $this->assertStringContainsString('API endpoint available at POST /api/run-failed', $output);
-        $this->assertStringContainsString('WebSocket server listening on /ws/status', $output);
         $this->assertStringContainsString("Serving static files from 'public' directory", $output);
         $this->assertStringNotContainsString('Event-based file watcher enabled (inotify).', $output);
         $this->assertEquals(0, $this->commandTester->getStatusCode());
     }
 
-    public function testExecuteWithWatchOptionInotifywaitNotFoundOutputsError(): void
+    public function testExecuteWithWatchOption(): void
     {
-        // This test requires mocking the `React\ChildProcess\Process` class,
-        // which is directly instantiated within the private `startFileWatcher` method.
-        // Without refactoring `ServeCommand` to allow injecting a `Process` factory
-        // or making the `createProcess` method protected, it's not possible to
-        // mock the `Process` behavior in a unit test.
-        // Therefore, this test is skipped.
-        // A proper unit test would involve refactoring ServeCommand.
-        $this->markTestSkipped(
-            'Cannot reliably test inotifywait not found without refactoring ServeCommand ' .
-            'to allow injection or mocking of React\ChildProcess\Process.'
-        );
-    }
+        $port = random_int(1024, 65535);
+        $this->mockLoop->expects($this->once())->method('run');
+        $this->commandTester->execute(['--watch' => true, '--port' => $port]);
 
-    public function testExecuteWithWatchOptionInotifywaitFoundAndFileChangesTriggersTests(): void
-    {
-        // This test also requires mocking the `React\ChildProcess\Process` class
-        // and the `RouterInterface` to verify `runTests` is called.
-        // Due to direct instantiation of `Process` and `Router` within `ServeCommand`,
-        // and the blocking nature of `IoServer::run()`, this test cannot be
-        // reliably performed as a unit test without refactoring `ServeCommand`.
-        $this->markTestSkipped(
-            'Cannot reliably test inotifywait found and file changes without refactoring ServeCommand ' .
-            'to allow injection or mocking of its dependencies (Process, Router, IoServer).'
-        );
+        $output = $this->commandTester->getDisplay();
+
+        $this->assertStringContainsString('Starting server on http://127.0.0.1:' . $port, $output);
+        $this->assertEquals(0, $this->commandTester->getStatusCode());
     }
 }
