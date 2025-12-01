@@ -4,7 +4,6 @@ namespace PhpUnitHub\Tests\Util;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\Util\Composer;
 use Symfony\Component\Filesystem\Filesystem;
 

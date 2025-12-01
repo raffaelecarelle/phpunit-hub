@@ -19,7 +19,7 @@ class TestDiscoverer
 
     public function __construct(
         private readonly string $projectRoot,
-        private readonly PhpUnitCommandExecutor $commandExecutor = new PhpUnitCommandExecutor()
+        private readonly PhpUnitCommandExecutor $phpUnitCommandExecutor = new PhpUnitCommandExecutor()
     ) {
         $this->configFile = $this->findConfigFile();
         $this->phpunitPath = Composer::getComposerBinDir($projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
@@ -67,7 +67,7 @@ class TestDiscoverer
     private function executePhpUnitCommand(string $command): array
     {
         $fullCommand = 'cd ' . escapeshellarg($this->projectRoot) . ' && ' . escapeshellcmd($this->phpunitPath) . ' ' . $command;
-        $output = $this->commandExecutor->execute($fullCommand);
+        $output = $this->phpUnitCommandExecutor->execute($fullCommand);
         if ($output === null) {
             return [];
         }

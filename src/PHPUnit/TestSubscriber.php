@@ -33,6 +33,7 @@ use PHPUnit\Event\TestRunner\FinishedSubscriber as TestRunnerFinishedSubscriber;
 use PHPUnit\Event\TestSuite\Started as TestSuiteStarted;
 use PHPUnit\Event\TestSuite\StartedSubscriber as TestSuiteStartedSubscriber;
 use PHPUnit\TestRunner\TestResult\Facade as TestResultFacade;
+
 use function fwrite;
 use function json_encode;
 
@@ -52,6 +53,7 @@ class TestSubscriber implements
     TestFinishedSubscriber
 {
     private readonly Closure $writeEvent;
+
     private readonly Closure $formatTestId;
 
     public function __construct()
@@ -68,8 +70,10 @@ class TestSubscriber implements
                     $formattedDataSet = json_encode($dataSet, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
                     return $methodName . PHP_EOL . $formattedDataSet;
                 }
+
                 return sprintf('%s with data set %s', $methodName, $dataSetName);
             }
+
             return $testId;
         };
     }
@@ -94,93 +98,93 @@ class TestSubscriber implements
         };
     }
 
-    private function handlePrepared(Prepared $event): void
+    private function handlePrepared(Prepared $prepared): void
     {
-        ($this->writeEvent)('test.prepared', ['test' => ($this->formatTestId)($event->test()->name())]);
+        ($this->writeEvent)('test.prepared', ['test' => ($this->formatTestId)($prepared->test()->name())]);
     }
 
-    private function handlePassed(Passed $event): void
+    private function handlePassed(Passed $passed): void
     {
-        ($this->writeEvent)('test.passed', ['test' => ($this->formatTestId)($event->test()->name())]);
+        ($this->writeEvent)('test.passed', ['test' => ($this->formatTestId)($passed->test()->name())]);
     }
 
-    private function handleFailed(Failed $event): void
+    private function handleFailed(Failed $failed): void
     {
         ($this->writeEvent)('test.failed', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->throwable()->message(),
-            'trace' => $event->throwable()->stackTrace(),
+            'test' => ($this->formatTestId)($failed->test()->name()),
+            'message' => $failed->throwable()->message(),
+            'trace' => $failed->throwable()->stackTrace(),
         ]);
     }
 
-    private function handleErrored(Errored $event): void
+    private function handleErrored(Errored $errored): void
     {
         ($this->writeEvent)('test.errored', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->throwable()->message(),
-            'trace' => $event->throwable()->stackTrace(),
+            'test' => ($this->formatTestId)($errored->test()->name()),
+            'message' => $errored->throwable()->message(),
+            'trace' => $errored->throwable()->stackTrace(),
         ]);
     }
 
-    private function handleSkipped(Skipped $event): void
+    private function handleSkipped(Skipped $skipped): void
     {
         ($this->writeEvent)('test.skipped', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->message(),
+            'test' => ($this->formatTestId)($skipped->test()->name()),
+            'message' => $skipped->message(),
         ]);
     }
 
-    private function handleMarkedIncomplete(MarkedIncomplete $event): void
+    private function handleMarkedIncomplete(MarkedIncomplete $markedIncomplete): void
     {
         ($this->writeEvent)('test.incomplete', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->throwable()->message(),
+            'test' => ($this->formatTestId)($markedIncomplete->test()->name()),
+            'message' => $markedIncomplete->throwable()->message(),
         ]);
     }
 
-    private function handleWarningTriggered(WarningTriggered $event): void
+    private function handleWarningTriggered(WarningTriggered $warningTriggered): void
     {
         ($this->writeEvent)('test.warning', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->message(),
+            'test' => ($this->formatTestId)($warningTriggered->test()->name()),
+            'message' => $warningTriggered->message(),
         ]);
     }
 
-    private function handleDeprecationTriggered(DeprecationTriggered $event): void
+    private function handleDeprecationTriggered(DeprecationTriggered $deprecationTriggered): void
     {
         ($this->writeEvent)('test.deprecation', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->message(),
+            'test' => ($this->formatTestId)($deprecationTriggered->test()->name()),
+            'message' => $deprecationTriggered->message(),
         ]);
     }
 
-    private function handlePhpDeprecationTriggered(PhpDeprecationTriggered $event): void
+    private function handlePhpDeprecationTriggered(PhpDeprecationTriggered $phpDeprecationTriggered): void
     {
         ($this->writeEvent)('test.deprecation', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->message(),
+            'test' => ($this->formatTestId)($phpDeprecationTriggered->test()->name()),
+            'message' => $phpDeprecationTriggered->message(),
         ]);
     }
 
-    private function handlePhpWarningTriggered(PhpWarningTriggered $event): void
+    private function handlePhpWarningTriggered(PhpWarningTriggered $phpWarningTriggered): void
     {
         ($this->writeEvent)('test.warning', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'message' => $event->message(),
+            'test' => ($this->formatTestId)($phpWarningTriggered->test()->name()),
+            'message' => $phpWarningTriggered->message(),
         ]);
     }
 
-    private function handleTestSuiteStarted(TestSuiteStarted $event): void
+    private function handleTestSuiteStarted(TestSuiteStarted $testSuiteStarted): void
     {
-        if ($event->testSuite()->isForTestClass()) {
+        if ($testSuiteStarted->testSuite()->isForTestClass()) {
             ($this->writeEvent)('suite.started', [
-                'name' => $event->testSuite()->name(),
-                'count' => $event->testSuite()->tests()->count(),
+                'name' => $testSuiteStarted->testSuite()->name(),
+                'count' => $testSuiteStarted->testSuite()->tests()->count(),
             ]);
         }
     }
 
-    private function handleTestRunnerFinished(TestRunnerFinished $event): void
+    private function handleTestRunnerFinished(TestRunnerFinished $testRunnerFinished): void
     {
         $testResult = TestResultFacade::result();
 
@@ -195,17 +199,17 @@ class TestSubscriber implements
                 'numberOfIncomplete' => $testResult->numberOfTestMarkedIncompleteEvents(),
                 'numberOfRisky' => $testResult->numberOfTestsWithTestConsideredRiskyEvents(),
                 'numberOfDeprecations' => $testResult->numberOfPhpOrUserDeprecations(),
-                'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
+                'duration' => $testRunnerFinished->telemetryInfo()->durationSinceStart()->nanoseconds(),
             ],
         ]);
     }
 
-    private function handleTestFinished(Finished $event): void
+    private function handleTestFinished(Finished $finished): void
     {
         ($this->writeEvent)('test.finished', [
-            'test' => ($this->formatTestId)($event->test()->name()),
-            'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
-            'assertions' => $event->numberOfAssertionsPerformed(),
+            'test' => ($this->formatTestId)($finished->test()->name()),
+            'duration' => $finished->telemetryInfo()->durationSinceStart()->nanoseconds(),
+            'assertions' => $finished->numberOfAssertionsPerformed(),
         ]);
     }
 }

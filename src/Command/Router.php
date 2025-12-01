@@ -34,6 +34,7 @@ use function str_replace;
 
 class Router implements RouterInterface
 {
+    public $projectRoot;
     private readonly string $publicPath;
 
     /** @var array<string, Process> */

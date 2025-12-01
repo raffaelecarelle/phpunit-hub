@@ -32,8 +32,9 @@ class ProjectRootResolverTest extends TestCase
     {
         $this->filesystem->mkdir($this->tempDir . '/vendor');
         $this->filesystem->dumpFile($this->tempDir . '/vendor/autoload.php', '<?php');
-        $resolver = new ProjectRootResolver();
-        $this->assertEquals($this->tempDir, $resolver->resolve($this->tempDir));
+
+        $projectRootResolver = new ProjectRootResolver();
+        $this->assertEquals($this->tempDir, $projectRootResolver->resolve($this->tempDir));
     }
 
     public function testResolveWithVendorDirInParentDir(): void
@@ -41,13 +42,14 @@ class ProjectRootResolverTest extends TestCase
         $this->filesystem->mkdir($this->tempDir . '/vendor');
         $this->filesystem->dumpFile($this->tempDir . '/vendor/autoload.php', '<?php');
         $this->filesystem->mkdir($this->tempDir . '/subdir');
-        $resolver = new ProjectRootResolver();
-        $this->assertEquals($this->tempDir, $resolver->resolve($this->tempDir . '/subdir'));
+
+        $projectRootResolver = new ProjectRootResolver();
+        $this->assertEquals($this->tempDir, $projectRootResolver->resolve($this->tempDir . '/subdir'));
     }
 
     public function testResolveWithNoVendorDir(): void
     {
-        $resolver = new ProjectRootResolver();
-        $this->assertEquals(getcwd(), $resolver->resolve($this->tempDir));
+        $projectRootResolver = new ProjectRootResolver();
+        $this->assertEquals(getcwd(), $projectRootResolver->resolve($this->tempDir));
     }
 }

@@ -78,7 +78,7 @@ class ServeCommandTest extends TestCase
 
         $output = $this->commandTester->getDisplay();
 
-        $this->assertStringContainsString("Starting server on http://127.0.0.1:$port", $output);
+        $this->assertStringContainsString('Starting server on http://127.0.0.1:' . $port, $output);
         $this->assertEquals(0, $this->commandTester->getStatusCode());
     }
 }

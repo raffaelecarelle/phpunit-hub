@@ -2,7 +2,7 @@
 
 namespace PhpUnitHub\Tests\PHPUnit;
 
-use PHPUnit\Event\Code\ClassMethod;
+use PHPUnit\Event\TestSuite\TestSuite;
 use PHPUnit\Event\Code\IssueTrigger\TestTrigger;
 use PHPUnit\Event\Code\Test;
 use PHPUnit\Event\Code\TestDox;
@@ -10,7 +10,6 @@ use PHPUnit\Event\Code\TestMethod;
 use PHPUnit\Event\Code\Throwable;
 use PHPUnit\Event\Telemetry\HRTime;
 use PHPUnit\Event\Telemetry\Info;
-use PHPUnit\Event\Telemetry\MemoryMeter;
 use PHPUnit\Event\Telemetry\MemoryUsage;
 use PHPUnit\Event\Telemetry\Php83GarbageCollectorStatusProvider;
 use PHPUnit\Event\Telemetry\Snapshot;
@@ -32,146 +31,144 @@ use PHPUnit\Event\TestData\TestDataCollection;
 use PHPUnit\Event\TestRunner\Finished as TestRunnerFinished;
 use PHPUnit\Event\TestSuite\Started as TestSuiteStarted;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Metadata\MetadataCollection;
-use PhpUnitHub\Http\DecoratedHttpServer;
 use PhpUnitHub\PHPUnit\TestSubscriber;
 use PHPUnit\Event\Code\TestCollection;
 
 #[CoversClass(TestSubscriber::class)]
 class TestSubscriberTest extends TestCase
 {
-    private TestSubscriber $subscriber;
+    private TestSubscriber $testSubscriber;
 
     protected function setUp(): void
     {
-        $this->subscriber = new TestSubscriber();
+        $this->testSubscriber = new TestSubscriber();
     }
 
     public function testNotifyHandlesPreparedEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new Prepared($this->createTelemetryInfo(), $test);
+        $prepared = new Prepared($this->createTelemetryInfo(), $test);
 
         $this->expectOutputRegex('/"event":"test\.prepared","data":{"test":"TestName"}/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($prepared);
     }
 
     public function testNotifyHandlesPassedEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new Passed($this->createTelemetryInfo(), $test);
+        $passed = new Passed($this->createTelemetryInfo(), $test);
 
         $this->expectOutputRegex('/"event":"test\.passed","data":{"test":"TestName"}/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($passed);
     }
 
     public function testNotifyHandlesFailedEvent(): void
     {
         $test = $this->createTest('TestName');
         $throwableMock = $this->createThrowableMock('Failure Message', 'Trace Data');
-        $event = new Failed($this->createTelemetryInfo(), $test, $throwableMock, null);
+        $failed = new Failed($this->createTelemetryInfo(), $test, $throwableMock, null);
 
         $this->expectOutputRegex('/"event":"test\.failed","data":.*"message":"Failure Message".*"trace":"Trace Data"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($failed);
     }
 
     public function testNotifyHandlesErroredEvent(): void
     {
         $test = $this->createTest('TestName');
         $throwableMock = $this->createThrowableMock('Error Message', 'Error Trace');
-        $event = new Errored($this->createTelemetryInfo(), $test, $throwableMock);
+        $errored = new Errored($this->createTelemetryInfo(), $test, $throwableMock);
 
         $this->expectOutputRegex('/"event":"test\.errored","data":.*"message":"Error Message".*"trace":"Error Trace"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($errored);
     }
 
     public function testNotifyHandlesSkippedEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new Skipped($this->createTelemetryInfo(), $test, 'Skip reason');
+        $skipped = new Skipped($this->createTelemetryInfo(), $test, 'Skip reason');
 
         $this->expectOutputRegex('/"event":"test\.skipped","data":.*"message":"Skip reason"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($skipped);
     }
 
     public function testNotifyHandlesMarkedIncompleteEvent(): void
     {
         $test = $this->createTest('TestName');
         $throwableMock = $this->createThrowableMock('Incomplete Message');
-        $event = new MarkedIncomplete($this->createTelemetryInfo(), $test, $throwableMock);
+        $markedIncomplete = new MarkedIncomplete($this->createTelemetryInfo(), $test, $throwableMock);
 
         $this->expectOutputRegex('/"event":"test\.incomplete","data":.*"message":"Incomplete Message"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($markedIncomplete);
     }
 
     public function testNotifyHandlesWarningTriggeredEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new WarningTriggered($this->createTelemetryInfo(), $test, 'Warning Message', 'file.php', 1, false, '');
+        $warningTriggered = new WarningTriggered($this->createTelemetryInfo(), $test, 'Warning Message', 'file.php', 1, false, '');
 
         $this->expectOutputRegex('/"event":"test\.warning","data":.*"message":"Warning Message"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($warningTriggered);
     }
 
     public function testNotifyHandlesDeprecationTriggeredEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new DeprecationTriggered($this->createTelemetryInfo(), $test, 'Deprecation Message', 'file.php', 1, false, false, false, TestTrigger::self(), '');
+        $deprecationTriggered = new DeprecationTriggered($this->createTelemetryInfo(), $test, 'Deprecation Message', 'file.php', 1, false, false, false, TestTrigger::self(), '');
 
         $this->expectOutputRegex('/"event":"test\.deprecation","data":.*"message":"Deprecation Message"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($deprecationTriggered);
     }
 
     public function testNotifyHandlesPhpDeprecationTriggeredEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new PhpDeprecationTriggered($this->createTelemetryInfo(), $test, 'PHP Deprecation Message', 'file.php', 1, false, false, false, TestTrigger::self());
+        $phpDeprecationTriggered = new PhpDeprecationTriggered($this->createTelemetryInfo(), $test, 'PHP Deprecation Message', 'file.php', 1, false, false, false, TestTrigger::self());
 
         $this->expectOutputRegex('/"event":"test\.deprecation","data":.*"message":"PHP Deprecation Message"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($phpDeprecationTriggered);
     }
 
     public function testNotifyHandlesPhpWarningTriggeredEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new PhpWarningTriggered($this->createTelemetryInfo(), $test, 'PHP Warning Message', 'file.php', 1, false, '');
+        $phpWarningTriggered = new PhpWarningTriggered($this->createTelemetryInfo(), $test, 'PHP Warning Message', 'file.php', 1, false, '');
 
         $this->expectOutputRegex('/"event":"test\.warning","data":.*"message":"PHP Warning Message"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($phpWarningTriggered);
     }
 
     public function testNotifyHandlesTestSuiteStartedEvent(): void
     {
-        $suiteMock = $this->createMock(\PHPUnit\Event\TestSuite\TestSuite::class);
+        $suiteMock = $this->createMock(TestSuite::class);
         $testCollectionMock = TestCollection::fromArray([$this->createTest('Test1'), $this->createTest('Test1')]);
 
         $suiteMock->method('isForTestClass')->willReturn(true);
         $suiteMock->method('name')->willReturn('SuiteName');
         $suiteMock->method('tests')->willReturn($testCollectionMock);
 
-        $event = new TestSuiteStarted($this->createTelemetryInfo(), $suiteMock);
+        $started = new TestSuiteStarted($this->createTelemetryInfo(), $suiteMock);
 
         $this->expectOutputRegex('/"event":"suite\.started","data":.*"name":"SuiteName".*"count":2/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($started);
     }
 
     public function testNotifyHandlesTestRunnerFinishedEvent(): void
     {
-        $event = new TestRunnerFinished($this->createTelemetryInfo());
+        $finished = new TestRunnerFinished($this->createTelemetryInfo());
 
         $this->expectOutputRegex('/"event":"execution\.ended","data":.*"summary"/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($finished);
     }
 
     public function testNotifyHandlesTestFinishedEvent(): void
     {
         $test = $this->createTest('TestName');
-        $event = new Finished($this->createTelemetryInfo(), $test, 3);
+        $finished = new Finished($this->createTelemetryInfo(), $test, 3);
 
         $this->expectOutputRegex('/"event":"test\.finished","data":.*"assertions":3/');
-        $this->subscriber->notify($event);
+        $this->testSubscriber->notify($finished);
     }
 
     private function createTest(string $name): Test
@@ -189,17 +186,17 @@ class TestSubscriberTest extends TestCase
 
     private function createTelemetryInfo(): Info
     {
-        $stoWatch = new SystemStopWatch();
-        $memoryMeter = new SystemMemoryMeter();
-        $garbage = new Php83GarbageCollectorStatusProvider();
-        $system = new System($stoWatch, $memoryMeter, $garbage);
+        $systemStopWatch = new SystemStopWatch();
+        $systemMemoryMeter = new SystemMemoryMeter();
+        $php83GarbageCollectorStatusProvider = new Php83GarbageCollectorStatusProvider();
+        $system = new System($systemStopWatch, $systemMemoryMeter, $php83GarbageCollectorStatusProvider);
 
         $hrTime = HRTime::fromSecondsAndNanoseconds(123, 456);
         $memoryUsage = MemoryUsage::fromBytes(1024);
 
-        $snapshot = new Snapshot($hrTime, $memoryUsage, $memoryUsage, $garbage->status());
+        $snapshot = new Snapshot($hrTime, $memoryUsage, $memoryUsage, $php83GarbageCollectorStatusProvider->status());
 
-        return new Info($system->snapshot(), $stoWatch->current()->duration($hrTime), $memoryMeter->memoryUsage(), $snapshot->time()->duration($hrTime), $snapshot->memoryUsage());
+        return new Info($system->snapshot(), $systemStopWatch->current()->duration($hrTime), $systemMemoryMeter->memoryUsage(), $snapshot->time()->duration($hrTime), $snapshot->memoryUsage());
     }
 
     private function createThrowableMock(string $message, string $trace = ''): Throwable

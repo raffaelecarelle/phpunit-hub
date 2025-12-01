@@ -17,7 +17,7 @@ class TestDiscovererTest extends TestCase
 
     private Filesystem $filesystem;
 
-    private PhpUnitCommandExecutor $commandExecutor;
+    private PhpUnitCommandExecutor $phpUnitCommandExecutor;
 
     protected function setUp(): void
     {
@@ -25,7 +25,7 @@ class TestDiscovererTest extends TestCase
         $this->filesystem = new Filesystem();
         $this->projectRoot = sys_get_temp_dir() . '/phpunit-gui-test-' . uniqid();
         $this->filesystem->mkdir($this->projectRoot);
-        $this->commandExecutor = $this->createMock(PhpUnitCommandExecutor::class);
+        $this->phpUnitCommandExecutor = $this->createMock(PhpUnitCommandExecutor::class);
     }
 
     protected function tearDown(): void
@@ -93,8 +93,8 @@ class TestDiscovererTest extends TestCase
     {
         $this->createConfigFile('phpunit.xml', '<phpunit/>');
         $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
-        $this->commandExecutor->method('execute')->willReturn("Available test suites:\n - My Test Suite");
-        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $this->phpUnitCommandExecutor->method('execute')->willReturn("Available test suites:\n - My Test Suite");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
         $result = $testDiscoverer->discoverSuites();
         $this->assertEquals(['My Test Suite' => 'My Test Suite'], $result);
     }
@@ -103,8 +103,8 @@ class TestDiscovererTest extends TestCase
     {
         $this->createConfigFile('phpunit.xml', '<phpunit/>');
         $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
-        $this->commandExecutor->method('execute')->willReturn("Available test groups:\n - MyGroup");
-        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $this->phpUnitCommandExecutor->method('execute')->willReturn("Available test groups:\n - MyGroup");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
         $result = $testDiscoverer->discoverGroups();
         $this->assertEquals(['MyGroup' => 'MyGroup'], $result);
     }
@@ -113,8 +113,8 @@ class TestDiscovererTest extends TestCase
     {
         $this->createConfigFile('phpunit.xml', '<phpunit/>');
         $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
-        $this->commandExecutor->method('execute')->willReturn("Available tests:\n - MyTests\MyFirstTest::testOne");
-        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $this->phpUnitCommandExecutor->method('execute')->willReturn("Available tests:\n - MyTests\MyFirstTest::testOne");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
         $result = $testDiscoverer->discover();
         $this->assertNotEmpty($result['suites']);
     }

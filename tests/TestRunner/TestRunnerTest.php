@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\TestRunner;
 
+use React\ChildProcess\Process;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
@@ -52,7 +53,7 @@ class TestRunnerTest extends TestCase
     {
         $testRunner = new TestRunner($this->loop);
         $process = $testRunner->run(['filters' => [], 'coverage' => false], 'test-run-id');
-        $this->assertInstanceOf(\React\ChildProcess\Process::class, $process);
+        $this->assertInstanceOf(Process::class, $process);
     }
 
     /**
@@ -142,8 +143,8 @@ class TestRunnerTest extends TestCase
     public function testCamelToKebab(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $reflection = new ReflectionMethod(TestRunner::class, 'camelToKebab');
-        $result = $reflection->invoke($testRunner, 'stopOnFailure');
+        $reflectionMethod = new ReflectionMethod(TestRunner::class, 'camelToKebab');
+        $result = $reflectionMethod->invoke($testRunner, 'stopOnFailure');
         $this->assertEquals('stop-on-failure', $result);
     }
 

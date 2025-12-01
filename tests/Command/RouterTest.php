@@ -243,8 +243,9 @@ class RouterTest extends TestCase
         $fullPath = $projectRoot . '/' . $filePath;
         $dir = dirname($fullPath);
         if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
+            mkdir($dir, 0o777, true);
         }
+
         touch($fullPath);
 
         $sent = [];

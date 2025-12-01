@@ -4,7 +4,6 @@ namespace PhpUnitHub\Tests\Http;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\Http\DecoratedHttpServer;
 use Ratchet\Http\HttpServerInterface;
 use ReflectionProperty;
