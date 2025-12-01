@@ -289,6 +289,10 @@ class Router implements RouterInterface
                         continue;
                     }
 
+                    if(json_validate($line) === false) {
+                        continue;
+                    }
+
                     $decodedLine = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
                     if ($decodedLine === null) {
                         $this->output->writeln(sprintf('<error>Failed to decode JSON from final realtime output: %s</error>', $line));
