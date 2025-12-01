@@ -3,7 +3,6 @@
 namespace PhpUnitHub\Util;
 
 use function file_get_contents;
-use function getcwd;
 use function is_array;
 use function is_readable;
 use function is_string;
@@ -13,9 +12,8 @@ use function rtrim;
 
 class Composer
 {
-    public static function getComposerBinDir(string $projectDir = null): string
+    public static function getComposerBinDir(string $projectDir): string
     {
-        $projectDir ??= getcwd();
         $composerFile = rtrim($projectDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'composer.json';
 
         if (!is_readable($composerFile)) {

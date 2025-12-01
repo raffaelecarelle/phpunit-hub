@@ -13,7 +13,6 @@ use function array_map;
 use function escapeshellarg;
 use function escapeshellcmd;
 use function file_exists;
-use function getcwd;
 use function implode;
 use function preg_quote;
 use function preg_replace;
@@ -23,13 +22,12 @@ use function trim;
 
 class TestRunner
 {
-    private readonly string $projectRoot;
-
     private ?string $lastCommand = null;
 
-    public function __construct(private readonly LoopInterface $loop)
-    {
-        $this->projectRoot = getcwd();
+    public function __construct(
+        private readonly LoopInterface $loop,
+        private readonly string $projectRoot
+    ) {
     }
 
 
@@ -44,7 +42,7 @@ class TestRunner
      */
     public function run(array $context, string $runId): Process
     {
-        $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
+        $phpunitPath = Composer::getComposerBinDir($this->projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
 
         // Check for phpunit.xml first, then fallback to phpunit.xml.dist (PHPUnit's default behavior)
         $phpunitXmlPath = $this->projectRoot . '/phpunit.xml';

@@ -9,21 +9,15 @@ class CoverageTest extends TestCase
 {
     private string $tempDir;
 
-    private string $originalCwd;
-
     protected function setUp(): void
     {
         parent::setUp();
         $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-coverage-test-' . uniqid('', true);
         mkdir($this->tempDir, 0o777, true);
-
-        $this->originalCwd = getcwd();
-        chdir($this->tempDir);
     }
 
     protected function tearDown(): void
     {
-        chdir($this->originalCwd);
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
             if ($files !== false) {

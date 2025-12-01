@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Command;
 
+use PhpUnitHub\Util\ProjectRootResolver;
 use React\EventLoop\TimerInterface;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
@@ -22,6 +23,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'serve', description: 'Starts the PHPUnit GUI server.')]
 class ServeCommand extends Command
 {
+    private readonly string $projectRoot;
+
     public function __construct(
         private ?LoopInterface        $loop = null,
         private ?TestDiscoverer       $testDiscoverer = null,
@@ -31,9 +34,10 @@ class ServeCommand extends Command
     ) {
         parent::__construct();
 
+        $this->projectRoot = (new ProjectRootResolver())->resolve();
         $this->loop ??= Loop::get();
-        $this->testDiscoverer ??= new TestDiscoverer(getcwd());
-        $this->testRunner ??= new TestRunner($this->loop);
+        $this->testDiscoverer ??= new TestDiscoverer($this->projectRoot);
+        $this->testRunner ??= new TestRunner($this->loop, $this->projectRoot);
     }
 
 
@@ -60,6 +64,7 @@ class ServeCommand extends Command
             $this->statusHandler,
             $this->testRunner,
             $this->testDiscoverer,
+            $this->projectRoot,
             $host,
             $port
         );
@@ -105,7 +110,7 @@ class ServeCommand extends Command
 
             // Dynamically find paths from composer.json
             $watchPaths = [];
-            $composerJsonPath = getcwd() . '/composer.json';
+            $composerJsonPath = $this->projectRoot . '/composer.json';
 
             if (file_exists($composerJsonPath)) {
                 $composerConfig = json_decode(file_get_contents($composerJsonPath), true);
@@ -128,7 +133,7 @@ class ServeCommand extends Command
                 $watchPaths = ['src', 'tests'];
             }
 
-            $absolutePaths = array_map(fn ($path) => getcwd() . '/' . trim($path, '/\\'), $watchPaths);
+            $absolutePaths = array_map(fn ($path) => $this->projectRoot . '/' . trim($path, '/\\'), $watchPaths);
             $uniquePaths = array_unique($absolutePaths);
             $existingWatchPaths = array_filter($uniquePaths, is_dir(...));
 

@@ -26,7 +26,7 @@ class RouterTest extends TestCase
         $mockTestRunner = $this->createMock(TestRunner::class);
         $testDiscoverer = $this->createMock(TestDiscoverer::class);
 
-        $router = new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $testDiscoverer);
+        $router = new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $testDiscoverer, '/path/to/project');
 
         if ($coverage instanceof Coverage) {
             $reflectionObject = new ReflectionObject($router);

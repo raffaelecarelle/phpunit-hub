@@ -13,22 +13,16 @@ class TestRunnerTest extends TestCase
 
     private string $tempDir;
 
-    private string $originalCwd;
-
     protected function setUp(): void
     {
         parent::setUp();
         $this->loop = $this->createMock(LoopInterface::class);
         $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid('', true);
         mkdir($this->tempDir);
-
-        $this->originalCwd = getcwd();
-        chdir($this->tempDir);
     }
 
     protected function tearDown(): void
     {
-        chdir($this->originalCwd);
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
             if ($files !== false) {
@@ -47,7 +41,7 @@ class TestRunnerTest extends TestCase
 
     public function testRunReturnsProcessInstance(): void
     {
-        $testRunner = new TestRunner($this->loop);
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
         /** @var string[] $filters */
         $filters = [];
         $testRunner->run(['filters' => $filters, 'coverage' => false], 'test-run-id');
@@ -81,7 +75,7 @@ class TestRunnerTest extends TestCase
             XML_WRAP;
         file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
 
-        $testRunner = new TestRunner($this->loop);
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
         /** @var string[] $filters */
         $filters = [];
         $testRunner->run(['filters' => $filters, 'coverage' => true], 'test-run-id');

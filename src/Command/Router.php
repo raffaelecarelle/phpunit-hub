@@ -68,6 +68,7 @@ class Router implements RouterInterface
         private readonly StatusHandler $statusHandler,
         private readonly TestRunner $testRunner,
         private readonly TestDiscoverer $testDiscoverer,
+        private readonly string $projectRoot,
         private readonly string $host = '127.0.0.1',
         private readonly string $port = '8080'
     ) {
@@ -509,9 +510,8 @@ class Router implements RouterInterface
     private function getCoverage(string $runId): GuzzleResponse
     {
         if (!$this->coverage instanceof Coverage) {
-            $projectRoot = getcwd();
-            $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
-            $this->coverage = new Coverage($projectRoot, $coveragePath);
+            $coveragePath = $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+            $this->coverage = new Coverage($this->projectRoot, $coveragePath);
         }
 
         $data = $this->coverage->parse();
@@ -529,14 +529,13 @@ class Router implements RouterInterface
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'Run ID not provided.'], JSON_THROW_ON_ERROR));
         }
 
-        $projectRoot = getcwd();
-        $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
+        $coveragePath = $this->projectRoot . sprintf('/clover-%s.xml', $runId);
 
-        $coverage = new Coverage($projectRoot, $coveragePath);
+        $coverage = new Coverage($this->projectRoot, $coveragePath);
 
         // Sanitize file path
-        $realPath = realpath($projectRoot . '/' . $filePath);
-        if ($realPath === false || !str_starts_with($realPath, $projectRoot)) {
+        $realPath = realpath($this->projectRoot . '/' . $filePath);
+        if ($realPath === false || !str_starts_with($realPath, $this->projectRoot)) {
             return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
         }
 
@@ -552,7 +551,7 @@ class Router implements RouterInterface
         }
 
         $realPath = realpath($filePath);
-        if ($realPath === false || !str_starts_with($realPath, getcwd())) {
+        if ($realPath === false || !str_starts_with($realPath, $this->projectRoot)) {
             return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
         }
 
