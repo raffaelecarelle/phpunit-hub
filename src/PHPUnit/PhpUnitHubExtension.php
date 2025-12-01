@@ -46,168 +46,216 @@ class PhpUnitHubExtension implements Extension
             fwrite(STDERR, json_encode(['event' => $event, 'data' => $data]) . "\n");
         };
 
+        $formatTestId = static function (string $testId): string {
+            if (preg_match('/^(.*?) with data set "(.*)"$/', $testId, $matches)) {
+                [, $methodName, $dataSetName] = $matches;
+                // Attempt to decode the JSON from the data set name
+                $dataSet = json_decode($dataSetName, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    // Re-serialize the data to a more readable, multi-line format
+                    $formattedDataSet = json_encode($dataSet, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                    return $methodName . PHP_EOL . $formattedDataSet;
+                }
+
+                // Fallback for non-JSON data sets
+                return sprintf('%s with data set %s', $methodName, $dataSetName);
+            }
+
+            return $testId;
+        };
+
         // Register individual subscribers for each event type
-        $facade->registerSubscriber(new class ($writeEvent) implements PreparedSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PreparedSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Prepared $event): void
             {
-                ($this->writeEvent)('test.prepared', ['test' => $event->test()->id()]);
+                ($this->writeEvent)('test.prepared', ['test' => ($this->formatTestId)($event->test()->name())]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements PassedSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PassedSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Passed $event): void
             {
-                ($this->writeEvent)('test.passed', ['test' => $event->test()->id()]);
+                ($this->writeEvent)('test.passed', ['test' => ($this->formatTestId)($event->test()->name())]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements FailedSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements FailedSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Failed $event): void
             {
                 ($this->writeEvent)('test.failed', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements ErroredSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements ErroredSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Errored $event): void
             {
                 ($this->writeEvent)('test.errored', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements SkippedSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements SkippedSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Skipped $event): void
             {
                 ($this->writeEvent)('test.skipped', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements MarkedIncompleteSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements MarkedIncompleteSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(MarkedIncomplete $event): void
             {
                 ($this->writeEvent)('test.incomplete', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements WarningTriggeredSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements WarningTriggeredSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(WarningTriggered $event): void
             {
                 ($this->writeEvent)('test.warning', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements DeprecationTriggeredSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements DeprecationTriggeredSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(DeprecationTriggered $event): void
             {
                 ($this->writeEvent)('test.deprecation', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements PhpDeprecationTriggeredSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpDeprecationTriggeredSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(PhpDeprecationTriggered $event): void
             {
                 ($this->writeEvent)('test.deprecation', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements PhpWarningTriggeredSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpWarningTriggeredSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(PhpWarningTriggered $event): void
             {
                 ($this->writeEvent)('test.warning', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -261,18 +309,21 @@ class PhpUnitHubExtension implements Extension
             }
         });
 
-        $facade->registerSubscriber(new class ($writeEvent) implements TestFinishedSubscriber {
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements TestFinishedSubscriber {
             private readonly Closure $writeEvent;
 
-            public function __construct(callable $writeEvent)
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
             {
                 $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
             }
 
             public function notify(Finished $event): void
             {
                 ($this->writeEvent)('test.finished', [
-                    'test' => $event->test()->id(),
+                    'test' => ($this->formatTestId)($event->test()->name()),
                     'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                     'assertions' => $event->numberOfAssertionsPerformed(),
                 ]);
