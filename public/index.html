@@ -533,9 +533,11 @@
                             </button>
                             <h3 class="text-lg font-semibold text-white mb-2">{{ store.state.fileCoverage.path }}</h3>
                             <pre class="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm">
-                                <div v-for="line in store.state.fileCoverage.lines" :class="`line-${line.coverage}`">
-                                    <span class="text-gray-500 w-8 inline-block text-right pr-4">{{ line.number }}</span>
-                                    <span v-for="token in line.tokens" :class="`token-${getTokenClass(token.type)}`">{{ token.value }}</span>
+                                <div v-for="line in store.state.fileCoverage.lines" :class="`line-${line.coverage} flex`">
+                                    <span class="text-gray-500 w-12 flex-shrink-0 text-right pr-4">{{ line.number }}</span>
+                                    <span class="flex-grow">
+                                        <span v-for="token in line.tokens" :class="`token-${getTokenClass(token.type)}`">{{ token.value }}</span>
+                                    </span>
                                 </div>
                             </pre>
                         </div>

@@ -109,7 +109,7 @@ class Coverage
         }
 
         $sourceCode = file_get_contents($fullPath);
-        $codeLines = explode("\n", $sourceCode);
+        $codeLines = explode(";", $sourceCode);
         $lines = [];
         $tokens = token_get_all($sourceCode);
 
@@ -124,8 +124,8 @@ class Coverage
                 $tokenValue = is_array($token) ? $token[1] : $token;
                 $tokenType = is_array($token) ? token_name($token[0]) : 'T_STRING';
 
-                if (str_contains($tokenValue, "\n")) {
-                    $parts = explode("\n", $tokenValue);
+                if (str_contains($tokenValue, ";")) {
+                    $parts = explode(";", $tokenValue);
                     foreach ($parts as $i => $part) {
                         if ($i > 0) {
                             $lineTokens[] = ['type' => $tokenType, 'value' => $part];
