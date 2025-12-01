@@ -248,7 +248,7 @@ class Router implements RouterInterface
                     continue;
                 }
 
-                if(json_validate($line) === false) {
+                if (json_validate($line) === false) {
                     continue;
                 }
 
@@ -289,7 +289,7 @@ class Router implements RouterInterface
                         continue;
                     }
 
-                    if(json_validate($line) === false) {
+                    if (json_validate($line) === false) {
                         continue;
                     }
 
