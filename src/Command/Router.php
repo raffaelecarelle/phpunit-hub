@@ -64,13 +64,12 @@ class Router implements RouterInterface
 
     public function __construct(
         private readonly HttpServerInterface $httpServer,
-        private readonly OutputInterface $output,
-        private readonly StatusHandler $statusHandler,
-        private readonly TestRunner $testRunner,
-        private readonly TestDiscoverer $testDiscoverer,
-        private readonly string $projectRoot,
-        private readonly string $host = '127.0.0.1',
-        private readonly string $port = '8080'
+        private readonly OutputInterface     $output,
+        private readonly StatusHandler       $statusHandler,
+        private readonly TestRunner          $testRunner,
+        private readonly TestDiscoverer      $testDiscoverer,
+        private readonly string              $host = '127.0.0.1',
+        private readonly string              $port = '8080'
     ) {
         $this->publicPath = dirname(__DIR__, 2) . '/public';
     }

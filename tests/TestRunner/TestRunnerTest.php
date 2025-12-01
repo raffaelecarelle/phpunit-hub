@@ -2,16 +2,21 @@
 
 namespace PhpUnitHub\Tests\TestRunner;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
 use React\EventLoop\LoopInterface;
 use ReflectionException;
+use ReflectionMethod;
 
+#[CoversClass(TestRunner::class)]
 class TestRunnerTest extends TestCase
 {
     private LoopInterface $loop;
 
     private string $tempDir;
+
+    private string $originalCwd;
 
     protected function setUp(): void
     {
@@ -19,10 +24,14 @@ class TestRunnerTest extends TestCase
         $this->loop = $this->createMock(LoopInterface::class);
         $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid('', true);
         mkdir($this->tempDir);
+
+        $this->originalCwd = getcwd();
+        chdir($this->tempDir);
     }
 
     protected function tearDown(): void
     {
+        chdir($this->originalCwd);
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
             if ($files !== false) {
@@ -41,10 +50,9 @@ class TestRunnerTest extends TestCase
 
     public function testRunReturnsProcessInstance(): void
     {
-        $testRunner = new TestRunner($this->loop, $this->tempDir);
-        /** @var string[] $filters */
-        $filters = [];
-        $testRunner->run(['filters' => $filters, 'coverage' => false], 'test-run-id');
+        $testRunner = new TestRunner($this->loop);
+        $process = $testRunner->run(['filters' => [], 'coverage' => false], 'test-run-id');
+        $this->assertInstanceOf(\React\ChildProcess\Process::class, $process);
     }
 
     /**
@@ -75,10 +83,8 @@ class TestRunnerTest extends TestCase
             XML_WRAP;
         file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
 
-        $testRunner = new TestRunner($this->loop, $this->tempDir);
-        /** @var string[] $filters */
-        $filters = [];
-        $testRunner->run(['filters' => $filters, 'coverage' => true], 'test-run-id');
+        $testRunner = new TestRunner($this->loop);
+        $testRunner->run(['filters' => [], 'coverage' => true], 'test-run-id');
 
         $command = $testRunner->getLastCommand();
 
@@ -86,5 +92,81 @@ class TestRunnerTest extends TestCase
         $this->assertStringContainsString('clover.xml', $command);
         $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src'), $command);
         $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src/Exclude') . ' --path-coverage', $command);
+    }
+
+    public function testRunBuildsCorrectCommandWithFilters(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['filters' => ['MyTest', 'AnotherTest'], 'coverage' => false], 'test-run-id');
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('--filter', $command);
+        $this->assertStringContainsString('MyTest|AnotherTest', $command);
+    }
+
+    public function testRunBuildsCorrectCommandWithSuites(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['suites' => ['MySuite', 'AnotherSuite'], 'filters' => [], 'coverage' => false], 'test-run-id');
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('--testsuite', $command);
+        $this->assertStringContainsString('MySuite', $command);
+        $this->assertStringContainsString('AnotherSuite', $command);
+    }
+
+    public function testRunBuildsCorrectCommandWithGroups(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['groups' => ['MyGroup', 'AnotherGroup'], 'filters' => [], 'coverage' => false], 'test-run-id');
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('--group', $command);
+        $this->assertStringContainsString('MyGroup', $command);
+        $this->assertStringContainsString('AnotherGroup', $command);
+    }
+
+    public function testRunBuildsCorrectCommandWithOptions(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['options' => ['stopOnFailure' => true], 'filters' => [], 'coverage' => false], 'test-run-id');
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('--stop-on-failure', $command);
+    }
+
+    public function testCamelToKebab(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $reflection = new ReflectionMethod(TestRunner::class, 'camelToKebab');
+        $result = $reflection->invoke($testRunner, 'stopOnFailure');
+        $this->assertEquals('stop-on-failure', $result);
+    }
+
+    public function testRunBuildsCorrectCommandWithCoverageAndNoSource(): void
+    {
+        $phpunitXmlContent = <<<XML_WRAP
+            <?xml version="1.0" encoding="UTF-8"?>
+            <phpunit>
+                <coverage>
+                    <report>
+                        <clover outputFile="clover.xml"/>
+                    </report>
+                </coverage>
+            </phpunit>
+            XML_WRAP;
+        file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
+
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['filters' => [], 'coverage' => true], 'test-run-id');
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('--coverage-clover', $command);
+        $this->assertStringNotContainsString('--coverage-filter', $command);
     }
 }

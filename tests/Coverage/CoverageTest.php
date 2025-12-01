@@ -2,9 +2,11 @@
 
 namespace PhpUnitHub\Tests\Coverage;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Coverage\Coverage;
 
+#[CoversClass(Coverage::class)]
 class CoverageTest extends TestCase
 {
     private string $tempDir;

@@ -31,6 +31,7 @@ class ServeCommand extends Command
         private ?StatusHandler        $statusHandler = null,
         private ?WsServer             $wsServer = null,
         private ?TestRunner           $testRunner = null,
+        private ?RouterInterface      $router = null
     ) {
         parent::__construct();
 
@@ -58,7 +59,7 @@ class ServeCommand extends Command
         $this->statusHandler ??= new StatusHandler($output);
         $this->wsServer ??= new WsServer($this->statusHandler);
 
-        $router = new Router(
+        $this->router ??= new Router(
             $this->wsServer,
             $output,
             $this->statusHandler,
@@ -69,12 +70,12 @@ class ServeCommand extends Command
             $port
         );
 
-        $decoratedHttpServer = new DecoratedHttpServer($router, 50 * 1024 * 1024); // 50MB max request size
+        $decoratedHttpServer = new DecoratedHttpServer($this->router, 50 * 1024 * 1024); // 50MB max request size
         $socketServer = new SocketServer($host . ':' . $port, [], $this->loop);
         $ioServer = new IoServer($decoratedHttpServer, $socketServer, $this->loop);
 
         if ($watch) {
-            $this->startFileWatcher($this->loop, $output, $router);
+            $this->startFileWatcher($this->loop, $output, $this->router);
         }
 
         $output->writeln(sprintf('<info>Starting server on http://%s:%d</info>', $host, $port));

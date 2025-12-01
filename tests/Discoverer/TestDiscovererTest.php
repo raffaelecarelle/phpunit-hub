@@ -2,19 +2,22 @@
 
 namespace PhpUnitHub\Tests\Discoverer;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PhpUnitHub\Discoverer\PhpUnitCommandExecutor;
+use PhpUnitHub\Util\Composer;
 use ReflectionClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use Symfony\Component\Filesystem\Filesystem;
 
+#[CoversClass(TestDiscoverer::class)]
 class TestDiscovererTest extends TestCase
 {
     private string $projectRoot;
 
     private Filesystem $filesystem;
 
-    /** @var array<callable> */
-    private array $autoloaders = [];
+    private PhpUnitCommandExecutor $commandExecutor;
 
     protected function setUp(): void
     {
@@ -22,34 +25,12 @@ class TestDiscovererTest extends TestCase
         $this->filesystem = new Filesystem();
         $this->projectRoot = sys_get_temp_dir() . '/phpunit-gui-test-' . uniqid();
         $this->filesystem->mkdir($this->projectRoot);
-
-        // Register a temporary autoloader for the test classes created in the temporary project root
-        $callable = function ($class) {
-            $filePath = null;
-            if (str_starts_with($class, 'MyTests\\')) {
-                $relativeClassPath = str_replace('MyTests\\', '', $class);
-                $filePath = $this->projectRoot . '/tests/' . str_replace('\\', '/', $relativeClassPath) . '.php';
-            } elseif (str_starts_with($class, 'App\\Tests\\')) {
-                $relativeClassPath = str_replace('App\\Tests\\', '', $class);
-                $filePath = $this->projectRoot . '/tests/' . str_replace('\\', '/', $relativeClassPath) . '.php';
-            }
-
-            if ($filePath && file_exists($filePath)) {
-                require_once $filePath;
-            }
-        };
-
-        spl_autoload_register($callable);
-        $this->autoloaders[] = $callable;
+        $this->commandExecutor = $this->createMock(PhpUnitCommandExecutor::class);
     }
 
     protected function tearDown(): void
     {
         $this->filesystem->remove($this->projectRoot);
-        foreach ($this->autoloaders as $autoloader) {
-            spl_autoload_unregister($autoloader);
-        }
-
         parent::tearDown();
     }
 
@@ -106,5 +87,35 @@ class TestDiscovererTest extends TestCase
         $testDiscoverer = new TestDiscoverer($this->projectRoot);
         $result = $testDiscoverer->discover();
         $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => []], $result);
+    }
+
+    public function testDiscoverSuites(): void
+    {
+        $this->createConfigFile('phpunit.xml', '<phpunit/>');
+        $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
+        $this->commandExecutor->method('execute')->willReturn("Available test suites:\n - My Test Suite");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $result = $testDiscoverer->discoverSuites();
+        $this->assertEquals(['My Test Suite' => 'My Test Suite'], $result);
+    }
+
+    public function testDiscoverGroups(): void
+    {
+        $this->createConfigFile('phpunit.xml', '<phpunit/>');
+        $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
+        $this->commandExecutor->method('execute')->willReturn("Available test groups:\n - MyGroup");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $result = $testDiscoverer->discoverGroups();
+        $this->assertEquals(['MyGroup' => 'MyGroup'], $result);
+    }
+
+    public function testDiscoverTests(): void
+    {
+        $this->createConfigFile('phpunit.xml', '<phpunit/>');
+        $this->filesystem->dumpFile(Composer::getComposerBinDir($this->projectRoot) . '/phpunit', '#!/usr/bin/env php');
+        $this->commandExecutor->method('execute')->willReturn("Available tests:\n - MyTests\MyFirstTest::testOne");
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->commandExecutor);
+        $result = $testDiscoverer->discover();
+        $this->assertNotEmpty($result['suites']);
     }
 }

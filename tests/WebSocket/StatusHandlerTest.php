@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\WebSocket;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionClass;
 use Exception;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -26,6 +27,7 @@ class TestConnection implements ConnectionInterface
     }
 }
 
+#[CoversClass(StatusHandlerTest::class)]
 class StatusHandlerTest extends TestCase
 {
     private OutputInterface&MockObject $output;
