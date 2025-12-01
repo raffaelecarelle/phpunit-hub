@@ -97,6 +97,23 @@ export class ApiClient {
     }
 
     /**
+     * Fetch file coverage
+     */
+    async fetchFileCoverage(runId, filePath) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/file-coverage?runId=${runId}&path=${encodeURIComponent(filePath)}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch file coverage');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch file coverage:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Fetch file content
      */
     async fetchFileContent(filePath) {

@@ -55,6 +55,7 @@ export class Store {
             // Coverage
             coverageReport: null,
             isCoverageLoading: false,
+            fileCoverage: null,
         });
 
         this.loadState();
@@ -551,6 +552,8 @@ export class Store {
         this.state.options = { ...Store.defaultOptions };
     }
 
+
+
     setActiveTab(tab) {
         this.state.activeTab = tab;
     }
@@ -561,5 +564,9 @@ export class Store {
 
     setCoverageLoading(isLoading) {
         this.state.isCoverageLoading = isLoading;
+    }
+
+    setFileCoverage(coverage) {
+        this.state.fileCoverage = coverage;
     }
 }

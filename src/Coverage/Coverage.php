@@ -75,6 +75,98 @@ class Coverage
         ];
     }
 
+    /**
+     * @return array{
+     *     lines: array<array{
+     *         number: int,
+     *         tokens: array<array{type: string, value: string}>,
+     *         coverage: string
+     *     }>
+     * }
+     */
+    public function parseFile(string $filePath): array
+    {
+        $fullPath = $this->projectRoot . '/' . $filePath;
+
+        if (!file_exists($fullPath)) {
+            return ['lines' => []];
+        }
+
+        $xml = @simplexml_load_string(file_get_contents($this->coverageXmlPath));
+        if ($xml === false) {
+            return ['lines' => []];
+        }
+
+        $fileNode = $xml->xpath("//file[@name='{$fullPath}']")[0] ?? null;
+        $coverageData = [];
+        if ($fileNode) {
+            foreach ($fileNode->line as $line) {
+                $attrs = $line->attributes();
+                if ($attrs) {
+                    $coverageData[(int)$attrs['num']] = (int)$attrs['count'] > 0 ? 'covered' : 'uncovered';
+                }
+            }
+        }
+
+        $sourceCode = file_get_contents($fullPath);
+        $codeLines = explode("\n", $sourceCode);
+        $lines = [];
+        $tokens = token_get_all($sourceCode);
+
+        $tokenIndex = 0;
+        foreach ($codeLines as $index => $lineContent) {
+            $lineNumber = $index + 1;
+            $lineTokens = [];
+            $currentLineContent = '';
+
+            while ($tokenIndex < count($tokens)) {
+                $token = $tokens[$tokenIndex];
+                $tokenValue = is_array($token) ? $token[1] : $token;
+                $tokenType = is_array($token) ? token_name($token[0]) : 'T_STRING';
+
+                if (str_contains($tokenValue, "\n")) {
+                    $parts = explode("\n", $tokenValue);
+                    foreach ($parts as $i => $part) {
+                        if ($i > 0) {
+                            $lineTokens[] = ['type' => $tokenType, 'value' => $part];
+                            $lines[] = [
+                                'number' => $lineNumber,
+                                'tokens' => $lineTokens,
+                                'coverage' => $coverageData[$lineNumber] ?? 'neutral',
+                            ];
+                            $lineNumber++;
+                            $lineTokens = [];
+                        } else {
+                            if (!empty($part)) {
+                                $lineTokens[] = ['type' => $tokenType, 'value' => $part];
+                            }
+                        }
+                    }
+                    $tokenIndex++;
+                    break;
+                } else {
+                    $lineTokens[] = ['type' => $tokenType, 'value' => $tokenValue];
+                    $currentLineContent .= $tokenValue;
+                    $tokenIndex++;
+                }
+
+                if (strlen($currentLineContent) >= strlen($lineContent) && !str_contains($lineContent, "\n")) {
+                    break;
+                }
+            }
+
+            if (!empty($lineTokens)) {
+                $lines[] = [
+                    'number' => $lineNumber,
+                    'tokens' => $lineTokens,
+                    'coverage' => $coverageData[$lineNumber] ?? 'neutral',
+                ];
+            }
+        }
+
+        return ['lines' => $lines];
+    }
+
     private function loadConfiguration(): ?SimpleXMLElement
     {
         $configPath = $this->projectRoot . '/phpunit.xml';

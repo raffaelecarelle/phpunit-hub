@@ -394,9 +394,6 @@ export class App {
                 }
                 const suiteData = run.suites[suiteName];
                 for (const testId in suiteData.tests) {
-                    // Track if this is a new test or an override
-                    const isNewTest = !mergedSuites[suiteName].tests[testId];
-
                     // Later runs override earlier runs for the same test
                     mergedSuites[suiteName].tests[testId] = {
                         ...suiteData.tests[testId],
@@ -709,14 +706,17 @@ export class App {
         }
     }
 
-    async showFileContent(filePath) {
+    async showFileCoverage(filePath) {
         try {
-            const content = await this.api.fetchFileContent(filePath);
-            // This is a simplified version. A real implementation would
-            // open a modal or a new view to show the file content with highlighting.
-            alert(content);
+            const runId = this.store.state.lastCompletedRunId;
+            if (!runId) {
+                console.error('No completed run ID found for file coverage.');
+                return;
+            }
+            const coverage = await this.api.fetchFileCoverage(runId, filePath);
+            this.store.setFileCoverage({ ...coverage, path: filePath });
         } catch (error) {
-            console.error('Failed to fetch file content:', error);
+            console.error('Failed to fetch file coverage:', error);
         }
     }
 }

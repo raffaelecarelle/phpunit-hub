@@ -15,6 +15,13 @@
         [v-cloak] {
             display: none;
         }
+        .token-keyword { color: #c586c0; }
+        .token-string { color: #ce9178; }
+        .token-comment { color: #6a9955; }
+        .token-variable { color: #9cdcfe; }
+        .token-default { color: #d4d4d4; }
+        .line-covered { background-color: rgba(16, 185, 129, 0.1); }
+        .line-uncovered { background-color: rgba(248, 113, 113, 0.1); }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
@@ -519,6 +526,20 @@
                     <div v-else-if="!store.state.coverageReport || store.state.coverageReport.files.length === 0" class="text-gray-500 text-center pt-10">
                         Run tests with coverage enabled to see the report.
                     </div>
+                    <div v-else-if="store.state.fileCoverage">
+                        <div class="bg-gray-800 rounded-lg shadow-lg p-4 mb-4">
+                            <button @click="store.setFileCoverage(null)" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out mb-4">
+                                &larr; Back to Coverage Report
+                            </button>
+                            <h3 class="text-lg font-semibold text-white mb-2">{{ store.state.fileCoverage.path }}</h3>
+                            <pre class="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm">
+                                <div v-for="line in store.state.fileCoverage.lines" :class="`line-${line.coverage}`">
+                                    <span class="text-gray-500 w-8 inline-block text-right pr-4">{{ line.number }}</span>
+                                    <span v-for="token in line.tokens" :class="`token-${getTokenClass(token.type)}`">{{ token.value }}</span>
+                                </div>
+                            </pre>
+                        </div>
+                    </div>
                     <div v-else>
                         <div class="bg-gray-800 rounded-lg shadow-lg p-4 mb-4">
                             <div class="text-center">
@@ -535,7 +556,7 @@
                                 <div v-for="file in store.state.coverageReport.files"
                                      :key="file.path"
                                      class="hover:bg-gray-700/50 cursor-pointer"
-                                     @click="app.showFileContent(file.path)">
+                                     @click="app.showFileCoverage(file.path)">
                                     <div class="flex items-center p-3">
                                         <div class="flex-grow text-sm text-white">{{ file.path }}</div>
                                         <div class="w-28 text-right flex-shrink-0 pr-3">
@@ -615,6 +636,17 @@
                     }
                     return `${(nanoseconds / 1_000_000).toFixed(2)}ms`;
                 },
+                getTokenClass(tokenType) {
+                    if (tokenType.startsWith('T_')) {
+                        const t = tokenType.substring(2).toLowerCase();
+                        if (['string', 'encapsed_and_whitespace'].includes(t)) return 'string';
+                        if (['comment', 'doc_comment'].includes(t)) return 'comment';
+                        if (t.includes('variable')) return 'variable';
+                        const keywords = ['class', 'function', 'public', 'private', 'protected', 'readonly', 'new', 'echo', 'return', 'if', 'else', 'elseif', 'while', 'do', 'for', 'foreach', 'switch', 'case', 'break', 'continue', 'declare', 'const', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile', 'use', 'namespace', 'try', 'catch', 'finally', 'throw', 'extends', 'implements', 'interface', 'trait', 'abstract', 'final', 'static', 'instanceof', 'insteadof', 'global', 'goto', 'include', 'include_once', 'require', 'require_once', 'unset', 'isset', 'empty'];
+                        if (keywords.includes(t)) return 'keyword';
+                    }
+                    return 'default';
+                }
             };
         }
     }).mount('#app');
