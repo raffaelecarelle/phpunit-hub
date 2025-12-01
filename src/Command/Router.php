@@ -60,6 +60,8 @@ class Router implements RouterInterface
     /** @var array<string, bool> */
     private array $lastOptions = [];
 
+    private ?Coverage $coverage = null;
+
     public function __construct(
         private readonly HttpServerInterface $httpServer,
         private readonly OutputInterface $output,
@@ -342,7 +344,7 @@ class Router implements RouterInterface
             }
 
             if ($exitCode) {
-                $this->notify($exitCode, $summary, $runId);
+                $this.notify($exitCode, $summary, $runId);
             }
 
             // Clear running process/runId state
@@ -548,9 +550,12 @@ class Router implements RouterInterface
 
     private function getCoverage(string $runId): GuzzleResponse
     {
-        $projectRoot = getcwd();
-        $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
-        $coverage = new Coverage($projectRoot, $coveragePath);
+        $coverage = $this->coverage;
+        if ($coverage === null) {
+            $projectRoot = getcwd();
+            $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
+            $coverage = new Coverage($projectRoot, $coveragePath);
+        }
         $data = $coverage->parse();
 
         return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data));

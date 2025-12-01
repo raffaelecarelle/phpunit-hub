@@ -25,6 +25,8 @@ class TestRunner
 {
     private readonly string $projectRoot;
 
+    private ?string $lastCommand = null;
+
     public function __construct(private readonly LoopInterface $loop)
     {
         $this->projectRoot = getcwd();
@@ -96,10 +98,17 @@ class TestRunner
             $this->addCoverageOptions($command, $phpunitXmlPath, $runId);
         }
 
+        $this->lastCommand = $command;
+
         $process = new Process($command, $this->projectRoot);
         $process->start($this->loop);
 
         return $process;
+    }
+
+    public function getLastCommand(): ?string
+    {
+        return $this->lastCommand;
     }
 
     private function addCoverageOptions(string &$command, string $phpunitXmlPath, string $runId): void

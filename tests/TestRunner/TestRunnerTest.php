@@ -5,7 +5,6 @@ namespace PhpUnitHub\Tests\TestRunner;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
 use React\EventLoop\LoopInterface;
-use ReflectionClass;
 use ReflectionException;
 
 class TestRunnerTest extends TestCase
@@ -85,12 +84,9 @@ class TestRunnerTest extends TestCase
         $testRunner = new TestRunner($this->loop);
         /** @var string[] $filters */
         $filters = [];
-        $process = $testRunner->run(['filters' => $filters, 'coverage' => true], 'test-run-id');
+        $testRunner->run(['filters' => $filters, 'coverage' => true], 'test-run-id');
 
-        $reflectionClass = new ReflectionClass($process);
-        $reflectionProperty = $reflectionClass->getProperty('command');
-
-        $command = $reflectionProperty->getValue($process);
+        $command = $testRunner->getLastCommand();
 
         $this->assertStringContainsString('--coverage-clover', $command);
         $this->assertStringContainsString('clover.xml', $command);
