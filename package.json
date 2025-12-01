@@ -8,6 +8,9 @@
         "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --minify",
         "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
     },
+    "engines": {
+        "node": ">=18"
+    },
     "keywords": [],
     "author": "",
     "license": "ISC",
