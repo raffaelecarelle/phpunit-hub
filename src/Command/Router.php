@@ -248,7 +248,11 @@ class Router implements RouterInterface
                     continue;
                 }
 
-                $this->output->writeln(sprintf('[DEBUG] Processing line: %s', substr($line, 0, 100)));
+                if(json_validate($line) === false) {
+                    continue;
+                }
+
+                $this->output->writeln(sprintf('[DEBUG] Processing line: %s', $line));
 
                 // Each line is a JSON object from our RealtimeTestExtension
                 $decodedLine = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
