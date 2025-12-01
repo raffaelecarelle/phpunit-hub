@@ -4,8 +4,9 @@ namespace PhpUnitHub\Tests\TestRunner;
 
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
-use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
+use ReflectionClass;
+use ReflectionException;
 
 class TestRunnerTest extends TestCase
 {
@@ -13,18 +14,32 @@ class TestRunnerTest extends TestCase
 
     private string $tempDir;
 
+    private string $originalCwd;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->loop = $this->createMock(LoopInterface::class);
-        $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid();
+        $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid('', true);
         mkdir($this->tempDir);
+
+        $this->originalCwd = getcwd();
+        chdir($this->tempDir);
     }
 
     protected function tearDown(): void
     {
+        chdir($this->originalCwd);
         if (is_dir($this->tempDir)) {
-            array_map(unlink(...), glob($this->tempDir . '/*.*'));
+            $files = glob($this->tempDir . '/*');
+            if ($files !== false) {
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        unlink($file);
+                    }
+                }
+            }
+
             rmdir($this->tempDir);
         }
 
@@ -34,32 +49,52 @@ class TestRunnerTest extends TestCase
     public function testRunReturnsProcessInstance(): void
     {
         $testRunner = new TestRunner($this->loop);
-
-        // The TestRunner directly instantiates React\ChildProcess\Process.
-        // Without refactoring TestRunner to allow injecting a mockable Process
-        // or a factory for it, we cannot reliably verify the command string
-        // or mock the Process's behavior in a unit test.
-        // This test only verifies that an instance of Process is returned.
-        // For more comprehensive testing, TestRunner would need to be refactored.
-
-        $process = $testRunner->run([], [], [], []);
-        $this->assertInstanceOf(Process::class, $process);
+        /** @var string[] $filters */
+        $filters = [];
+        $testRunner->run(['filters' => $filters, 'coverage' => false], 'test-run-id');
     }
 
-    // Due to the direct instantiation of `React\ChildProcess\Process` within the `run` method,
-    // it is not possible to write isolated unit tests that verify the exact command string
-    // passed to `Process` or mock its behavior without modifying the `TestRunner` class itself.
-    //
-    // To properly test the command string generation and Process interaction,
-    // `TestRunner` would need to be refactored to:
-    // 1. Accept a `ProcessFactory` or `Process` instance via its constructor.
-    // 2. Or, have a protected method for creating `Process` instances that can be
-    //    overridden in a test subclass.
-    //
-    // Without such refactoring, any tests attempting to verify the command string
-    // would either be integration tests (actually running `phpunit` or a dummy script)
-    // or rely on fragile reflection hacks that are not recommended for maintainable tests.
-    //
-    // Therefore, more detailed tests for command string construction are omitted
-    // under the current constraints.
+    /**
+     * @throws ReflectionException
+     */
+    public function testRunBuildsCorrectCommandWithCoverage(): void
+    {
+        $phpunitXmlContent = <<<XML_WRAP
+            <?xml version="1.0" encoding="UTF-8"?>
+            <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+                     bootstrap="vendor/autoload.php"
+                     colors="true">
+                <source>
+                    <include>
+                        <directory suffix=".php">src</directory>
+                    </include>
+                    <exclude>
+                        <directory suffix=".php">src/Exclude</directory>
+                    </exclude>
+                </source>
+                <coverage>
+                    <report>
+                        <clover outputFile="clover.xml"/>
+                    </report>
+                </coverage>
+            </phpunit>
+            XML_WRAP;
+        file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
+
+        $testRunner = new TestRunner($this->loop);
+        /** @var string[] $filters */
+        $filters = [];
+        $process = $testRunner->run(['filters' => $filters, 'coverage' => true], 'test-run-id');
+
+        $reflectionClass = new ReflectionClass($process);
+        $reflectionProperty = $reflectionClass->getProperty('command');
+
+        $command = $reflectionProperty->getValue($process);
+
+        $this->assertStringContainsString('--coverage-clover', $command);
+        $this->assertStringContainsString('clover.xml', $command);
+        $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src'), $command);
+        $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src/Exclude') . ' --path-coverage', $command);
+    }
 }

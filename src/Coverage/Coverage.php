@@ -6,53 +6,54 @@ use SimpleXMLElement;
 
 class Coverage
 {
-    public function __construct(private readonly string $coverageXmlPath)
-    {
+    private readonly ?SimpleXMLElement $config;
+
+    public function __construct(
+        private readonly string $projectRoot,
+        private readonly string $coverageXmlPath
+    ) {
+        $this->config = $this->loadConfiguration();
     }
 
+    /**
+     * @return array{total_coverage_percent: float, files: array<array{path: string, coverage_percent: float}>}
+     */
     public function parse(): array
     {
         if (!file_exists($this->coverageXmlPath)) {
-            return [];
+            return ['total_coverage_percent' => 0.0, 'files' => []];
         }
 
-        // Suppress errors for invalid XML, we'll handle it with the return value
-        $xml = @simplexml_load_file($this->coverageXmlPath);
-        if ($xml === false || !isset($xml->project)) {
-            return [];
+        $xml = @simplexml_load_string(file_get_contents($this->coverageXmlPath));
+        if ($xml === false || (!property_exists($xml, 'project') || $xml->project === null)) {
+            return ['total_coverage_percent' => 0.0, 'files' => []];
         }
 
         $project = $xml->project;
         $files = [];
+        $sourceDirectories = $this->getSourceDirectories();
 
-        // Discover project root from the <file> paths inside the report
-        $projectRoot = $this->discoverProjectRoot($project);
-
-        // Use XPath to find all file nodes within packages.
         $fileNodes = $project->xpath('//package/file');
 
         if ($fileNodes) {
-            foreach ($fileNodes as $file) {
-                $filePath = (string)$file['name'];
-                if ($projectRoot && str_starts_with($filePath, $projectRoot)) {
-                    $filePath = substr($filePath, strlen($projectRoot) + 1); // +1 for the slash
+            foreach ($fileNodes as $fileNode) {
+                $filePath = (string)$fileNode['name'];
+                $relativePath = $this->getRelativePath($filePath, $sourceDirectories);
+
+                if ($relativePath === null) {
+                    continue;
                 }
 
-                $metrics = $file->metrics[0] ?? null;
+                $metrics = $fileNode->metrics[0] ?? null;
                 $coveragePercent = 0.0;
                 if ($metrics) {
                     $statements = (int)$metrics['statements'];
                     $coveredStatements = (int)$metrics['coveredstatements'];
-                    if ($statements > 0) {
-                        $coveragePercent = ($coveredStatements / $statements) * 100;
-                    } else {
-                        // If a file has no executable statements, consider it 100% covered.
-                        $coveragePercent = 100.0;
-                    }
+                    $coveragePercent = $statements > 0 ? ($coveredStatements / $statements) * 100 : 100.0;
                 }
 
                 $files[] = [
-                    'path' => $filePath,
+                    'path' => $relativePath,
                     'coverage_percent' => $coveragePercent,
                 ];
             }
@@ -74,20 +75,46 @@ class Coverage
         ];
     }
 
-    private function discoverProjectRoot(SimpleXMLElement $project): ?string
+    private function loadConfiguration(): ?SimpleXMLElement
     {
-        $firstFileNode = $project->xpath('//file[@name]');
-        if (!$firstFileNode || !isset($firstFileNode[0]['name'])) {
-            return null;
+        $configPath = $this->projectRoot . '/phpunit.xml';
+        if (!file_exists($configPath)) {
+            $configPath = $this->projectRoot . '/phpunit.xml.dist';
+            if (!file_exists($configPath)) {
+                return null;
+            }
         }
 
-        $fullPath = (string)$firstFileNode[0]['name'];
-        // Heuristic to find the project root. Assumes 'src' is a top-level source directory.
-        $srcPath = DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
-        $srcPos = strpos($fullPath, $srcPath);
-        if ($srcPos !== false) {
-            // Return the path up to and including the directory before 'src'
-            return substr($fullPath, 0, $srcPos);
+        return @simplexml_load_string(file_get_contents($configPath));
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getSourceDirectories(): array
+    {
+        if (!$this->config instanceof SimpleXMLElement || (!property_exists($this->config->source->include, 'directory') || $this->config->source->include->directory === null)) {
+            return ['src']; // Default
+        }
+
+        $directories = [];
+        foreach ($this->config->source->include->directory as $dir) {
+            $directories[] = (string)$dir;
+        }
+
+        return $directories;
+    }
+
+    /**
+     * @param array<string> $sourceDirectories
+     */
+    private function getRelativePath(string $fullPath, array $sourceDirectories): ?string
+    {
+        foreach ($sourceDirectories as $sourceDirectory) {
+            $sourcePath = $this->projectRoot . DIRECTORY_SEPARATOR . $sourceDirectory;
+            if (str_starts_with($fullPath, $sourcePath)) {
+                return substr($fullPath, strlen($this->projectRoot) + 1);
+            }
         }
 
         return null;

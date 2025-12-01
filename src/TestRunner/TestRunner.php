@@ -2,6 +2,9 @@
 
 namespace PhpUnitHub\TestRunner;
 
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
 use PhpUnitHub\Util\Composer;
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
@@ -9,36 +12,42 @@ use React\EventLoop\LoopInterface;
 use function array_map;
 use function escapeshellarg;
 use function escapeshellcmd;
+use function file_exists;
+use function getcwd;
 use function implode;
 use function preg_quote;
 use function preg_replace;
+use function sprintf;
 use function strtolower;
 use function trim;
 
 class TestRunner
 {
+    private readonly string $projectRoot;
+
     public function __construct(private readonly LoopInterface $loop)
     {
+        $this->projectRoot = getcwd();
     }
 
+
     /**
-     * Runs PHPUnit tests using a real-time extension.
-     *
-     * @param string[] $filters An array of filters to apply to the tests (e.g., method names).
-     * @param string[] $groups An array of test groups to run.
-     * @param string[] $suites An array of test suites to run.
-     * @param array<string, bool> $options An associative array of boolean PHPUnit CLI options (e.g., ['--stop-on-failure' => true]).
-     * @param bool $coverage Whether to run with code coverage.
-     * @return Process The ReactPHP child process.
+     * @param array{
+     *     suites?: array<string>,
+     *     filters: array<string>,
+     *     groups?: array<string>,
+     *     options?: array<string, bool>,
+     *     coverage: bool
+     * } $context
      */
-    public function run(array $filters = [], array $groups = [], array $suites = [], array $options = [], bool $coverage = false): Process
+    public function run(array $context, string $runId): Process
     {
         $phpunitPath = Composer::getComposerBinDir() . DIRECTORY_SEPARATOR . 'phpunit';
 
         // Check for phpunit.xml first, then fallback to phpunit.xml.dist (PHPUnit's default behavior)
-        $phpunitXmlPath = getcwd() . '/phpunit.xml';
+        $phpunitXmlPath = $this->projectRoot . '/phpunit.xml';
         if (!file_exists($phpunitXmlPath)) {
-            $phpunitXmlPath = getcwd() . '/phpunit.xml.dist';
+            $phpunitXmlPath = $this->projectRoot . '/phpunit.xml.dist';
         }
 
         // We use `exec` to replace the shell process with the phpunit process.
@@ -53,24 +62,24 @@ class TestRunner
         $command .= ' --colors=always';
 
         // Add test suite filters if provided
-        foreach ($suites as $suite) {
+        foreach ($context['suites'] ?? [] as $suite) {
             $command .= ' --testsuite ' . escapeshellarg($suite);
         }
 
         // Add name/group filters if provided
-        if ($filters !== []) {
-            $escapedFilters = array_map(fn (string $filter) => preg_quote($filter, '/'), $filters);
+        if ($context['filters'] !== []) {
+            $escapedFilters = array_map(fn (string $filter) => preg_quote($filter, '/'), $context['filters']);
             $filterPattern = implode('|', $escapedFilters);
             $command .= ' --filter ' . escapeshellarg($filterPattern);
         }
 
         // Add --group filter if provided
-        foreach ($groups as $group) {
+        foreach ($context['groups'] ?? [] as $group) {
             $command .= ' --group ' . escapeshellarg($group);
         }
 
         // Add boolean command-line options
-        foreach ($options as $option => $isEnabled) {
+        foreach ($context['options'] ?? [] as $option => $isEnabled) {
             if ($isEnabled) {
                 // Skip the generic handling for 'colors' as we've already handled it.
                 if ($option === 'colors') {
@@ -83,14 +92,46 @@ class TestRunner
             }
         }
 
-        if ($coverage) {
-            $command .= ' --coverage-clover ' . escapeshellarg(getcwd() . '/clover.xml');
+        if ($context['coverage']) {
+            $this->addCoverageOptions($command, $phpunitXmlPath, $runId);
         }
 
-        $process = new Process($command);
+        $process = new Process($command, $this->projectRoot);
         $process->start($this->loop);
 
         return $process;
+    }
+
+    private function addCoverageOptions(string &$command, string $phpunitXmlPath, string $runId): void
+    {
+        $domDocument = new DOMDocument();
+        @$domDocument->load($phpunitXmlPath);
+        $domxPath = new DOMXPath($domDocument);
+
+        $cloverReport = $domxPath->query('//coverage/report/clover')->item(0);
+
+        $cloverFile =  $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+
+        if ($cloverReport instanceof DOMElement) {
+            $cloverFile = $cloverReport->getAttribute('outputFile');
+        }
+
+        $command .= ' --coverage-clover ' . escapeshellarg((string) $cloverFile);
+
+        $sourceNode = $domxPath->query('//source')->item(0);
+        if (!$sourceNode) {
+            return;
+        }
+
+        $includeNodes = $domxPath->query('include/directory', $sourceNode);
+        foreach ($includeNodes as $includeNode) {
+            $command .= ' --coverage-filter ' . escapeshellarg((string) $includeNode->nodeValue);
+        }
+
+        $excludeNodes = $domxPath->query('exclude/directory', $sourceNode);
+        foreach ($excludeNodes as $excludeNode) {
+            $command .= ' --coverage-filter ' . escapeshellarg((string) $excludeNode->nodeValue) . ' --path-coverage';
+        }
     }
 
     private function camelToKebab(string $input): string

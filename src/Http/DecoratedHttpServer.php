@@ -5,7 +5,6 @@ namespace PhpUnitHub\Http;
 use Ratchet\Http\HttpServer;
 use Ratchet\Http\HttpServerInterface;
 
-
 /**
  * Decorator for HttpServer that allows increasing the maximum POST body size.
  * This is useful when handling larger POST requests that exceed the default limit.

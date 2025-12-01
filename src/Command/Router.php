@@ -39,7 +39,7 @@ class Router implements RouterInterface
     /** @var array<string, Process> */
     private array $runningProcesses = [];
 
-    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions per ogni runId
+    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions
     private array $runContexts = [];
 
     /** @var array<string, array<string, mixed>> */ // Mappa runId a summary
@@ -162,7 +162,7 @@ class Router implements RouterInterface
             $response = $this->getCoverage($runId);
         } elseif ($path === '/api/file-content' && $method === 'GET') {
             $queryParams = [];
-            parse_str($request?->getUri()->getQuery(), $queryParams);
+            parse_str((string) $request?->getUri()->getQuery(), $queryParams);
             $filePath = $queryParams['path'] ?? null;
             $response = $this->getFileContent($filePath);
         } else {
@@ -200,7 +200,6 @@ class Router implements RouterInterface
      * @param string[] $groups
      * @param array<string, bool> $options
      * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
-     * @param bool $coverage
      * @return string The runId of the started test process.
      */
     public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): string
@@ -225,7 +224,7 @@ class Router implements RouterInterface
             $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
         }
 
-        $process = $this->testRunner->run($filters, $groups, $suites, $options, $coverage);
+        $process = $this->testRunner->run($this->runContexts[$runId], $runId);
 
         // Keep a reference so we can terminate later
         $this->runningProcesses[$runId] = $process;
@@ -549,13 +548,10 @@ class Router implements RouterInterface
 
     private function getCoverage(string $runId): GuzzleResponse
     {
-        $coveragePath = getcwd() . '/clover.xml';
-        $coverage = new Coverage($coveragePath);
+        $projectRoot = getcwd();
+        $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
+        $coverage = new Coverage($projectRoot, $coveragePath);
         $data = $coverage->parse();
-
-        if (empty($data)) {
-            return new GuzzleResponse(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'Coverage report not found or failed to parse.']));
-        }
 
         return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data));
     }
