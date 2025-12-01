@@ -34,7 +34,6 @@ use function str_replace;
 
 class Router implements RouterInterface
 {
-    public $projectRoot;
     private readonly string $publicPath;
 
     /** @var array<string, Process> */
@@ -69,6 +68,7 @@ class Router implements RouterInterface
         private readonly StatusHandler       $statusHandler,
         private readonly TestRunner          $testRunner,
         private readonly TestDiscoverer      $testDiscoverer,
+        private readonly string              $projectRoot,
         private readonly string              $host = '127.0.0.1',
         private readonly string              $port = '8080'
     ) {

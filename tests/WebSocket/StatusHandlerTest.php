@@ -27,7 +27,7 @@ class TestConnection implements ConnectionInterface
     }
 }
 
-#[CoversClass(StatusHandlerTest::class)]
+#[CoversClass(StatusHandler::class)]
 class StatusHandlerTest extends TestCase
 {
     private OutputInterface&MockObject $output;

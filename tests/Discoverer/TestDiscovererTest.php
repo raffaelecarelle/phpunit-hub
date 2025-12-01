@@ -3,11 +3,12 @@
 namespace PhpUnitHub\Tests\Discoverer;
 
 use PHPUnit\Framework\Attributes\CoversClass;
-use PhpUnitHub\Discoverer\PhpUnitCommandExecutor;
-use PhpUnitHub\Util\Composer;
-use ReflectionClass;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Discoverer\TestDiscoverer;
+use PhpUnitHub\Util\Composer;
+use PhpUnitHub\Util\PhpUnitCommandExecutor;
+use ReflectionClass;
 use Symfony\Component\Filesystem\Filesystem;
 
 #[CoversClass(TestDiscoverer::class)]
@@ -17,13 +18,13 @@ class TestDiscovererTest extends TestCase
 
     private Filesystem $filesystem;
 
-    private PhpUnitCommandExecutor $phpUnitCommandExecutor;
+    private PhpUnitCommandExecutor&MockObject $phpUnitCommandExecutor;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->filesystem = new Filesystem();
-        $this->projectRoot = sys_get_temp_dir() . '/phpunit-gui-test-' . uniqid();
+        $this->projectRoot = sys_get_temp_dir() . '/phpunit-gui-test-' . uniqid('', true);
         $this->filesystem->mkdir($this->projectRoot);
         $this->phpUnitCommandExecutor = $this->createMock(PhpUnitCommandExecutor::class);
     }
@@ -42,8 +43,7 @@ class TestDiscovererTest extends TestCase
     private function getPrivateProperty(object $object, string $propertyName): mixed
     {
         $reflectionClass = new ReflectionClass($object);
-        $reflectionProperty = $reflectionClass->getProperty($propertyName);
-        return $reflectionProperty->getValue($object);
+        return $reflectionClass->getProperty($propertyName)->getValue($object);
     }
 
     public function testConstructorFindsDistConfigFile(): void

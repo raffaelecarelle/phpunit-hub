@@ -4,6 +4,7 @@ namespace PhpUnitHub\Discoverer;
 
 use Exception;
 use PhpUnitHub\Util\Composer;
+use PhpUnitHub\Util\PhpUnitCommandExecutor;
 
 use function file_exists;
 use function is_file;

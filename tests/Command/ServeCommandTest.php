@@ -3,6 +3,7 @@
 namespace PhpUnitHub\Tests\Command;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\MockObject\MockObject;
 use PhpUnitHub\Command\RouterInterface;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\ServeCommand;
@@ -18,11 +19,11 @@ class ServeCommandTest extends TestCase
 
     private Application $application;
 
-    private LoopInterface $mockLoop;
+    private LoopInterface&MockObject $mockLoop;
 
-    private WsServer $mockWsServer;
+    private WsServer&MockObject $mockWsServer;
 
-    private RouterInterface $mockRouter;
+    private RouterInterface&MockObject $mockRouter;
 
     protected function setUp(): void
     {

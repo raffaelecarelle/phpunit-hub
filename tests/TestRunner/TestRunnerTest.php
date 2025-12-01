@@ -51,7 +51,7 @@ class TestRunnerTest extends TestCase
 
     public function testRunReturnsProcessInstance(): void
     {
-        $testRunner = new TestRunner($this->loop);
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
         $process = $testRunner->run(['filters' => [], 'coverage' => false], 'test-run-id');
         $this->assertInstanceOf(Process::class, $process);
     }
@@ -84,7 +84,7 @@ class TestRunnerTest extends TestCase
             XML_WRAP;
         file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
 
-        $testRunner = new TestRunner($this->loop);
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
         $testRunner->run(['filters' => [], 'coverage' => true], 'test-run-id');
 
         $command = $testRunner->getLastCommand();
