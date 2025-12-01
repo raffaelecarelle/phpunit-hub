@@ -97,7 +97,7 @@ class Coverage
             return ['lines' => []];
         }
 
-        $fileNode = $xml->xpath("//file[@name='{$fullPath}']")[0] ?? null;
+        $fileNode = $xml->xpath(sprintf("//file[@name='%s']", $fullPath))[0] ?? null;
         $coverageData = [];
         if ($fileNode) {
             foreach ($fileNode->line as $line) {
@@ -109,59 +109,52 @@ class Coverage
         }
 
         $sourceCode = file_get_contents($fullPath);
-        $codeLines = explode(";", $sourceCode);
-        $lines = [];
         $tokens = token_get_all($sourceCode);
 
-        $tokenIndex = 0;
-        foreach ($codeLines as $index => $lineContent) {
-            $lineNumber = $index + 1;
-            $lineTokens = [];
-            $currentLineContent = '';
+        $linesByNumber = [];
+        $currentLineNumber = 1;
+        $currentLineTokens = [];
 
-            while ($tokenIndex < count($tokens)) {
-                $token = $tokens[$tokenIndex];
-                $tokenValue = is_array($token) ? $token[1] : $token;
-                $tokenType = is_array($token) ? token_name($token[0]) : 'T_STRING';
+        foreach ($tokens as $token) {
+            $tokenValue = is_array($token) ? $token[1] : $token;
+            $tokenType = is_array($token) ? token_name($token[0]) : 'T_STRING';
 
-                if (str_contains($tokenValue, ";")) {
-                    $parts = explode(";", $tokenValue);
-                    foreach ($parts as $i => $part) {
-                        if ($i > 0) {
-                            $lineTokens[] = ['type' => $tokenType, 'value' => $part];
-                            $lines[] = [
-                                'number' => $lineNumber,
-                                'tokens' => $lineTokens,
-                                'coverage' => $coverageData[$lineNumber] ?? 'neutral',
-                            ];
-                            $lineNumber++;
-                            $lineTokens = [];
-                        } else {
-                            if (!empty($part)) {
-                                $lineTokens[] = ['type' => $tokenType, 'value' => $part];
-                            }
-                        }
+            $newlineCount = substr_count($tokenValue, "\n");
+
+            if ($newlineCount === 0) {
+                $currentLineTokens[] = ['type' => $tokenType, 'value' => $tokenValue];
+            } else {
+                $parts = explode("\n", $tokenValue);
+
+                if ($parts[0] !== '') {
+                    $currentLineTokens[] = ['type' => $tokenType, 'value' => $parts[0]];
+                }
+
+                $counter = count($parts);
+
+                for ($i = 1; $i < $counter; $i++) {
+                    $linesByNumber[$currentLineNumber] = $currentLineTokens;
+                    $currentLineNumber++;
+                    $currentLineTokens = [];
+
+                    if ($parts[$i] !== '') {
+                        $currentLineTokens[] = ['type' => $tokenType, 'value' => $parts[$i]];
                     }
-                    $tokenIndex++;
-                    break;
-                } else {
-                    $lineTokens[] = ['type' => $tokenType, 'value' => $tokenValue];
-                    $currentLineContent .= $tokenValue;
-                    $tokenIndex++;
-                }
-
-                if (strlen($currentLineContent) >= strlen($lineContent) && !str_contains($lineContent, "\n")) {
-                    break;
                 }
             }
+        }
 
-            if (!empty($lineTokens)) {
-                $lines[] = [
-                    'number' => $lineNumber,
-                    'tokens' => $lineTokens,
-                    'coverage' => $coverageData[$lineNumber] ?? 'neutral',
-                ];
-            }
+        if ($currentLineTokens !== [] || $currentLineNumber === 1) {
+            $linesByNumber[$currentLineNumber] = $currentLineTokens;
+        }
+
+        $lines = [];
+        foreach ($linesByNumber as $num => $tokens) {
+            $lines[] = [
+                'number' => $num,
+                'tokens' => $tokens,
+                'coverage' => $coverageData[$num] ?? 'neutral',
+            ];
         }
 
         return ['lines' => $lines];

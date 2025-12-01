@@ -557,11 +557,12 @@ class Router implements RouterInterface
     private function getCoverage(string $runId): GuzzleResponse
     {
         $coverage = $this->coverage;
-        if ($coverage === null) {
+        if (!$coverage instanceof Coverage) {
             $projectRoot = getcwd();
             $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
             $coverage = new Coverage($projectRoot, $coveragePath);
         }
+
         $data = $coverage->parse();
 
         return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data, JSON_THROW_ON_ERROR));
