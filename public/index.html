@@ -135,6 +135,16 @@
                             </label>
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Coverage</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center text-sm">
+                                <input type="checkbox" v-model="store.state.coverage" class="mr-2">
+                                Run with Code Coverage
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -150,11 +160,6 @@
                     class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-500">
                 Run Failed
             </button>
-
-            <label class="flex items-center text-sm text-white ml-4">
-                <input type="checkbox" v-model="store.state.coverage" class="mr-2">
-                Run with Code Coverage
-            </label>
 
             <button @click="app.togglePlayStop()"
                     :title="isAnyTestRunning ? 'Stop all test runs' : 'Run all tests'"
@@ -588,7 +593,7 @@
             });
 
             // Watch for changes in filters and options, and save them to localStorage
-            watch(() => [app.store.state.options, app.store.state.selectedSuites, app.store.state.selectedGroups], (newState, oldState) => {
+            watch(() => [app.store.state.options, app.store.state.selectedSuites, app.store.state.selectedGroups, app.store.state.coverage], (newState, oldState) => {
                 app.store.saveState();
             }, { deep: true });
 

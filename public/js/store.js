@@ -78,6 +78,9 @@ export class Store {
                 if (Array.isArray(parsedState.selectedGroups)) {
                     this.state.selectedGroups = parsedState.selectedGroups;
                 }
+                if(parsedState.coverage) {
+                    this.state.coverage = parsedState.coverage;
+                }
             } catch (e) {
                 console.error('Failed to load state from localStorage', e);
                 localStorage.removeItem(STORAGE_KEY);
@@ -93,6 +96,7 @@ export class Store {
             options: this.state.options,
             selectedSuites: this.state.selectedSuites,
             selectedGroups: this.state.selectedGroups,
+            coverage: this.state.coverage,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     }
@@ -549,10 +553,9 @@ export class Store {
     clearFilters() {
         this.state.selectedSuites = [];
         this.state.selectedGroups = [];
+        this.state.coverage = false;
         this.state.options = { ...Store.defaultOptions };
     }
-
-
 
     setActiveTab(tab) {
         this.state.activeTab = tab;
