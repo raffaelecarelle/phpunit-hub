@@ -2,6 +2,7 @@
 
 namespace PhpUnitHub\Tests\Command;
 
+use PhpUnitHub\Coverage\Coverage;
 use ReflectionObject;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\Router;
@@ -17,7 +18,7 @@ use React\ChildProcess\Process;
 
 class RouterTest extends TestCase
 {
-    private function createRouter(): Router
+    private function createRouter(?Coverage $coverage = null): Router
     {
         $mockHttpServer = $this->createMock(HttpServerInterface::class);
         $mockOutput = $this->createMock(OutputInterface::class);
@@ -25,7 +26,15 @@ class RouterTest extends TestCase
         $mockTestRunner = $this->createMock(TestRunner::class);
         $testDiscoverer = $this->createMock(TestDiscoverer::class);
 
-        return new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $testDiscoverer);
+        $router = new Router($mockHttpServer, $mockOutput, $mockStatusHandler, $mockTestRunner, $testDiscoverer);
+
+        if ($coverage instanceof Coverage) {
+            $reflectionObject = new ReflectionObject($router);
+            $reflectionProperty = $reflectionObject->getProperty('coverage');
+            $reflectionProperty->setValue($router, $coverage);
+        }
+
+        return $router;
     }
 
     private function createMockProcess(bool $expectTerminate = false): Process
@@ -155,5 +164,23 @@ class RouterTest extends TestCase
         $this->assertNotEmpty($sent, 'No response sent');
         $this->assertStringContainsString('HTTP/1.1 404', $sent[0]);
         $this->assertStringContainsString('No test run found with ID non-existent-run-id.', $sent[0]);
+    }
+
+    public function testGetCoverageReturnsCoverageData(): void
+    {
+        $coverageMock = $this->createMock(Coverage::class);
+        $coverageMock->method('parse')->willReturn(['total_coverage_percent' => 50.0]);
+
+        $router = $this->createRouter($coverageMock);
+
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/coverage/some-run-id', 'GET');
+
+        $router->onOpen($mockConnection, $mockRequest);
+
+        $this->assertNotEmpty($sent, 'No response sent');
+        $this->assertStringContainsString('HTTP/1.1 200', $sent[0]);
+        $this->assertStringContainsString('{"total_coverage_percent":50}', $sent[0]);
     }
 }

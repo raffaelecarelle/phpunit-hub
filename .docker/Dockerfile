@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install xml mbstring zip
+RUN pecl install pcov  \
+    && docker-php-ext-install xml mbstring zip  \
+    && docker-php-ext-enable pcov
 
 WORKDIR /app
 

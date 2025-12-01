@@ -5,9 +5,10 @@
 import { updateFavicon } from './utils.js';
 
 export class WebSocketManager {
-    constructor(url = 'ws://127.0.0.1:8080/ws/status', store) {
+    constructor(url = 'ws://127.0.0.1:8080/ws/status', store, app) {
         this.url = url;
         this.store = store;
+        this.app = app;
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
@@ -21,22 +22,22 @@ export class WebSocketManager {
         return new Promise((resolve, reject) => {
             try {
                 this.ws = new WebSocket(this.url);
-                
+
                 this.ws.onopen = () => {
                     console.log('WebSocket connected');
                     this.reconnectAttempts = 0;
                     resolve();
                 };
-                
+
                 this.ws.onmessage = (event) => {
                     this.handleMessage(JSON.parse(event.data));
                 };
-                
+
                 this.ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
                     reject(error);
                 };
-                
+
                 this.ws.onclose = () => {
                     console.log('WebSocket disconnected');
                     this.handleDisconnect();
@@ -53,7 +54,7 @@ export class WebSocketManager {
     handleDisconnect() {
         this.store.clearRunningTests();
         updateFavicon('neutral');
-        
+
         // Attempt to reconnect
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
@@ -99,6 +100,10 @@ export class WebSocketManager {
         try {
             const event = JSON.parse(message.data);
             this.store.handleTestEvent(message.runId, event);
+
+            if (event.event === 'execution.ended' && this.store.state.coverage) {
+                this.store.setCoverageLoading(true);
+            }
         } catch (error) {
             console.error('Failed to parse realtime event:', error, message.data);
         }
@@ -109,6 +114,9 @@ export class WebSocketManager {
      */
     handleTestExit(message) {
         this.updateFaviconFromRun(message.runId);
+        if (this.store.state.coverage) {
+            this.app.fetchCoverageReport(message.runId);
+        }
     }
 
     /**
