@@ -244,16 +244,16 @@
 
         <!-- Main Content -->
         <main id="main-content" class="flex-1 p-4 flex flex-col">
-            <div class="border-b border-gray-700 mb-4">
-                <nav class="flex -mb-px">
+            <div class="mb-4">
+                <nav class="flex space-x-2">
                     <a href="#"
                        @click.prevent="store.setActiveTab('results')"
-                       :class="['whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm', store.state.activeTab === 'results' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-500']">
+                       :class="['px-4 py-2 rounded-md text-sm font-medium', store.state.activeTab === 'results' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
                         Results
                     </a>
                     <a href="#"
                        @click.prevent="store.setActiveTab('coverage')"
-                       :class="['ml-8 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm', store.state.activeTab === 'coverage' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-500']">
+                       :class="['px-4 py-2 rounded-md text-sm font-medium', store.state.activeTab === 'coverage' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
                         Coverage
                     </a>
                 </nav>
