@@ -48,6 +48,7 @@ describe('Store', () => {
             availableGroups: [],
             isLoading: false,
             isStarting: false,
+            fileCoverage: null,
             searchQuery: '',
             coverage: false,
             isCoverageLoading: false,
