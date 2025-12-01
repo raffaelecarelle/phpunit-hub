@@ -96,11 +96,7 @@ class Router implements RouterInterface
         if ($path === '/api/tests' && $method === 'GET') {
             $tests = $this->testDiscoverer->discover();
             $jsonResponse = json_encode($tests, JSON_THROW_ON_ERROR);
-            if ($jsonResponse === false) {
-                $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode tests to JSON.'], JSON_THROW_ON_ERROR));
-            } else {
-                $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
-            }
+            $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
             $groups = [];
             /** @var string[] $suites */
@@ -127,11 +123,7 @@ class Router implements RouterInterface
                 $isRerun = true;
                 if ($this->failedTests === []) {
                     $jsonResponse = json_encode(['error' => 'No failed tests to run.'], JSON_THROW_ON_ERROR);
-                    if ($jsonResponse === false) {
-                        $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.'], JSON_THROW_ON_ERROR));
-                    } else {
-                        $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], $jsonResponse);
-                    }
+                    $response = new GuzzleResponse(400, ['Content-Type' => 'application/json'], $jsonResponse);
 
                     $this->sendResponse($connection, $response);
                     return;
@@ -146,11 +138,7 @@ class Router implements RouterInterface
 
             $runId = $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage);
             $jsonResponse = json_encode(['message' => 'Test run started.', 'runId' => $runId], JSON_THROW_ON_ERROR);
-            if ($jsonResponse === false) {
-                $response = new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.'], JSON_THROW_ON_ERROR));
-            } else {
-                $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
-            }
+            $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
         } elseif ($path === '/api/stop' && $method === 'POST') {
             // Handle stop requests for all running tests
             $response = $this->stopAllTests();
@@ -226,11 +214,7 @@ class Router implements RouterInterface
         $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
 
         $jsonBroadcast = json_encode(['type' => 'start', 'runId' => $runId, 'contextId' => $contextId], JSON_THROW_ON_ERROR); // Include contextId
-        if ($jsonBroadcast !== false) {
-            $this->statusHandler->broadcast($jsonBroadcast);
-        } else {
-            $this->output->writeln('<error>Failed to encode start message to JSON for broadcast.</error>');
-        }
+        $this->statusHandler->broadcast($jsonBroadcast);
 
         $process = $this->testRunner->run($this->runContexts[$runId], $runId);
 
@@ -280,12 +264,8 @@ class Router implements RouterInterface
                 }
 
                 $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line], JSON_THROW_ON_ERROR);
-                if ($jsonBroadcast !== false) {
-                    $this->output->writeln('[DEBUG] Broadcasting realtime event');
-                    $this->statusHandler->broadcast($jsonBroadcast);
-                } else {
-                    $this->output->writeln('<error>Failed to encode realtime message to JSON for broadcast.</error>');
-                }
+                $this->output->writeln('[DEBUG] Broadcasting realtime event');
+                $this->statusHandler->broadcast($jsonBroadcast);
             }
         });
 
@@ -315,11 +295,7 @@ class Router implements RouterInterface
                     }
 
                     $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line], JSON_THROW_ON_ERROR);
-                    if ($jsonBroadcast !== false) {
-                        $this->statusHandler->broadcast($jsonBroadcast);
-                    } else {
-                        $this->output->writeln('<error>Failed to encode final realtime message to JSON for broadcast.</error>');
-                    }
+                    $this->statusHandler->broadcast($jsonBroadcast);
                 }
             }
 
@@ -343,11 +319,7 @@ class Router implements RouterInterface
                 'contextId' => $contextId, // Include contextId in exit message
             ], JSON_THROW_ON_ERROR);
 
-            if ($jsonBroadcast !== false) {
-                $this->statusHandler->broadcast($jsonBroadcast);
-            } else {
-                $this->output->writeln('<error>Failed to encode exit message to JSON for broadcast.</error>');
-            }
+            $this->statusHandler->broadcast($jsonBroadcast);
 
             if ($exitCode) {
                 $this->notify($exitCode, $summary, $runId);
@@ -391,10 +363,6 @@ class Router implements RouterInterface
     {
         if ($this->runningProcesses === []) {
             $json = json_encode(['error' => 'No test run in progress.'], JSON_THROW_ON_ERROR);
-            if ($json === false) {
-                return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.'], JSON_THROW_ON_ERROR));
-            }
-
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], $json);
         }
 
@@ -403,10 +371,6 @@ class Router implements RouterInterface
         }
 
         $json = json_encode(['message' => 'Stop requested for all running tests.'], JSON_THROW_ON_ERROR);
-        if ($json === false) {
-            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.'], JSON_THROW_ON_ERROR));
-        }
-
         return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
     }
 
@@ -417,20 +381,12 @@ class Router implements RouterInterface
     {
         if (!isset($this->runningProcesses[$runId])) {
             $json = json_encode(['error' => sprintf('No test run found with ID %s.', $runId)], JSON_THROW_ON_ERROR);
-            if ($json === false) {
-                return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode error message to JSON.'], JSON_THROW_ON_ERROR));
-            }
-
             return new GuzzleResponse(404, ['Content-Type' => 'application/json'], $json);
         }
 
         $this->terminateProcess($runId);
 
         $json = json_encode(['message' => sprintf('Stop requested for test run %s.', $runId)], JSON_THROW_ON_ERROR);
-        if ($json === false) {
-            return new GuzzleResponse(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Failed to encode success message to JSON.'], JSON_THROW_ON_ERROR));
-        }
-
         return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
     }
 
@@ -450,9 +406,7 @@ class Router implements RouterInterface
 
         // Broadcast a stopped message immediately so the UI can react quickly
         $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId], JSON_THROW_ON_ERROR);
-        if ($jsonBroadcast !== false) {
-            $this->statusHandler->broadcast($jsonBroadcast);
-        }
+        $this->statusHandler->broadcast($jsonBroadcast);
 
         // If the process doesn't exit within a short timeout, force-kill it (SIGKILL)
         try {
@@ -463,9 +417,7 @@ class Router implements RouterInterface
                 try {
                     $process->terminate($sigkill);
                     $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId, 'forced' => true], JSON_THROW_ON_ERROR);
-                    if ($jsonBroadcast !== false) {
-                        $this->statusHandler->broadcast($jsonBroadcast);
-                    }
+                    $this->statusHandler->broadcast($jsonBroadcast);
                 } catch (Exception $exception) {
                     $this->output->writeln(sprintf('<error>Failed to force-kill process for run %s: %s</error>', $runId, $exception->getMessage()));
                 }
@@ -556,14 +508,13 @@ class Router implements RouterInterface
 
     private function getCoverage(string $runId): GuzzleResponse
     {
-        $coverage = $this->coverage;
-        if (!$coverage instanceof Coverage) {
+        if (!$this->coverage instanceof Coverage) {
             $projectRoot = getcwd();
             $coveragePath = $projectRoot . sprintf('/clover-%s.xml', $runId);
-            $coverage = new Coverage($projectRoot, $coveragePath);
+            $this->coverage = new Coverage($projectRoot, $coveragePath);
         }
 
-        $data = $coverage->parse();
+        $data = $this->coverage->parse();
 
         return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data, JSON_THROW_ON_ERROR));
     }
@@ -586,7 +537,7 @@ class Router implements RouterInterface
         // Sanitize file path
         $realPath = realpath($projectRoot . '/' . $filePath);
         if ($realPath === false || !str_starts_with($realPath, $projectRoot)) {
-            return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_.ERROR));
+            return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
         }
 
         $data = $coverage->parseFile($filePath);
