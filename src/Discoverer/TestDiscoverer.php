@@ -152,7 +152,7 @@ class TestDiscoverer
                 continue;
             }
 
-            [$className, $methodName] = explode('::', $test, 2);
+            [$className, $methodIdentifier] = explode('::', $test, 2);
 
             if (!isset($suites[$className])) {
                 $parts = explode('\\', $className);
@@ -166,10 +166,18 @@ class TestDiscoverer
                 ];
             }
 
-            $suites[$className]['methods'][] = [
-                'id' => $test,
+            $methodName = preg_replace('/( with data set .*|#\d+)$/', '', $methodIdentifier);
+
+            $methodId = $className . '::' . $methodName;
+
+            $suites[$className]['methods'][$methodId] = [
+                'id' => $methodId,
                 'name' => $methodName,
             ];
+        }
+
+        foreach ($suites as &$suite) {
+            $suite['methods'] = array_values($suite['methods']);
         }
 
         return array_values($suites);
