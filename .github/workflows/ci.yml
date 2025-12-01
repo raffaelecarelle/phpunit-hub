@@ -18,7 +18,7 @@ jobs:
                 uses: shivammathur/setup-php@v2
                 with:
                     php-version: 8.2
-                    extensions: simplexml, libxml
+                    extensions: simplexml, libxml, dom
                     coverage: none
 
             -   name: Install dependencies
@@ -57,12 +57,18 @@ jobs:
                 run: npm test -- --ci --reporters=default
 
     tests:
-        name: Tests (PHP ${{ matrix.php }})
+        name: Tests (PHP ${{ matrix.php }}, PHPUnit ${{ matrix.phpunit-version }})
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
-                php: [ '8.2', '8.3', '8.4', '8.5' ]
+                php: [ '8.2', '8.3', '8.4' ]
+                phpunit-version: [ '10.5', '11.5', '12.4' ]
+                exclude:
+                    -   php: '8.4'
+                        phpunit-version: '10.5'
+                    -   php: '8.2'
+                        phpunit-version: '12.4'
         steps:
             -   name: Checkout code
                 uses: actions/checkout@v4
@@ -71,11 +77,13 @@ jobs:
                 uses: shivammathur/setup-php@v2
                 with:
                     php-version: ${{ matrix.php }}
-                    extensions: simplexml, libxml
+                    extensions: simplexml, libxml, dom
                     coverage: none
 
             -   name: Install dependencies
-                run: composer install --prefer-dist --no-progress
+                run: |
+                    composer require "phpunit/phpunit:^${{ matrix.phpunit-version }}" --no-interaction --no-update
+                    composer update --prefer-dist --no-progress --with-all-dependencies
 
             -   name: Run PHPUnit
                 run: vendor/bin/phpunit
