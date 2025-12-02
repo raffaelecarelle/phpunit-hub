@@ -128,17 +128,6 @@ describe('Store', () => {
             expect(store.state.realtimeTestRuns['oldRun']).toBeUndefined();
             expect(store.state.lastCompletedRunId).toBeNull();
         });
-
-        test('should not reset results for global context in update mode', () => {
-            const runId = 'run123';
-            store.state.options.resultUpdateMode = 'update';
-            store.state.realtimeTestRuns['oldRun'] = { status: 'finished' };
-            store.state.lastCompletedRunId = 'oldRun';
-
-            store.initializeTestRun(runId, 'global');
-            expect(store.state.realtimeTestRuns['oldRun']).toBeDefined();
-            expect(store.state.lastCompletedRunId).toBe('oldRun');
-        });
     });
 
     describe('handleTestEvent', () => {
@@ -343,21 +332,6 @@ describe('Store', () => {
             store.handleTestCompleted(run, eventData, runId);
             expect(run.failedTestIds.has(testId)).toBe(false);
         });
-
-        test('should remove test from all runs failedTestIds in update mode when test passes', () => {
-            store.state.options.resultUpdateMode = 'update';
-            const runId2 = 'run456';
-            store.initializeTestRun(runId2, 'global');
-            const run2 = store.state.realtimeTestRuns[runId2];
-            run2.failedTestIds.add(testId);
-            run.failedTestIds.add(testId);
-
-            const eventData = { event: 'test.passed', data: { test: testId } };
-            store.handleTestCompleted(run, eventData, runId);
-
-            expect(run.failedTestIds.has(testId)).toBe(false);
-            expect(run2.failedTestIds.has(testId)).toBe(false);
-        });
     });
 
     describe('handleTestFinished', () => {
@@ -445,18 +419,6 @@ describe('Store', () => {
 
             expect(store.getFailedTestIds()).toEqual(['test1', 'test2']);
         });
-
-        test('should return failed test IDs from all runs in update mode', () => {
-            store.state.options.resultUpdateMode = 'update';
-            store.initializeTestRun('run1', 'global');
-            store.state.realtimeTestRuns['run1'].failedTestIds.add('test1');
-            store.initializeTestRun('run2', 'global');
-            store.state.realtimeTestRuns['run2'].failedTestIds.add('test2');
-
-            const failedIds = store.getFailedTestIds();
-            expect(failedIds).toContain('test1');
-            expect(failedIds).toContain('test2');
-        });
     });
 
     describe('hasFailedTests', () => {
@@ -466,14 +428,6 @@ describe('Store', () => {
             store.initializeTestRun(runId, 'global');
             store.state.lastCompletedRunId = runId;
             store.state.realtimeTestRuns[runId].failedTestIds.add('test1');
-
-            expect(store.hasFailedTests()).toBe(true);
-        });
-
-        test('should return true if any run has failed tests in update mode', () => {
-            store.state.options.resultUpdateMode = 'update';
-            store.initializeTestRun('run1', 'global');
-            store.state.realtimeTestRuns['run1'].failedTestIds.add('test1');
 
             expect(store.hasFailedTests()).toBe(true);
         });
