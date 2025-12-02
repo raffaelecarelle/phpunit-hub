@@ -559,14 +559,28 @@ class Router implements RouterInterface
         }
 
         $realPath = realpath($filePath);
-        if ($realPath === false || !str_starts_with($realPath, $this->projectRoot)) {
-            return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
-        }
+        if ($realPath !== false) { // The path was resolved
+            if (!str_starts_with($realPath, $this->projectRoot)) {
+                // Resolved path is outside project root
+                return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
+            }
+        } else { // realpath failed
+            // This could be because the file does not exist, or a component of the path is not accessible.
+            // We need to check for path traversal on the given path to be safe.
+            if (str_contains($filePath, '..')) {
+                return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
+            }
 
-        if (!file_exists($realPath)) {
+            // Check if path starts with project root
+            if (!str_starts_with($filePath, $this->projectRoot)) {
+                return new GuzzleResponse(403, ['Content-Type' => 'application/json'], json_encode(['error' => 'Access denied.'], JSON_THROW_ON_ERROR));
+            }
+
+            // At this point, we assume it's a non-existent file inside the project.
             return new GuzzleResponse(404, ['Content-Type' => 'application/json'], json_encode(['error' => 'File not found.'], JSON_THROW_ON_ERROR));
         }
 
+        // If we are here, realpath was successful and inside project root.
         $content = file_get_contents($realPath);
 
         return new GuzzleResponse(200, ['Content-Type' => 'text/plain'], $content);

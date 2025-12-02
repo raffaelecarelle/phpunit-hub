@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use function Castor\exit_code;
 use function Castor\load_dot_env;
+use function Castor\run;
 
 #[\Castor\Attribute\AsTask]
 function install(): int
@@ -15,6 +16,8 @@ function install(): int
 #[\Castor\Attribute\AsTask]
 function phpunit(): int
 {
+    run('rm -f clover-*.xml');
+
     return exit_code(dockerize('vendor/bin/phpunit'));
 
 }

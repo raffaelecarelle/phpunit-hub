@@ -2,22 +2,26 @@
 
 namespace PhpUnitHub\Tests\Command;
 
+use Exception;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PhpUnitHub\Coverage\Coverage;
-use Psr\Http\Message\StreamInterface;
-use ReflectionObject;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Command\Router;
+use PhpUnitHub\Coverage\Coverage;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 use Ratchet\ConnectionInterface;
 use Ratchet\Http\HttpServerInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 use React\ChildProcess\Process;
 use React\Stream\ReadableStreamInterface;
+use ReflectionClass;
+use ReflectionObject;
+use Symfony\Component\Console\Output\OutputInterface;
+
+use function dirname;
 
 #[CoversClass(Router::class)]
 class RouterTest extends TestCase
@@ -309,5 +313,276 @@ class RouterTest extends TestCase
         $this->assertEquals(['MyGroup'], $router->getLastGroups());
         $this->assertEquals(['stopOnFailure' => true], $router->getLastOptions());
         $this->assertEquals(['MySuite'], $router->getLastSuites());
+    }
+
+    public function testOnMessageDelegatesToWebSocket(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->once())->method('onMessage');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = true;
+        // Simulate a connection with WebSocket property
+        $router->onMessage($mockConnection, 'test message');
+    }
+
+    public function testOnMessageDoesNotThrowWhenWebSocketPropertyIsNull(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->never())->method('onMessage');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = null;
+        // Simulate a connection without WebSocket property
+        $router->onMessage($mockConnection, 'test message');
+    }
+
+    public function testOnCloseCallsHttpServerOnCloseWhenWebSocketIsNotNull(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->once())->method('onClose');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = true;
+        // Simulate a connection with WebSocket property
+        $router->onClose($mockConnection);
+    }
+
+    public function testOnCloseDoesNotThrowWhenWebSocketPropertyIsNull(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->never())->method('onClose');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = null;
+        // Simulate a connection without WebSocket property
+        $router->onClose($mockConnection);
+    }
+
+    public function testOnErrorHandlesWebSocketError(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->once())->method('onError');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = true; // Simulate a WebSocket connection
+
+        $exception = new Exception('Test WebSocket error');
+        $router->onError($mockConnection, $exception);
+    }
+
+    public function testOnErrorHandlesHttpConnectionError(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->never())->method('onError');
+
+        $mockOutput = $this->createMock(OutputInterface::class);
+        $mockOutput->expects($this->once())
+            ->method('writeln')
+            ->with($this->stringContains('HTTP Server error: Test HTTP error'));
+
+        $router = new Router(
+            $mockHttpServer,
+            $mockOutput,
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        /** @phpstan-ignore-next-line */
+        $mockConnection->WebSocket = null; // Simulate an HTTP connection without WebSocket
+
+        $mockConnection->expects($this->once())->method('close');
+
+        $exception = new Exception('Test HTTP error');
+        $router->onError($mockConnection, $exception);
+    }
+
+    public function testWebSocketConnection(): void
+    {
+        $mockHttpServer = $this->createMock(HttpServerInterface::class);
+        $mockHttpServer->expects($this->once())->method('onOpen');
+
+        $router = new Router(
+            $mockHttpServer,
+            $this->createMock(OutputInterface::class),
+            $this->createMock(StatusHandler::class),
+            $this->createMock(TestRunner::class),
+            $this->createMock(TestDiscoverer::class),
+            '/path/to/project'
+        );
+
+        $mockConnection = $this->createMock(ConnectionInterface::class);
+        $mockRequest = $this->createMockRequest('/ws/status', 'GET');
+
+        $router->onOpen($mockConnection, $mockRequest);
+    }
+
+    public function testRunFailedEndpointWithNoFailedTests(): void
+    {
+        $router = $this->createRouter();
+
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/run-failed', 'POST', '{}');
+
+        $router->onOpen($mockConnection, $mockRequest);
+
+        $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
+        $this->assertStringContainsString('No failed tests to run.', $sent[0]);
+    }
+
+    public function testServesIndexHtml(): void
+    {
+        $projectRoot = dirname(__DIR__, 3);
+        $router = $this->createRouter(null, null, $projectRoot);
+
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/', 'GET');
+
+        $router->onOpen($mockConnection, $mockRequest);
+
+        $this->assertStringContainsString('HTTP/1.1 200', $sent[0]);
+        $this->assertStringContainsString('Content-Type: text/html', $sent[0]);
+        $this->assertStringContainsString("window.WS_HOST = '127.0.0.1'", $sent[0]);
+        $this->assertStringContainsString("window.WS_PORT = '8080'", $sent[0]);
+        $this->assertMatchesRegularExpression('/css\/styles\.css\?v=[a-f0-9]{32}/', $sent[0]);
+    }
+
+    public function testNotFoundResponse(): void
+    {
+        $router = $this->createRouter();
+
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/non-existent-route', 'GET');
+
+        $router->onOpen($mockConnection, $mockRequest);
+
+        $this->assertStringContainsString('HTTP/1.1 404', $sent[0]);
+        $this->assertStringContainsString('Not Found', $sent[0]);
+    }
+
+    public function testGetMimeType(): void
+    {
+        $router = $this->createRouter();
+        $reflectionClass = new ReflectionClass($router);
+        $reflectionMethod = $reflectionClass->getMethod('getMimeType');
+
+        $this->assertEquals('text/html; charset=utf-8', $reflectionMethod->invoke($router, 'file.html'));
+        $this->assertEquals('text/css; charset=utf-8', $reflectionMethod->invoke($router, 'file.css'));
+        $this->assertEquals('application/javascript; charset=utf-8', $reflectionMethod->invoke($router, 'file.js'));
+        $this->assertEquals('text/plain', $reflectionMethod->invoke($router, 'file.txt'));
+    }
+
+    public function testGetFileCoverageErrorResponses(): void
+    {
+        $router = $this->createRouter(null, null, '/path/to/project');
+
+        // No file path
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'runId=123');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
+        $this->assertStringContainsString('File path not provided.', $sent[0]);
+
+        // No run ID
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'path=some/file.php');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
+        $this->assertStringContainsString('Run ID not provided.', $sent[0]);
+
+        // Access denied
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'runId=123&path=../outside/file.php');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 403', $sent[0]);
+        $this->assertStringContainsString('Access denied.', $sent[0]);
+    }
+
+    public function testGetFileContentErrorResponses(): void
+    {
+        $router = $this->createRouter(null, null, '/path/to/project');
+
+        // No file path
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-content', 'GET');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
+        $this->assertStringContainsString('File path not provided.', $sent[0]);
+
+        // Access denied
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-content', 'GET', '', 'path=/etc/passwd');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 403', $sent[0]);
+        $this->assertStringContainsString('Access denied.', $sent[0]);
+
+        // File not found
+        $sent = [];
+        $mockConnection = $this->createMockConnection($sent);
+        $mockRequest = $this->createMockRequest('/api/file-content', 'GET', '', 'path=/path/to/project/non-existent-file.php');
+        $router->onOpen($mockConnection, $mockRequest);
+        $this->assertStringContainsString('HTTP/1.1 404', $sent[0]);
+        $this->assertStringContainsString('File not found.', $sent[0]);
     }
 }

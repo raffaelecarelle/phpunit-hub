@@ -279,6 +279,42 @@ export class App {
     }
 
     /**
+     * Calculate summary statistics from test data in real-time
+     */
+    calculateRealtimeSummary(run) {
+        const summary = {
+            tests: 0,
+            assertions: 0,
+            failures: 0,
+            errors: 0,
+            warnings: 0,
+            skipped: 0,
+            deprecations: 0,
+            incomplete: 0,
+        };
+
+        if (!run || !run.suites) return summary;
+
+        for (const suiteName in run.suites) {
+            for (const testId in run.suites[suiteName].tests) {
+                const testData = run.suites[suiteName].tests[testId];
+                summary.tests++;
+                summary.assertions += testData.assertions || 0;
+                summary.warnings += testData.warnings?.length || 0;
+                summary.deprecations += testData.deprecations?.length || 0;
+
+                switch (testData.status) {
+                    case 'failed': summary.failures++; break;
+                    case 'errored': summary.errors++; break;
+                    case 'skipped': summary.skipped++; break;
+                    case 'incomplete': summary.incomplete++; break;
+                }
+            }
+        }
+        return summary;
+    }
+
+    /**
      * Get results from a single run
      */
     getSingleRunResults(run) {
@@ -296,6 +332,21 @@ export class App {
             numberOfIncomplete: 0,
         };
         const summary = { ...defaultSummary, ...(run.summary || {}) };
+
+        // If the run is in progress, calculate totals in real-time
+        // We check for `!run.summary` because the final summary from PHPUnit is the source of truth.
+        // We only calculate in real-time if that final summary hasn't arrived yet.
+        if (run && !run.summary) {
+            const realtimeSummary = this.calculateRealtimeSummary(run);
+            summary.numberOfTests = realtimeSummary.tests;
+            summary.numberOfAssertions = realtimeSummary.assertions;
+            summary.numberOfFailures = realtimeSummary.failures;
+            summary.numberOfErrors = realtimeSummary.errors;
+            summary.numberOfWarnings = realtimeSummary.warnings;
+            summary.numberOfSkipped = realtimeSummary.skipped;
+            summary.numberOfDeprecations = realtimeSummary.deprecations;
+            summary.numberOfIncomplete = realtimeSummary.incomplete;
+        }
 
         // Transform suites data
         const transformedSuites = [];
