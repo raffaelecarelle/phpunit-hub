@@ -3,6 +3,7 @@
 namespace PhpUnitHub\Tests\WebSocket;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\TestWith;
 use ReflectionClass;
 use Exception;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -187,15 +188,5 @@ class StatusHandlerTest extends TestCase
         $this->output->expects($this->never())->method('writeln'); // No output expected for broadcast itself
 
         $this->statusHandler->broadcast($message);
-    }
-
-    public function testRisky(): void
-    {
-
-    }
-
-    public function testNotice(): void
-    {
-        \trigger_error('Test notice', E_USER_NOTICE);
     }
 }
