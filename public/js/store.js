@@ -172,6 +172,7 @@ export class Store {
      */
     handleTestEvent(runId, eventData) {
         const run = this.state.realtimeTestRuns[runId];
+
         if (!run) {
             console.warn(`Received event for unknown runId: ${runId}`);
             return;
@@ -233,7 +234,7 @@ export class Store {
      * Handle test.prepared event
      */
     handleTestPrepared(run, eventData, runId) {
-        const { suiteName, testName } = parseTestId(eventData.data.test);
+        const { suiteName, testName } = parseTestId(eventData.data.testId);
 
         if (!run.suites[suiteName]) {
             run.suites[suiteName] = {
@@ -253,8 +254,8 @@ export class Store {
             };
         }
 
-        run.suites[suiteName].tests[eventData.data.test] = {
-            id: eventData.data.test,
+        run.suites[suiteName].tests[eventData.data.testId] = {
+            id: eventData.data.testId,
             name: testName,
             class: suiteName,
             status: 'running',
@@ -268,15 +269,15 @@ export class Store {
         };
 
         // Update sidebar
-        this.updateSidebarTestStatus(suiteName, eventData.data.test, 'running', null, runId);
+        this.updateSidebarTestStatus(suiteName, eventData.data.testId, 'running', null, runId);
     }
 
     /**
      * Handle test warning/deprecation event
      */
     handleTestWarningOrDeprecation(run, eventData) {
-        const { suiteName } = parseTestId(eventData.data.test);
-        const testId = eventData.data.test;
+        const { suiteName } = parseTestId(eventData.data.testId);
+        const testId = eventData.data.testId;
 
         if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
             const test = run.suites[suiteName].tests[testId];
@@ -295,8 +296,8 @@ export class Store {
     }
 
     handleTestNotice(run, eventData) {
-        const { suiteName } = parseTestId(eventData.data.test);
-        const testId = eventData.data.test;
+        const { suiteName } = parseTestId(eventData.data.testId);
+        const testId = eventData.data.testId;
 
         if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
             const test = run.suites[suiteName].tests[testId];
@@ -312,8 +313,8 @@ export class Store {
      * Handle test completion event
      */
     handleTestCompleted(run, eventData, runId) {
-        const { suiteName, testName } = parseTestId(eventData.data.test);
-        const testId = eventData.data.test;
+        const { suiteName, testName } = parseTestId(eventData.data.testId);
+        const testId = eventData.data.testId;
 
         if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
             const test = run.suites[suiteName].tests[testId];
@@ -346,8 +347,8 @@ export class Store {
     }
 
     handleTestFinished(run, eventData, runId) {
-        const { suiteName } = parseTestId(eventData.data.test);
-        const testId = eventData.data.test;
+        const { suiteName } = parseTestId(eventData.data.testId);
+        const testId = eventData.data.testId;
 
         if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
             const test = run.suites[suiteName].tests[testId];

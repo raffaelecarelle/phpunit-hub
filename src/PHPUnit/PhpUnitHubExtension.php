@@ -84,7 +84,10 @@ class PhpUnitHubExtension implements Extension
 
             public function notify(Prepared $event): void
             {
-                ($this->writeEvent)('test.prepared', ['test' => ($this->formatTestId)($event->test()->name())]);
+                ($this->writeEvent)('test.prepared', [
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
+                ]);
             }
         });
 
@@ -101,7 +104,10 @@ class PhpUnitHubExtension implements Extension
 
             public function notify(Passed $event): void
             {
-                ($this->writeEvent)('test.passed', ['test' => ($this->formatTestId)($event->test()->name())]);
+                ($this->writeEvent)('test.passed', [
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
+                ]);
             }
         });
 
@@ -119,7 +125,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(Failed $event): void
             {
                 ($this->writeEvent)('test.failed', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
                 ]);
@@ -140,7 +147,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(Errored $event): void
             {
                 ($this->writeEvent)('test.errored', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                     'trace' => $event->throwable()->stackTrace(),
                 ]);
@@ -161,7 +169,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(Skipped $event): void
             {
                 ($this->writeEvent)('test.skipped', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -181,7 +190,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(MarkedIncomplete $event): void
             {
                 ($this->writeEvent)('test.incomplete', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->throwable()->message(),
                 ]);
             }
@@ -201,7 +211,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(WarningTriggered $event): void
             {
                 ($this->writeEvent)('test.warning', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -221,7 +232,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(DeprecationTriggered $event): void
             {
                 ($this->writeEvent)('test.deprecation', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -241,7 +253,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(PhpDeprecationTriggered $event): void
             {
                 ($this->writeEvent)('test.deprecation', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -261,7 +274,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(ConsideredRisky $event): void
             {
                 ($this->writeEvent)('test.risky', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -281,7 +295,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(NoticeTriggered $event): void
             {
                 ($this->writeEvent)('test.notice', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -301,7 +316,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(PhpNoticeTriggered $event): void
             {
                 ($this->writeEvent)('test.notice', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -321,7 +337,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(PhpWarningTriggered $event): void
             {
                 ($this->writeEvent)('test.warning', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'message' => $event->message(),
                 ]);
             }
@@ -390,7 +407,8 @@ class PhpUnitHubExtension implements Extension
             public function notify(Finished $event): void
             {
                 ($this->writeEvent)('test.finished', [
-                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'testId' => $event->test()->id(),
+                    'testName' => ($this->formatTestId)($event->test()->name()),
                     'duration' => $event->telemetryInfo()->durationSinceStart()->nanoseconds(),
                     'assertions' => $event->numberOfAssertionsPerformed(),
                 ]);

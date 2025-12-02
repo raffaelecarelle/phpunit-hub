@@ -153,25 +153,25 @@ describe('Store', () => {
         });
 
         test('should call handleTestPrepared for test.prepared event', () => {
-            const eventData = { event: 'test.prepared', data: { test: 'SuiteA::testMethod' } };
+            const eventData = { event: 'test.prepared', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
             expect(store.handleTestPrepared).toHaveBeenCalledWith(run, eventData, runId);
         });
 
         test('should call handleTestWarningOrDeprecation for test.warning event', () => {
-            const eventData = { event: 'test.warning', data: { test: 'SuiteA::testMethod' } };
+            const eventData = { event: 'test.warning', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
             expect(store.handleTestWarningOrDeprecation).toHaveBeenCalledWith(run, eventData);
         });
 
         test('should call handleTestCompleted for test.passed event', () => {
-            const eventData = { event: 'test.passed', data: { test: 'SuiteA::testMethod' } };
+            const eventData = { event: 'test.passed', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
             expect(store.handleTestCompleted).toHaveBeenCalledWith(run, eventData, runId);
         });
 
         test('should call handleTestFinished for test.finished event', () => {
-            const eventData = { event: 'test.finished', data: { test: 'SuiteA::testMethod', duration: 0.1 } };
+            const eventData = { event: 'test.finished', data: { testId: 'SuiteA::testMethod', duration: 0.1 } };
             store.handleTestEvent(runId, eventData);
             expect(store.handleTestFinished).toHaveBeenCalledWith(run, eventData, 'run123');
         });
@@ -183,7 +183,7 @@ describe('Store', () => {
         });
 
         test('should warn for unknown runId', () => {
-            const eventData = { event: 'test.passed', data: { test: 'SuiteA::testMethod' } };
+            const eventData = { event: 'test.passed', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent('unknownRun', eventData);
             expect(console.warn).toHaveBeenCalledWith('Received event for unknown runId: unknownRun');
         });
@@ -221,7 +221,7 @@ describe('Store', () => {
 
         test('should add a new test to an existing suite', () => {
             run.suites['SuiteA'] = { name: 'SuiteA', tests: {} };
-            const eventData = { event: 'test.prepared', data: { test: 'SuiteA::testMethod' } };
+            const eventData = { event: 'test.prepared', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestPrepared(run, eventData, runId);
 
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod']).toEqual({
@@ -238,7 +238,7 @@ describe('Store', () => {
         });
 
         test('should create suite if it does not exist and add test', () => {
-            const eventData = { event: 'test.prepared', data: { test: 'SuiteB::testMethod' } };
+            const eventData = { event: 'test.prepared', data: { testId: 'SuiteB::testMethod' } };
             store.handleTestPrepared(run, eventData, runId);
 
             expect(run.suites['SuiteB']).toBeDefined();
@@ -265,7 +265,7 @@ describe('Store', () => {
         });
 
         test('should add a warning to the test and update suite counts', () => {
-            const eventData = { event: 'test.warning', data: { test: testId, message: 'Some warning' } };
+            const eventData = { event: 'test.warning', data: { testId: testId, message: 'Some warning' } };
             store.handleTestWarningOrDeprecation(run, eventData);
 
             expect(run.suites['SuiteA'].tests[testId].warnings).toEqual(['Some warning']);
@@ -274,7 +274,7 @@ describe('Store', () => {
         });
 
         test('should add a deprecation to the test and update suite counts', () => {
-            const eventData = { event: 'test.deprecation', data: { test: testId, message: 'Some deprecation' } };
+            const eventData = { event: 'test.deprecation', data: { testId: testId, message: 'Some deprecation' } };
             store.handleTestWarningOrDeprecation(run, eventData);
 
             expect(run.suites['SuiteA'].tests[testId].deprecations).toEqual(['Some deprecation']);
@@ -302,7 +302,7 @@ describe('Store', () => {
         });
 
         test('should update test status and suite counts for passed test', () => {
-            const eventData = { event: 'test.passed', data: { test: testId } };
+            const eventData = { event: 'test.passed', data: { testId: testId } };
             store.handleTestCompleted(run, eventData, runId);
 
             const test = run.suites['SuiteA'].tests[testId];
@@ -315,7 +315,7 @@ describe('Store', () => {
         });
 
         test('should update test status for failed test and track it', () => {
-            const eventData = { event: 'test.failed', data: { test: testId, message: 'Failed!', trace: 'stack' } };
+            const eventData = { event: 'test.failed', data: { testId: testId, message: 'Failed!', trace: 'stack' } };
             store.handleTestCompleted(run, eventData, runId);
 
             const test = run.suites['SuiteA'].tests[testId];
@@ -329,7 +329,7 @@ describe('Store', () => {
 
         test('should remove test from failedTestIds if it passes after being failed', () => {
             run.failedTestIds.add(testId);
-            const eventData = { event: 'test.passed', data: { test: testId } };
+            const eventData = { event: 'test.passed', data: { testId: testId } };
             store.handleTestCompleted(run, eventData, runId);
             expect(run.failedTestIds.has(testId)).toBe(false);
         });
@@ -352,7 +352,7 @@ describe('Store', () => {
         });
 
         test('should update the duration and assertions of a test', () => {
-            const eventData = { event: 'test.finished', data: { test: testId, duration: 1.23, assertions: 5 } };
+            const eventData = { event: 'test.finished', data: { testId: testId, duration: 1.23, assertions: 5 } };
             store.handleTestFinished(run, eventData, runId);
             const test = run.suites['SuiteA'].tests[testId];
             expect(test.duration).toBe(1.23);

@@ -3,7 +3,6 @@
 namespace PhpUnitHub\Tests\WebSocket;
 
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\TestWith;
 use ReflectionClass;
 use Exception;
 use PHPUnit\Framework\MockObject\MockObject;
