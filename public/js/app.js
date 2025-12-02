@@ -50,6 +50,7 @@ export class App {
             this.store.state.testSuites = data.suites;
             this.store.state.availableSuites = data.availableSuites || [];
             this.store.state.availableGroups = data.availableGroups || [];
+            this.store.state.coverageDriverMissing = !data.coverageDriver;
 
             // Build test index
             this.buildTestIndex();

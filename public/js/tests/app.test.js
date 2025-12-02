@@ -23,6 +23,7 @@ class MockStore {
             realtimeTestRuns: {},
             searchQuery: '',
             isStarting: false,
+            coverage: false
         };
     }
     getFailedTestIds() { return []; }
@@ -201,6 +202,7 @@ describe('App', () => {
                 suites: ['SuiteX'],
                 options: { stopOnFailure: true, colors: true },
                 contextId: 'specificTest',
+                coverage: false
             });
         });
 

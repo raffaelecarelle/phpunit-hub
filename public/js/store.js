@@ -55,6 +55,7 @@ export class Store {
             coverageReport: null,
             isCoverageLoading: false,
             fileCoverage: null,
+            coverageDriverMissing: false,
         });
 
         this.loadState();

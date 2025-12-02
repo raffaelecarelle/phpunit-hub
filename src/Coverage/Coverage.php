@@ -15,6 +15,11 @@ class Coverage
         $this->config = $this->loadConfiguration();
     }
 
+    public function hasDriver(): bool
+    {
+        return extension_loaded('xdebug') || extension_loaded('pcov');
+    }
+
     /**
      * @return array{total_coverage_percent: float, files: array<array{path: string, coverage_percent: float}>}
      */

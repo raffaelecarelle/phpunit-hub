@@ -3,6 +3,7 @@
 namespace PhpUnitHub\Discoverer;
 
 use Exception;
+use PhpUnitHub\Coverage\Coverage;
 use PhpUnitHub\Util\Composer;
 use PhpUnitHub\Util\PhpUnitCommandExecutor;
 
@@ -38,27 +39,30 @@ class TestDiscoverer
      *         }>
      *     }>,
      *     availableSuites: string[],
-     *     availableGroups: string[]
+     *     availableGroups: string[],
+     *     coverageDriver: bool
      * }
      */
     public function discover(): array
     {
         if (!is_file($this->configFile) || !is_file($this->phpunitPath)) {
-            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => []];
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false];
         }
 
         try {
             $availableSuites = $this->discoverSuites();
             $availableGroups = $this->discoverGroups();
             $foundTests = $this->discoverTests();
+            $coverageDriver = (new Coverage($this->projectRoot, ''))->hasDriver();
         } catch (Exception) {
-            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => []];
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false];
         }
 
         return [
             'suites' => $foundTests,
             'availableSuites' => $availableSuites,
             'availableGroups' => $availableGroups,
+            'coverageDriver' => $coverageDriver,
         ];
     }
 

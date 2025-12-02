@@ -517,7 +517,12 @@
                         <div class="mt-4 text-gray-400">Generating coverage report...</div>
                     </div>
                     <div v-else-if="!store.state.coverageReport || store.state.coverageReport.files.length === 0" class="text-gray-500 text-center pt-10">
-                        Run tests with coverage enabled to see the report.
+                        <div v-if="store.state.coverageDriverMissing">
+                            No coverage driver (Xdebug, pcov) is enabled.
+                        </div>
+                        <div v-else>
+                            Run tests with coverage enabled to see the report.
+                        </div>
                     </div>
                     <div v-else-if="store.state.fileCoverage">
                         <div class="bg-gray-800 rounded-lg shadow-lg p-4 mb-4">
