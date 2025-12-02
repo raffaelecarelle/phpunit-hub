@@ -137,7 +137,7 @@ class TestRunner
 
         $excludeNodes = $domxPath->query('exclude/directory', $sourceNode);
         foreach ($excludeNodes as $excludeNode) {
-            $command .= ' --coverage-filter ' . escapeshellarg((string) $excludeNode->nodeValue) . ' --path-coverage';
+            $command .= ' --coverage-exclude ' . escapeshellarg((string) $excludeNode->nodeValue);
         }
     }
 
