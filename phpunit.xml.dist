@@ -23,4 +23,8 @@
     <extensions>
         <bootstrap class="PhpUnitHub\PHPUnit\PhpUnitHubExtension"/>
     </extensions>
+
+    <listeners>
+        <listener class="PhpUnitHub\PHPUnit\PhpUnitHubExtension95" />
+    </listeners>
 </phpunit>
