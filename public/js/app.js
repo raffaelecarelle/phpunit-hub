@@ -95,7 +95,7 @@ export class App {
             groups: this.store.state.selectedGroups,
             suites: this.store.state.selectedSuites,
             options: { ...phpunitOptions, colors: true },
-            coverage: this.store.state.coverage,
+            coverage: !!this.store.state.coverage,
             contextId: runOptions.contextId || 'global',
         };
 
