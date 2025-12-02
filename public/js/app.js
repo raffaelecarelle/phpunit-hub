@@ -87,15 +87,8 @@ export class App {
         this.store.setStarting(true);
         this.store.state.activeTab = 'results';
 
-        // In update mode, clear results for "Run All" or "Run Failed"
-        if (this.store.state.options.resultUpdateMode === 'update') {
-            if (runOptions.contextId === 'global' || runOptions.contextId === 'failed') {
-                this.store.clearAllResults();
-            }
-        }
-
         // Filter out frontend-only options that PHPUnit doesn't understand
-        const { resultUpdateMode, displayMode, ...phpunitOptions } = this.store.state.options;
+        const { displayMode, ...phpunitOptions } = this.store.state.options;
 
         const payload = {
             filters: runOptions.filters || [],
@@ -267,7 +260,7 @@ export class App {
     }
 
     /**
-     * Get results from current test run (or merged results in update mode)
+     * Get results from current test run (always reset mode)
      */
     getResults() {
         const runs = this.store.state.realtimeTestRuns;
@@ -277,19 +270,12 @@ export class App {
             return null;
         }
 
-        // In update mode, merge all completed/finished runs
-        const isUpdateMode = this.store.state.options.resultUpdateMode === 'update';
-
-        if (isUpdateMode) {
-            return this.getMergedResults(runs);
-        } else {
-            // In reset mode, show only the last completed run
-            let runId = this.store.state.lastCompletedRunId;
-            if (!runId) {
-                runId = runIds[runIds.length - 1];
-            }
-            return this.getSingleRunResults(runs[runId]);
+        // Always show only the last completed run
+        let runId = this.store.state.lastCompletedRunId;
+        if (!runId) {
+            runId = runIds[runIds.length - 1];
         }
+        return this.getSingleRunResults(runs[runId]);
     }
 
     /**
@@ -348,125 +334,6 @@ export class App {
                 skipped: summary.numberOfSkipped,
                 deprecations: summary.numberOfDeprecations,
                 incomplete: summary.numberOfIncomplete,
-            },
-            suites: transformedSuites,
-        };
-    }
-
-    /**
-     * Get merged results from all test runs
-     */
-    getMergedResults(runs) {
-        const mergedSuites = {};
-        const mergedSummary = {
-            numberOfTests: 0,
-            numberOfAssertions: 0,
-            duration: 0,
-            numberOfFailures: 0,
-            numberOfErrors: 0,
-            numberOfWarnings: 0,
-            numberOfSkipped: 0,
-            numberOfDeprecations: 0,
-            numberOfIncomplete: 0,
-        };
-
-        // Track which tests have been seen in summaries to avoid double-counting assertions
-        const testsSeen = new Set();
-
-        // Merge all runs
-        for (const runId in runs) {
-            const run = runs[runId];
-
-            // Only merge runs that have completed (or are running with data)
-            // Skip runs that are just initialized but have no test data yet
-            if (Object.keys(run.suites).length === 0) {
-                continue;
-            }
-
-            // Merge suites and tests
-            for (const suiteName in run.suites) {
-                if (!mergedSuites[suiteName]) {
-                    mergedSuites[suiteName] = {
-                        name: suiteName,
-                        tests: {},
-                        runIds: []
-                    };
-                }
-                const suiteData = run.suites[suiteName];
-                for (const testId in suiteData.tests) {
-                    // Later runs override earlier runs for the same test
-                    mergedSuites[suiteName].tests[testId] = {
-                        ...suiteData.tests[testId],
-                        runId: runId
-                    };
-
-                    // Mark this test as seen in this run
-                    if (!testsSeen.has(testId)) {
-                        testsSeen.add(testId);
-                    }
-                }
-
-                // Track which runs contributed to this suite
-                if (!mergedSuites[suiteName].runIds.includes(runId)) {
-                    mergedSuites[suiteName].runIds.push(runId);
-                }
-            }
-
-            // Accumulate summaries from all completed runs
-            // For assertions and duration, we need to accumulate from each unique run
-            // For other stats, we'll recalculate from merged tests
-            if (run.summary && run.status === 'finished') {
-                mergedSummary.duration += run.summary.duration || 0;
-            }
-        }
-
-        // Transform merged suites
-        const transformedSuites = [];
-        for (const suiteName in mergedSuites) {
-            const suiteData = mergedSuites[suiteName];
-            const testcases = [];
-            for (const testId in suiteData.tests) {
-                const testData = suiteData.tests[testId];
-                testcases.push({
-                    name: testData.name,
-                    class: testData.class,
-                    id: testData.id,
-                    duration: testData.duration || 0,
-                    assertions: testData.assertions || 0,
-                    status: testData.status,
-                    message: testData.message,
-                    trace: testData.trace,
-                    warnings: testData.warnings || [],
-                    deprecations: testData.deprecations || [],
-                });
-            }
-            if (testcases.length > 0) {
-                transformedSuites.push({
-                    name: suiteData.name,
-                    testcases,
-                });
-            }
-        }
-
-        // If no tests found, return null
-        if (transformedSuites.length === 0) {
-            return null;
-        }
-
-        // Calculate counts from merged tests (but keep accumulated assertions and duration)
-        const calculatedSummary = this.calculateSummaryFromTests(transformedSuites);
-
-        return {
-            summary: {
-                tests: calculatedSummary.tests,
-                assertions: calculatedSummary.assertions,
-                time: calculatedSummary.time,
-                failures: calculatedSummary.failures,
-                errors: calculatedSummary.errors,
-                warnings: calculatedSummary.warnings,
-                skipped: calculatedSummary.skipped,
-                deprecations: calculatedSummary.deprecations,
-                incomplete: calculatedSummary.incomplete,
             },
             suites: transformedSuites,
         };

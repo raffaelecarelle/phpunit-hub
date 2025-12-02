@@ -92,7 +92,7 @@ class TestRunnerTest extends TestCase
         $this->assertStringContainsString('--coverage-clover', $command);
         $this->assertStringContainsString('clover.xml', $command);
         $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src'), $command);
-        $this->assertStringContainsString('--coverage-filter ' . escapeshellarg('src/Exclude') . ' --path-coverage', $command);
+        $this->assertStringContainsString('--coverage-exclude ' . escapeshellarg('src/Exclude'), $command);
     }
 
     public function testRunBuildsCorrectCommandWithFilters(): void

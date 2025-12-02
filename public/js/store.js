@@ -17,7 +17,6 @@ export class Store {
         stopOnError: false,
         stopOnFailure: false,
         stopOnWarning: false,
-        resultUpdateMode: 'update', // 'update' (append/merge) or 'reset' (clear all)
         displayMode: 'default', // 'default' or 'individual'
     };
 
@@ -70,7 +69,9 @@ export class Store {
             try {
                 const parsedState = JSON.parse(savedState);
                 if (parsedState.options) {
-                    this.state.options = { ...this.state.options, ...parsedState.options };
+                    // Ensure resultUpdateMode is not loaded from old state
+                    const { resultUpdateMode, ...restOptions } = parsedState.options;
+                    this.state.options = { ...this.state.options, ...restOptions };
                 }
                 if (Array.isArray(parsedState.selectedSuites)) {
                     this.state.selectedSuites = parsedState.selectedSuites;
@@ -128,10 +129,8 @@ export class Store {
      */
     initializeTestRun(runId, contextId) {
         this.state.isStarting = false;
-        // Determine if we should reset results
-        // Always reset for 'global' runs in reset mode, or for 'failed' runs (to show only re-run tests)
-        const shouldReset = (this.state.options.resultUpdateMode === 'reset' && contextId === 'global') ||
-            contextId === 'failed';
+        // Always reset for 'global' runs or for 'failed' runs (to show only re-run tests)
+        const shouldReset = contextId === 'global' || contextId === 'failed';
 
         this.state.realtimeTestRuns[runId] = {
             status: 'running',
@@ -312,15 +311,6 @@ export class Store {
             } else if (status === 'passed') {
                 // Remove from current run
                 run.failedTestIds.delete(testId);
-
-                // In update mode, also remove from all other runs (test now passes)
-                if (this.state.options.resultUpdateMode === 'update') {
-                    for (const otherRunId in this.state.realtimeTestRuns) {
-                        if (otherRunId !== runId) {
-                            this.state.realtimeTestRuns[otherRunId].failedTestIds?.delete(testId);
-                        }
-                    }
-                }
             } else if (status !== 'passed') {
                 suite.hasIssues = true;
             }
@@ -358,8 +348,8 @@ export class Store {
         this.state.lastCompletedRunId = runId;
         delete this.state.runningTestIds[runId];
         delete this.state.stopPending[runId];
-        this.updateSidebarAfterRun(runId);
         this.state.isStarting = false;
+        this.updateSidebarAfterRun(runId);
         updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
     }
 
@@ -495,44 +485,19 @@ export class Store {
     }
 
     /**
-     * Get failed test IDs from all runs (in update mode) or last run (in reset mode)
+     * Get failed test IDs from last run
      */
     getFailedTestIds() {
-        if (this.state.options.resultUpdateMode === 'update') {
-            // In update mode, collect failed tests from all runs
-            const allFailedTests = new Set();
-            for (const runId in this.state.realtimeTestRuns) {
-                const run = this.state.realtimeTestRuns[runId];
-                if (run.failedTestIds) {
-                    run.failedTestIds.forEach(testId => allFailedTests.add(testId));
-                }
-            }
-            return Array.from(allFailedTests);
-        } else {
-            // In reset mode, only show failed tests from last completed run
-            const run = this.state.realtimeTestRuns[this.state.lastCompletedRunId];
-            return run ? Array.from(run.failedTestIds) : [];
-        }
+        const run = this.state.realtimeTestRuns[this.state.lastCompletedRunId];
+        return run ? Array.from(run.failedTestIds) : [];
     }
 
     /**
      * Check if there are failed tests
      */
     hasFailedTests() {
-        if (this.state.options.resultUpdateMode === 'update') {
-            // In update mode, check all runs for failed tests
-            for (const runId in this.state.realtimeTestRuns) {
-                const run = this.state.realtimeTestRuns[runId];
-                if (run.failedTestIds && run.failedTestIds.size > 0) {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            // In reset mode, only check last completed run
-            const run = this.state.realtimeTestRuns[this.state.lastCompletedRunId];
-            return run ? run.failedTestIds.size > 0 : false;
-        }
+        const run = this.state.realtimeTestRuns[this.state.lastCompletedRunId];
+        return run ? run.failedTestIds.size > 0 : false;
     }
 
     /**
