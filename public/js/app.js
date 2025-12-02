@@ -292,6 +292,8 @@ export class App {
             skipped: 0,
             deprecations: 0,
             incomplete: 0,
+            risky: 0,
+            notices: 0,
         };
 
         if (!run || !run.suites) return summary;
@@ -303,12 +305,14 @@ export class App {
                 summary.assertions += testData.assertions || 0;
                 summary.warnings += testData.warnings?.length || 0;
                 summary.deprecations += testData.deprecations?.length || 0;
+                summary.notices += testData.notices?.length || 0;
 
                 switch (testData.status) {
                     case 'failed': summary.failures++; break;
                     case 'errored': summary.errors++; break;
                     case 'skipped': summary.skipped++; break;
                     case 'incomplete': summary.incomplete++; break;
+                    case 'risky': summary.risky++; break;
                 }
             }
         }
@@ -331,6 +335,8 @@ export class App {
             numberOfSkipped: 0,
             numberOfDeprecations: 0,
             numberOfIncomplete: 0,
+            numberOfRisky: 0,
+            numberOfNotices: 0,
         };
         const summary = { ...defaultSummary, ...(run.summary || {}) };
 
@@ -347,6 +353,8 @@ export class App {
             summary.numberOfSkipped = realtimeSummary.skipped;
             summary.numberOfDeprecations = realtimeSummary.deprecations;
             summary.numberOfIncomplete = realtimeSummary.incomplete;
+            summary.numberOfRisky = realtimeSummary.risky;
+            summary.numberOfNotices = realtimeSummary.notices;
         }
 
         // Transform suites data
@@ -367,6 +375,7 @@ export class App {
                     trace: testData.trace,
                     warnings: testData.warnings || [],
                     deprecations: testData.deprecations || [],
+                    notices: testData.notices || [],
                 });
             }
             transformedSuites.push({
@@ -386,6 +395,8 @@ export class App {
                 skipped: summary.numberOfSkipped,
                 deprecations: summary.numberOfDeprecations,
                 incomplete: summary.numberOfIncomplete,
+                risky: summary.numberOfRisky,
+                notices: summary.numberOfNotices,
             },
             suites: transformedSuites,
         };
@@ -405,6 +416,8 @@ export class App {
             skipped: 0,
             deprecations: 0,
             incomplete: 0,
+            risky: 0,
+            notices: 0,
         };
 
         suites.forEach(suite => {
@@ -417,9 +430,11 @@ export class App {
                 else if (tc.status === 'errored') summary.errors++;
                 else if (tc.status === 'skipped') summary.skipped++;
                 else if (tc.status === 'incomplete') summary.incomplete++;
+                else if (tc.status === 'risky') summary.risky++;
 
                 summary.warnings += tc.warnings?.length || 0;
                 summary.deprecations += tc.deprecations?.length || 0;
+                summary.notices += tc.notices?.length || 0;
             });
         });
 
@@ -447,6 +462,8 @@ export class App {
                         warning: 0,
                         deprecation: 0,
                         incomplete: 0,
+                        risky: 0,
+                        notice: 0,
                         hasIssues: false
                     };
                 }
@@ -465,15 +482,18 @@ export class App {
                 if (tc.deprecations?.length > 0) {
                     group.deprecation += tc.deprecations.length;
                 }
+                if (tc.notices?.length > 0) {
+                    group.notice += tc.notices.length;
+                }
 
                 // Set hasIssues if any issues are present (warnings array, deprecations array, or non-passed status)
-                if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || status !== 'passed') {
+                if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || tc.notices?.length > 0 || status !== 'passed') {
                     group.hasIssues = true;
                 }
             });
         });
 
-        const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'skipped': 4, 'warning': 5, 'deprecation': 6, 'passed': 7 };
+        const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'risky': 4, 'skipped': 5, 'warning': 6, 'deprecation': 7, 'notice': 8, 'passed': 9 };
 
         // Determine suite status
         Object.values(groups).forEach(group => {
@@ -533,11 +553,15 @@ export class App {
         allTests = allTests.filter(t => {
             if (t.status === 'skipped' && !this.store.state.options.displaySkipped) return false;
             if (t.status === 'incomplete' && !this.store.state.options.displayIncomplete) return false;
+            if (t.status === 'risky' && !this.store.state.options.displayRisky) return false;
             if (t.warnings?.length > 0 && !this.store.state.options.displayWarnings) {
                 // if it's just a warning and we hide them, don't show if it passed
                 if (t.status === 'passed') return false;
             }
             if (t.deprecations?.length > 0 && !this.store.state.options.displayDeprecations) {
+                if (t.status === 'passed') return false;
+            }
+            if (t.notices?.length > 0 && !this.store.state.options.displayNotices) {
                 if (t.status === 'passed') return false;
             }
             return true;
@@ -552,7 +576,7 @@ export class App {
                 return this.store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
             }
 
-            const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'skipped': 4, 'warning': 5, 'deprecation': 6, 'passed': 7 };
+            const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'risky': 4, 'skipped': 5, 'warning': 6, 'deprecation': 7, 'notice': 8, 'passed': 9 };
             const statusA = statusOrder[a.status || 'passed'] || 99;
             const statusB = statusOrder[b.status || 'passed'] || 99;
             if (statusA !== statusB) {
@@ -572,7 +596,7 @@ export class App {
         const results = this.getResults();
 
         if (!results) {
-            return { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0 };
+            return { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0, risky: 0, notices: 0 };
         }
 
         const s = results.summary;
@@ -583,12 +607,14 @@ export class App {
             warnings: s.warnings || 0,
             skipped: s.skipped || 0,
             deprecations: s.deprecations || 0,
-            incomplete: s.incomplete || 0
+            incomplete: s.incomplete || 0,
+            risky: s.risky || 0,
+            notices: s.notices || 0,
         };
 
         // Only subtract actual failures (failed, error, skipped, incomplete) from total
         // Warnings and deprecations don't prevent a test from being "passed"
-        const actualFailures = counts.failed + counts.error + counts.skipped + counts.incomplete;
+        const actualFailures = counts.failed + counts.error + counts.skipped + counts.incomplete + counts.risky;
         counts.passed = (s.tests || 0) - actualFailures;
 
         return counts;

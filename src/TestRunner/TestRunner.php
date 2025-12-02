@@ -80,6 +80,10 @@ class TestRunner
 
         // Add boolean command-line options
         foreach ($context['options'] ?? [] as $option => $isEnabled) {
+            if ($option === 'displayRisky') {
+                continue;
+            }
+
             if ($isEnabled) {
                 // Skip the generic handling for 'colors' as we've already handled it.
                 if ($option === 'colors') {

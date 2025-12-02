@@ -204,7 +204,7 @@ describe('Store', () => {
                 name: 'SuiteA',
                 count: 5,
                 tests: {},
-                passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0,
+                passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0, notice: 0,
                 warning: 0, deprecation: 0, risky: 0, hasIssues: false,
             });
         });
@@ -231,7 +231,7 @@ describe('Store', () => {
                 class: 'SuiteA',
                 status: 'running',
                 duration: null, message: null, trace: null,
-                warnings: [], deprecations: [],
+                warnings: [], deprecations: [], notices: []
             });
             expect(store.state.testSuites[0].methods[0].status).toBe('running');
             expect(store.state.testSuites[0].methods[0].runId).toBe(runId);

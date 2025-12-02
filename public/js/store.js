@@ -13,10 +13,13 @@ export class Store {
         displayDeprecations: true,
         displaySkipped: true,
         displayIncomplete: true,
+        displayRisky: true,
+        displayNotices: true,
         stopOnDefect: false,
         stopOnError: false,
         stopOnFailure: false,
         stopOnWarning: false,
+        stopOnRisky: false,
         displayMode: 'default', // 'default' or 'individual'
     };
 
@@ -185,11 +188,15 @@ export class Store {
             case 'test.deprecation':
                 this.handleTestWarningOrDeprecation(run, eventData);
                 break;
+            case 'test.notice':
+                this.handleTestNotice(run, eventData);
+                break;
             case 'test.passed':
             case 'test.failed':
             case 'test.errored':
             case 'test.skipped':
             case 'test.incomplete':
+            case 'test.risky':
                 this.handleTestCompleted(run, eventData, runId);
                 break;
             case 'test.finished':
@@ -216,6 +223,7 @@ export class Store {
             incomplete: 0,
             warning: 0,
             deprecation: 0,
+            notice: 0,
             risky: 0,
             hasIssues: false,
         };
@@ -239,6 +247,7 @@ export class Store {
                 incomplete: 0,
                 warning: 0,
                 deprecation: 0,
+                notice: 0,
                 risky: 0,
                 hasIssues: false,
             };
@@ -255,6 +264,7 @@ export class Store {
             trace: null,
             warnings: [],
             deprecations: [],
+            notices: [],
         };
 
         // Update sidebar
@@ -280,6 +290,20 @@ export class Store {
                 suite.deprecation++;
             }
 
+            suite.hasIssues = true;
+        }
+    }
+
+    handleTestNotice(run, eventData) {
+        const { suiteName } = parseTestId(eventData.data.test);
+        const testId = eventData.data.test;
+
+        if (run.suites[suiteName] && run.suites[suiteName].tests[testId]) {
+            const test = run.suites[suiteName].tests[testId];
+            const suite = run.suites[suiteName];
+
+            test.notices.push(eventData.data.message || 'Notice triggered');
+            suite.notice++;
             suite.hasIssues = true;
         }
     }
@@ -523,7 +547,7 @@ export class Store {
         this.state.options = { ...Store.defaultOptions };
     }
 
-    setActiveTab(tab) {
+setActiveTab(tab) {
         this.state.activeTab = tab;
     }
 

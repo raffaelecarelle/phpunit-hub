@@ -188,4 +188,14 @@ class StatusHandlerTest extends TestCase
 
         $this->statusHandler->broadcast($message);
     }
+
+    public function testRisky(): void
+    {
+
+    }
+
+    public function testNotice(): void
+    {
+        \trigger_error('Test notice', E_USER_NOTICE);
+    }
 }

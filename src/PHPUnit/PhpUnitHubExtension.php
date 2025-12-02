@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace PhpUnitHub\PHPUnit;
 
+use PHPUnit\Event\Test\ConsideredRisky;
+use PHPUnit\Event\Test\ConsideredRiskySubscriber;
+use PHPUnit\Event\Test\NoticeTriggered;
+use PHPUnit\Event\Test\NoticeTriggeredSubscriber;
+use PHPUnit\Event\Test\PhpNoticeTriggered;
+use PHPUnit\Event\Test\PhpNoticeTriggeredSubscriber;
 use PHPUnit\Event\Test\PreparedSubscriber;
 use Closure;
 use PHPUnit\Event\Test\PassedSubscriber;
@@ -241,6 +247,66 @@ class PhpUnitHubExtension implements Extension
             }
         });
 
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements ConsideredRiskySubscriber {
+            private readonly Closure $writeEvent;
+
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
+            {
+                $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
+            }
+
+            public function notify(ConsideredRisky $event): void
+            {
+                ($this->writeEvent)('test.risky', [
+                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'message' => $event->message(),
+                ]);
+            }
+        });
+
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements NoticeTriggeredSubscriber {
+            private readonly Closure $writeEvent;
+
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
+            {
+                $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
+            }
+
+            public function notify(NoticeTriggered $event): void
+            {
+                ($this->writeEvent)('test.notice', [
+                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'message' => $event->message(),
+                ]);
+            }
+        });
+
+        $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpNoticeTriggeredSubscriber {
+            private readonly Closure $writeEvent;
+
+            private readonly Closure $formatTestId;
+
+            public function __construct(callable $writeEvent, callable $formatTestId)
+            {
+                $this->writeEvent = $writeEvent(...);
+                $this->formatTestId = $formatTestId(...);
+            }
+
+            public function notify(PhpNoticeTriggered $event): void
+            {
+                ($this->writeEvent)('test.notice', [
+                    'test' => ($this->formatTestId)($event->test()->name()),
+                    'message' => $event->message(),
+                ]);
+            }
+        });
+
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpWarningTriggeredSubscriber {
             private readonly Closure $writeEvent;
 
@@ -299,6 +365,7 @@ class PhpUnitHubExtension implements Extension
                         'numberOfErrors' => $testResult->numberOfErrors(),
                         'numberOfFailures' => $testResult->numberOfTestFailedEvents(),
                         'numberOfWarnings' => $testResult->numberOfWarnings(),
+                        'numberOfNotices' => $testResult->numberOfNotices(),
                         'numberOfSkipped' => $testResult->numberOfTestSkippedEvents(),
                         'numberOfIncomplete' => $testResult->numberOfTestMarkedIncompleteEvents(),
                         'numberOfRisky' => $testResult->numberOfTestsWithTestConsideredRiskyEvents(),

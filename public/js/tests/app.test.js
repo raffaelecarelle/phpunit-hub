@@ -389,12 +389,14 @@ describe('App', () => {
                     tests: 1, assertions: 1, time: 0.1,
                     failures: 0, errors: 0, warnings: 0,
                     skipped: 0, deprecations: 0, incomplete: 0,
+                    notices: 0,
+                    risky: 0,
                 },
                 suites: [
                     {
                         name: 'SuiteA',
                         testcases: [
-                            { id: 'test1', name: 'testMethod',  assertions: 0, class: 'ClassA', duration: 0, status: 'passed', message: undefined, trace: undefined, warnings: [], deprecations: [] }
+                            { id: 'test1', name: 'testMethod',  assertions: 0, class: 'ClassA', duration: 0, status: 'passed', message: undefined, trace: undefined, warnings: [], deprecations: [], notices: [] }
                         ]
                     }
                 ]
@@ -492,7 +494,7 @@ describe('App', () => {
         test('should return zero counts if no results', () => {
             jest.spyOn(app, 'getResults').mockReturnValueOnce(null);
             expect(app.getStatusCounts()).toEqual({
-                passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0
+                passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0, risky: 0, notices: 0,
             });
         });
 
@@ -506,6 +508,8 @@ describe('App', () => {
                     skipped: 1,
                     deprecations: 1,
                     incomplete: 1,
+                    notices: 0,
+                    risky: 0,
                 }
             });
 
@@ -518,6 +522,8 @@ describe('App', () => {
                 skipped: 1,
                 deprecations: 1,
                 incomplete: 1,
+                notices: 0,
+                risky: 0,
             });
         });
     });

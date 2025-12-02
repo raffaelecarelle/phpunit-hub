@@ -92,12 +92,20 @@
                                 Show Deprecations
                             </label>
                             <label class="flex items-center text-sm">
+                                <input type="checkbox" v-model="store.state.options.displayNotices" class="mr-2">
+                                Show Notices
+                            </label>
+                            <label class="flex items-center text-sm">
                                 <input type="checkbox" v-model="store.state.options.displaySkipped" class="mr-2">
                                 Show Skipped
                             </label>
                             <label class="flex items-center text-sm">
                                 <input type="checkbox" v-model="store.state.options.displayIncomplete" class="mr-2">
                                 Show Incomplete
+                            </label>
+                            <label class="flex items-center text-sm">
+                                <input type="checkbox" v-model="store.state.options.displayRisky" class="mr-2">
+                                Show Risky
                             </label>
                         </div>
                     </div>
@@ -120,6 +128,10 @@
                             <label class="flex items-center text-sm">
                                 <input type="checkbox" v-model="store.state.options.stopOnWarning" class="mr-2">
                                 Warning
+                            </label>
+                            <label class="flex items-center text-sm">
+                                <input type="checkbox" v-model="store.state.options.stopOnRisky" class="mr-2">
+                                Risky
                             </label>
                         </div>
                     </div>
@@ -302,9 +314,17 @@
                                         <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
                                         {{ results?.summary.deprecations }} Deprecations
                                     </span>
+                            <span v-if="results?.summary.notices > 0 && store.state.options.displayNotices" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-sky-500 mr-2"></span>
+                                        {{ results?.summary.notices }} Notices
+                                    </span>
                             <span v-if="results?.summary.incomplete > 0 && store.state.options.displayIncomplete" class="flex items-center">
                                         <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
                                         {{ results?.summary.incomplete }} Incomplete
+                                    </span>
+                            <span v-if="results?.summary.risky > 0 && store.state.options.displayRisky" class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>
+                                        {{ results?.summary.risky }} Risky
                                     </span>
                         </div>
                     </div>
@@ -341,14 +361,15 @@
                                          :key="'individual-test-' + testcase.id"
                                          class="hover:bg-gray-700/50">
                                         <div class="flex items-center p-3 cursor-pointer"
-                                             @click="toggleTestDetails(testcase)">
+                                             @click="toggleTestDetails(app.store, testcase)">
                                             <div class="w-28 flex-shrink-0 pl-3">
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                                           :class="{
                                                               'bg-green-900 text-green-300': testcase.status === 'passed',
                                                               'bg-red-900 text-red-300': testcase.status === 'failed' || testcase.status === 'errored',
                                                               'bg-gray-700 text-gray-300': testcase.status === 'skipped',
-                                                              'bg-yellow-800 text-yellow-200': testcase.status === 'incomplete'
+                                                              'bg-yellow-800 text-yellow-200': testcase.status === 'incomplete',
+                                                              'bg-orange-800 text-orange-200': testcase.status === 'risky'
                                                           }">
                                                         {{ testcase.status }}
                                                     </span>
@@ -360,6 +381,7 @@
                                             <div class="text-xs text-gray-400 mt-1">
                                                 <span v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0" class="text-amber-400">⚠ {{ testcase.warnings.length }} warning(s)</span>
                                                 <span v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0" class="text-purple-400 ml-2">⚠ {{ testcase.deprecations.length }} deprecation(s)</span>
+                                                <span v-if="store.state.options.displayNotices && testcase.notices?.length > 0" class="text-sky-400 ml-2">⚠ {{ testcase.notices.length }} notice(s)</span>
                                             </div>
                                             <div class="w-28 text-right flex-shrink-0 pr-3">
                                                 <span class="text-sm" :class="{'text-yellow-400': (testcase.duration / 1000000000) > 0.5 }">{{ formatNanoseconds(testcase.duration) }}</span>
@@ -381,6 +403,12 @@
                                                 <h5 class="font-bold text-sm text-purple-400 mb-2">Deprecations ({{ testcase.deprecations.length }})</h5>
                                                 <div v-for="(deprecation, idx) in testcase.deprecations" :key="'d-'+idx" class="bg-purple-900/20 border-l-4 border-purple-500 p-2 mb-2">
                                                     <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ deprecation }}</pre>
+                                                </div>
+                                            </div>
+                                            <div v-if="store.state.options.displayNotices && testcase.notices?.length > 0">
+                                                <h5 class="font-bold text-sm text-sky-400 mb-2">Notices ({{ testcase.notices.length }})</h5>
+                                                <div v-for="(notice, idx) in testcase.notices" :key="'n-'+idx" class="bg-sky-900/20 border-l-4 border-sky-500 p-2 mb-2">
+                                                    <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ notice }}</pre>
                                                 </div>
                                             </div>
                                         </div>
@@ -407,8 +435,10 @@
                                         <span v-if="group.errored > 0" class="px-2 py-0.5 rounded-full bg-red-900 text-red-300">{{ group.errored }} Error</span>
                                         <span v-if="group.warning > 0 && store.state.options.displayWarnings" class="px-2 py-0.5 rounded-full bg-amber-800 text-amber-200">{{ group.warning }} Warnings</span>
                                         <span v-if="group.deprecation > 0 && store.state.options.displayDeprecations" class="px-2 py-0.5 rounded-full bg-purple-800 text-purple-200">{{ group.deprecation }} Deprecations</span>
+                                        <span v-if="group.notice > 0 && store.state.options.displayNotices" class="px-2 py-0.5 rounded-full bg-sky-800 text-sky-200">{{ group.notice }} Notices</span>
                                         <span v-if="group.skipped > 0 && store.state.options.displaySkipped" class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">{{ group.skipped }} Skipped</span>
                                         <span v-if="group.incomplete > 0 && store.state.options.displayIncomplete" class="px-2 py-0.5 rounded-full bg-yellow-800 text-yellow-200">{{ group.incomplete }} Incomplete</span>
+                                        <span v-if="group.risky > 0 && store.state.options.displayRisky" class="px-2 py-0.5 rounded-full bg-orange-800 text-orange-200">{{ group.risky }} Risky</span>
                                         <span v-if="group.passed > 0" class="px-2 py-0.5 rounded-full bg-green-900 text-green-300">{{ group.passed }} Passed</span>
                                     </div>
                                 </div>
@@ -418,18 +448,20 @@
                                                  if (t.status === 'passed') return false;
                                                  if (t.status === 'skipped' && !store.state.options.displaySkipped) return false;
                                                  if (t.status === 'incomplete' && !store.state.options.displayIncomplete) return false;
+                                                 if (t.status === 'risky' && !store.state.options.displayRisky) return false;
                                                  return true;
                                              })"
                                          :key="'test-' + testcase.id"
                                          class="hover:bg-gray-700/50">
                                         <div class="flex items-center p-3 cursor-pointer"
-                                             @click="toggleTestDetails(testcase)">
+                                             @click="toggleTestDetails(app.store, testcase)">
                                             <div class="w-28 flex-shrink-0 pl-3">
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                                                           :class="{
                                                               'bg-red-900 text-red-300': testcase.status === 'failed' || testcase.status === 'errored',
                                                               'bg-gray-700 text-gray-300': testcase.status === 'skipped',
-                                                              'bg-yellow-800 text-yellow-200': testcase.status === 'incomplete'
+                                                              'bg-yellow-800 text-yellow-200': testcase.status === 'incomplete',
+                                                              'bg-orange-800 text-orange-200': testcase.status === 'risky'
                                                           }">
                                                         {{ testcase.status }}
                                                     </span>
@@ -439,6 +471,7 @@
                                                 <div class="text-xs text-gray-400 mt-1">
                                                     <span v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0" class="text-amber-400">⚠ {{ testcase.warnings.length }} warning(s)</span>
                                                     <span v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0" class="text-purple-400 ml-2">⚠ {{ testcase.deprecations.length }} deprecation(s)</span>
+                                                    <span v-if="store.state.options.displayNotices && testcase.notices?.length > 0" class="text-sky-400 ml-2">⚠ {{ testcase.notices.length }} notice(s)</span>
                                                 </div>
                                             </div>
                                             <div class="w-28 text-right flex-shrink-0 pr-3">
@@ -463,11 +496,17 @@
                                                     <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ deprecation }}</pre>
                                                 </div>
                                             </div>
+                                            <div v-if="store.state.options.displayNotices && testcase.notices?.length > 0">
+                                                <h5 class="font-bold text-sm text-sky-400 mb-2">Notices ({{ testcase.notices.length }})</h5>
+                                                <div v-for="(notice, idx) in testcase.notices" :key="'n-'+idx" class="bg-sky-900/20 border-l-4 border-sky-500 p-2 mb-2">
+                                                    <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ notice }}</pre>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <!-- Passed tests with warnings/deprecations (if filters are enabled) -->
-                                    <div v-for="testcase in group.testcases.filter(t => t.status === 'passed' && ((store.state.options.displayWarnings && t.warnings?.length > 0) || (store.state.options.displayDeprecations && t.deprecations?.length > 0)))">
-                                        <div @click="toggleTestDetails(testcase)" class="flex items-center p-3 cursor-pointer hover:bg-gray-700/[.5]">
+                                    <div v-for="testcase in group.testcases.filter(t => t.status === 'passed' && ((store.state.options.displayWarnings && t.warnings?.length > 0) || (store.state.options.displayDeprecations && t.deprecations?.length > 0) || (store.state.options.displayNotices && t.notices?.length > 0)))">
+                                        <div @click="toggleTestDetails(app.store, testcase)" class="flex items-center p-3 cursor-pointer hover:bg-gray-700/[.5]">
                                             <div class="w-28 flex-shrink-0 pl-3">
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300">passed</span>
                                             </div>
@@ -476,6 +515,7 @@
                                                 <div class="text-xs text-gray-400 mt-1">
                                                     <span v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0" class="text-amber-400">⚠ {{ testcase.warnings.length }} warning(s)</span>
                                                     <span v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0" class="text-purple-400 ml-2">⚠ {{ testcase.deprecations.length }} deprecation(s)</span>
+                                                    <span v-if="store.state.options.displayNotices && testcase.notices?.length > 0" class="text-sky-400 ml-2">⚠ {{ testcase.notices.length }} notice(s)</span>
                                                 </div>
                                             </div>
                                             <div class="w-28 text-right flex-shrink-0 pr-3">
@@ -493,6 +533,12 @@
                                                 <h5 class="font-bold text-sm text-purple-400 mb-2">Deprecations ({{ testcase.deprecations.length }})</h5>
                                                 <div v-for="(deprecation, idx) in testcase.deprecations" :key="'d-'+idx" class="bg-purple-900/20 border-l-4 border-purple-500 p-2 mb-2">
                                                     <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ deprecation }}</pre>
+                                                </div>
+                                            </div>
+                                            <div v-if="store.state.options.displayNotices && testcase.notices?.length > 0">
+                                                <h5 class="font-bold text-sm text-sky-400 mb-2">Notices ({{ testcase.notices.length }})</h5>
+                                                <div v-for="(notice, idx) in testcase.notices" :key="'n-'+idx" class="bg-sky-900/20 border-l-4 border-sky-500 p-2 mb-2">
+                                                    <pre class="font-mono text-xs text-gray-300 whitespace-pre-wrap">{{ notice }}</pre>
                                                 </div>
                                             </div>
                                         </div>
@@ -569,6 +615,7 @@
 <script type="module">
     import { createApp, onMounted, watch } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
     import { App } from './js/app.js';
+    import { toggleTestDetails } from './js/utils.js';
 
     const app = new App();
 
@@ -605,17 +652,7 @@
                 // Methods
                 toggleSuite: (suiteId) => app.store.toggleSuiteExpansion(suiteId),
                 toggleTestcaseGroup: (className) => app.store.toggleTestcaseGroupExpansion(className),
-                toggleTestDetails: (testcase) => {
-                    const { state } = app.store;
-                    const isExpandable = testcase.status !== 'passed' ||
-                        (testcase.warnings?.length > 0 && state.options.displayWarnings) ||
-                        (testcase.deprecations?.length > 0 && state.options.displayDeprecations);
-
-                    if (!isExpandable) return;
-
-                    const id = testcase.id;
-                    app.store.setExpandedTest(app.store.state.expandedTestId === id ? null : id);
-                },
+                toggleTestDetails,
                 toggleFilterPanel: () => app.store.toggleFilterPanel(),
                 isTestRunning: (runId) => app.store.state.runningTestIds[runId] === true,
                 isTestStopPending: (runId) => app.store.state.stopPending[runId] === true,

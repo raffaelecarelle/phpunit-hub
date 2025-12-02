@@ -53,10 +53,27 @@ export function calculatePassedTests(summary) {
     if (!summary) return 0;
     const failed = summary.failures || 0;
     const error = summary.errors || 0;
-    const warnings = summary.warnings || 0;
     const skipped = summary.skipped || 0;
     const incomplete = summary.incomplete || 0;
-    const deprecations = summary.deprecations || 0;
-    const problems = failed + error + warnings + skipped + incomplete + deprecations;
+    const risky = summary.risky || 0;
+    const problems = failed + error + skipped + incomplete + risky;
     return (summary.tests || 0) - problems;
+}
+
+/**
+ * Toggle test details view
+ * @param {object} store - The application store.
+ * @param {object} testcase - The testcase object.
+ */
+export function toggleTestDetails(store, testcase) {
+    const { state } = store;
+    const isExpandable = testcase.status !== 'passed' ||
+        (testcase.warnings?.length > 0 && state.options.displayWarnings) ||
+        (testcase.deprecations?.length > 0 && state.options.displayDeprecations) ||
+        (testcase.notices?.length > 0 && state.options.displayNotices);
+
+    if (!isExpandable) return;
+
+    const id = testcase.id;
+    store.setExpandedTest(state.expandedTestId === id ? null : id);
 }

@@ -137,7 +137,7 @@ describe('utils.js', () => {
                 deprecations: 1,
             };
             // 10 total - (2f + 1e + 1w + 1s + 1i + 1d) = 10 - 7 = 3
-            expect(calculatePassedTests(summary)).toBe(3);
+            expect(calculatePassedTests(summary)).toBe(5);
         });
 
         test('should return total tests if no failures, errors, etc.', () => {
