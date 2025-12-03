@@ -46,6 +46,7 @@ describe('Store', () => {
             testSuites: [],
             coverageDriverMissing: false,
             availableSuites: [],
+            serverInfo: null,
             availableGroups: [],
             isLoading: false,
             isStarting: false,

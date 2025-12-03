@@ -271,6 +271,22 @@ export class App {
             individualResults: computed(() => this.getIndividualResults()),
             statusCounts: computed(() => this.getStatusCounts()),
             filteredTestSuites: computed(() => this.getFilteredTestSuites()),
+            isPhpUnit10OrHigher: computed(() => {
+                const version = this.store.state.serverInfo?.phpunitVersion;
+                if (!version) {
+                    return false;
+                }
+                const major = parseInt(version.split('.')[0], 10);
+                return major >= 10;
+            }),
+            isPhpUnit11OrHigher: computed(() => {
+                const version = this.store.state.serverInfo?.phpunitVersion;
+                if (!version) {
+                    return false;
+                }
+                const major = parseInt(version.split('.')[0], 10);
+                return major >= 11;
+            }),
         };
     }
 

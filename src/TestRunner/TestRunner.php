@@ -89,6 +89,10 @@ class TestRunner
                     continue;
                 }
 
+                if ($phpunitVersion !== null && (float)(new VersionParser())->normalize($phpunitVersion) < 11 && str_starts_with($option, 'displayRisky')) {
+                    continue;
+                }
+
                 // Skip the generic handling for 'colors' as we've already handled it.
                 if ($option === 'colors') {
                     continue;

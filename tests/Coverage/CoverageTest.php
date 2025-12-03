@@ -2,9 +2,14 @@
 
 namespace PhpUnitHub\Tests\Coverage;
 
+use Composer\Semver\VersionParser;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\Coverage\Coverage;
+use PhpUnitHub\Util\Composer;
+
+use function file_put_contents;
+use function mkdir;
 
 #[CoversClass(Coverage::class)]
 class CoverageTest extends TestCase
@@ -257,8 +262,15 @@ class CoverageTest extends TestCase
         $this->assertEquals(100.0, $data['files'][0]['coverage_percent']);
     }
 
-    public function testParseWithNoPhpunitConfig(): void
+    public function testParseWithNoPhpunit10Config(): void
     {
+        $phpunitVersion = Composer::getPackageVersion('phpunit/phpunit', __DIR__ . '/../..');
+        $phpunitVersion = (float)(new VersionParser())->normalize($phpunitVersion);
+
+        if ($phpunitVersion < 10) {
+            self::markTestSkipped('This test requires PHPUnit 10 or higher.');
+        }
+
         $cloverXmlContent = <<<XML
             <?xml version="1.0" encoding="UTF-8"?>
             <coverage generated="1678886400">
@@ -269,6 +281,37 @@ class CoverageTest extends TestCase
                     <metrics loc="10" ncloc="10" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
                   </file>
                 </package>
+              </project>
+            </coverage>
+            XML;
+        file_put_contents($this->tempDir . '/clover.xml', $cloverXmlContent);
+        mkdir($this->tempDir . '/src');
+        file_put_contents($this->tempDir . '/src/Example.php', '<?php namespace App; class Example {}');
+
+        $coverage = new Coverage($this->tempDir, $this->tempDir . '/clover.xml');
+        $data = $coverage->parse();
+
+        $this->assertCount(1, $data['files']);
+        $this->assertEquals('src/Example.php', $data['files'][0]['path']);
+    }
+
+    public function testParseWithNoPhpunit9Config(): void
+    {
+        $phpunitVersion = Composer::getPackageVersion('phpunit/phpunit', __DIR__ . '/../..');
+        $phpunitVersion = (float)(new VersionParser())->normalize($phpunitVersion);
+
+        if ($phpunitVersion >= 10) {
+            self::markTestSkipped('This test requires PHPUnit 9 or less.');
+        }
+
+        $cloverXmlContent = <<<XML
+            <?xml version="1.0" encoding="UTF-8"?>
+            <coverage generated="1678886400">
+              <project timestamp="1678886400">
+                <metrics files="1" loc="10" ncloc="10" packages="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
+                  <file name="$this->tempDir/src/Example.php">
+                    <metrics loc="10" ncloc="10" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
+                  </file>
               </project>
             </coverage>
             XML;

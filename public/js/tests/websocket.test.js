@@ -29,6 +29,7 @@ class MockStore {
         this.clearRunningTests = jest.fn();
         this.getTestRun = jest.fn((runId) => this.state.realtimeTestRuns[runId]);
         this.getRunningTestCount = jest.fn(() => Object.keys(this.state.runningTestIds || {}).length); // Corrected property and added safety
+        this.markRunAsComplete = jest.fn();
     }
 }
 

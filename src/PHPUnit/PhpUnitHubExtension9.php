@@ -13,7 +13,15 @@ use PHPUnit\Framework\Warning;
 use PHPUnit\Framework\TestListenerDefaultImplementation;
 use Throwable;
 
-class PhpUnitHubExtension96 implements TestListener
+use function fflush;
+use function fwrite;
+use function json_decode;
+use function json_encode;
+use function json_last_error;
+use function preg_match;
+use function sprintf;
+
+class PhpUnitHubExtension9 implements TestListener
 {
     use TestListenerDefaultImplementation;
 
@@ -59,18 +67,18 @@ class PhpUnitHubExtension96 implements TestListener
         return $test::class;
     }
 
-    public function startTestSuite(TestSuite $suite): void
+    public function startTestSuite(TestSuite $testSuite): void
     {
         $this->writeEvent('suite.started', [
-            'name' => $suite->getName(),
-            'count' => $suite->count(),
+            'name' => $testSuite->getName(),
+            'count' => $testSuite->count(),
         ]);
     }
 
-    public function endTestSuite(TestSuite $suite): void
+    public function endTestSuite(TestSuite $testSuite): void
     {
         $this->writeEvent('suite.finished', [
-            'name' => $suite->getName(),
+            'name' => $testSuite->getName(),
         ]);
     }
 
@@ -112,71 +120,71 @@ class PhpUnitHubExtension96 implements TestListener
         unset($this->testStatus[$testId]);
     }
 
-    public function addError(Test $test, Throwable $t, float $time): void
+    public function addError(Test $test, Throwable $throwable, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'errored';
         $this->writeEvent('test.errored', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $t->getMessage(),
-            'trace' => $t->getTraceAsString(),
+            'message' => $throwable->getMessage(),
+            'trace' => $throwable->getTraceAsString(),
         ]);
     }
 
-    public function addWarning(Test $test, Warning $e, float $time): void
+    public function addWarning(Test $test, Warning $warning, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'warning';
         $this->writeEvent('test.warning', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $e->getMessage(),
+            'message' => $warning->getMessage(),
         ]);
     }
 
-    public function addFailure(Test $test, AssertionFailedError $e, float $time): void
+    public function addFailure(Test $test, AssertionFailedError $assertionFailedError, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'failed';
         $this->writeEvent('test.failed', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
+            'message' => $assertionFailedError->getMessage(),
+            'trace' => $assertionFailedError->getTraceAsString(),
         ]);
     }
 
-    public function addIncompleteTest(Test $test, Throwable $t, float $time): void
+    public function addIncompleteTest(Test $test, Throwable $throwable, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'incomplete';
         $this->writeEvent('test.incomplete', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $t->getMessage(),
+            'message' => $throwable->getMessage(),
         ]);
     }
 
-    public function addRiskyTest(Test $test, Throwable $t, float $time): void
+    public function addRiskyTest(Test $test, Throwable $throwable, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'risky';
         $this->writeEvent('test.risky', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $t->getMessage(),
+            'message' => $throwable->getMessage(),
         ]);
     }
 
-    public function addSkippedTest(Test $test, Throwable $t, float $time): void
+    public function addSkippedTest(Test $test, Throwable $throwable, float $time): void
     {
         $testId = $this->getTestId($test);
         $this->testStatus[$testId] = 'skipped';
         $this->writeEvent('test.skipped', [
             'testId' => $testId,
             'testName' => $this->formatTestName($test),
-            'message' => $t->getMessage(),
+            'message' => $throwable->getMessage(),
         ]);
     }
 }

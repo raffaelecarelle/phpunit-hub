@@ -64,7 +64,7 @@
                         </select>
                     </div>
 
-                    
+
 
                     <div class="form-group">
                         <label class="block text-sm font-medium text-gray-300 mb-2">Display Mode</label>
@@ -103,7 +103,7 @@
                                 <input type="checkbox" v-model="store.state.options.displayIncomplete" class="mr-2">
                                 Show Incomplete
                             </label>
-                            <label class="flex items-center text-sm">
+                            <label class="flex items-center text-sm" v-if="isPhpUnit11OrHigher">
                                 <input type="checkbox" v-model="store.state.options.displayRisky" class="mr-2">
                                 Show Risky
                             </label>

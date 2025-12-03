@@ -43,6 +43,7 @@ class MockApiClient {
         this.runTests = jest.fn(() => Promise.resolve({}));
         this.stopAllTests = jest.fn(() => Promise.resolve());
         this.stopSingleTest = jest.fn(() => Promise.resolve());
+        this.fetchServerInfo = jest.fn(() => Promise.resolve({}));
     }
 }
 
