@@ -21,6 +21,9 @@ export class App {
      */
     async initialize() {
         try {
+            // Fetch server info
+            await this.fetchServerInfo();
+
             // Fetch tests
             await this.fetchTests();
 
@@ -37,6 +40,17 @@ export class App {
             updateFavicon('neutral');
         } catch (error) {
             console.error('Failed to initialize app:', error);
+        }
+    }
+
+    /**
+     * Fetch server info
+     */
+    async fetchServerInfo() {
+        try {
+            this.store.state.serverInfo = await this.api.fetchServerInfo();
+        } catch (error) {
+            console.error('Failed to fetch server info:', error);
         }
     }
 
@@ -400,45 +414,6 @@ export class App {
             },
             suites: transformedSuites,
         };
-    }
-
-    /**
-     * Calculate summary statistics from test data
-     */
-    calculateSummaryFromTests(suites) {
-        const summary = {
-            tests: 0,
-            assertions: 0,
-            time: 0,
-            failures: 0,
-            errors: 0,
-            warnings: 0,
-            skipped: 0,
-            deprecations: 0,
-            incomplete: 0,
-            risky: 0,
-            notices: 0,
-        };
-
-        suites.forEach(suite => {
-            suite.testcases.forEach(tc => {
-                summary.tests++;
-                summary.time += tc.duration || 0;
-                summary.assertions += tc.assertions || 0;
-
-                if (tc.status === 'failed') summary.failures++;
-                else if (tc.status === 'errored') summary.errors++;
-                else if (tc.status === 'skipped') summary.skipped++;
-                else if (tc.status === 'incomplete') summary.incomplete++;
-                else if (tc.status === 'risky') summary.risky++;
-
-                summary.warnings += tc.warnings?.length || 0;
-                summary.deprecations += tc.deprecations?.length || 0;
-                summary.notices += tc.notices?.length || 0;
-            });
-        });
-
-        return summary;
     }
 
     /**

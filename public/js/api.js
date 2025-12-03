@@ -8,6 +8,19 @@ export class ApiClient {
     }
 
     /**
+     * Fetch server info
+     */
+    async fetchServerInfo() {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/server-info`);
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch server info:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Fetch available tests
      */
     async fetchTests() {

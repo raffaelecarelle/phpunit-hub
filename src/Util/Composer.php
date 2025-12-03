@@ -37,4 +37,35 @@ class Composer
 
         return rtrim($binDir, DIRECTORY_SEPARATOR);
     }
+
+    public static function getPackageVersion(string $packageName, string $projectDir): ?string
+    {
+        $installedJsonPath = $projectDir . '/vendor/composer/installed.json';
+        if (!file_exists($installedJsonPath)) {
+            return null;
+        }
+
+        $installed = json_decode(file_get_contents($installedJsonPath), true);
+        if (!isset($installed['packages'])) {
+            return null;
+        }
+
+        foreach ($installed['packages'] as $package) {
+            if ($package['name'] === $packageName) {
+                return $package['version_normalized'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function getServerInfo(string $projectDir): array
+    {
+        return [
+            'phpunitVersion' => self::getPackageVersion('phpunit/phpunit', $projectDir),
+        ];
+    }
 }

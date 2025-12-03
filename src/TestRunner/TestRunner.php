@@ -8,6 +8,7 @@ use DOMXPath;
 use PhpUnitHub\Util\Composer;
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
+use Composer\Semver\VersionParser;
 
 use function array_map;
 use function escapeshellarg;
@@ -17,6 +18,7 @@ use function implode;
 use function preg_quote;
 use function preg_replace;
 use function sprintf;
+use function str_starts_with;
 use function strtolower;
 use function trim;
 
@@ -43,6 +45,7 @@ class TestRunner
     public function run(array $context, string $runId): Process
     {
         $phpunitPath = Composer::getComposerBinDir($this->projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
+        $phpunitVersion = Composer::getPackageVersion('phpunit/phpunit', $this->projectRoot);
 
         // Check for phpunit.xml first, then fallback to phpunit.xml.dist (PHPUnit's default behavior)
         $phpunitXmlPath = $this->projectRoot . '/phpunit.xml';
@@ -80,11 +83,12 @@ class TestRunner
 
         // Add boolean command-line options
         foreach ($context['options'] ?? [] as $option => $isEnabled) {
-            if ($option === 'displayRisky') {
-                continue;
-            }
-
             if ($isEnabled) {
+                // Skip display* options for PHPUnit < 10
+                if ($phpunitVersion !== null && (float)(new VersionParser())->normalize($phpunitVersion) < 10 && str_starts_with($option, 'display')) {
+                    continue;
+                }
+
                 // Skip the generic handling for 'colors' as we've already handled it.
                 if ($option === 'colors') {
                     continue;

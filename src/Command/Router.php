@@ -8,6 +8,7 @@ use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use PhpUnitHub\Coverage\Coverage;
 use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
+use PhpUnitHub\Util\Composer;
 use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
 use Ramsey\Uuid\Uuid;
@@ -97,6 +98,10 @@ class Router implements RouterInterface
         if ($path === '/api/tests' && $method === 'GET') {
             $tests = $this->testDiscoverer->discover();
             $jsonResponse = json_encode($tests, JSON_THROW_ON_ERROR);
+            $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
+        } elseif ($path === '/api/server-info' && $method === 'GET') {
+            $serverInfo = Composer::getServerInfo($this->projectRoot);
+            $jsonResponse = json_encode($serverInfo, JSON_THROW_ON_ERROR);
             $response = new GuzzleResponse(200, ['Content-Type' => 'application/json'], $jsonResponse);
         } elseif (($path === '/api/run' || $path === '/api/run-failed') && $method === 'POST') {
             $groups = [];

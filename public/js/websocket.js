@@ -93,15 +93,17 @@ export class WebSocketManager {
         this.store.initializeTestRun(message.runId, message.contextId);
     }
 
+
     /**
      * Handle realtime test event
      */
     handleRealtimeEvent(message) {
         try {
-            const event = JSON.parse(message.data);
-            this.store.handleTestEvent(message.runId, event);
+            const data = JSON.parse(message.data);
 
-            if (event.event === 'execution.ended' && this.store.state.coverage) {
+            this.store.handleTestEvent(message.runId, data);
+
+            if (data.event === 'execution.ended' && this.store.state.coverage) {
                 this.store.setCoverageLoading(true);
             }
         } catch (error) {
@@ -113,6 +115,11 @@ export class WebSocketManager {
      * Handle test exit event
      */
     handleTestExit(message) {
+        // Force the run to be marked as complete in the store.
+        // This is the most reliable way to ensure the UI updates,
+        // as the 'exit' message is sent when the PHPUnit process terminates.
+        this.store.markRunAsComplete(message.runId);
+
         this.updateFaviconFromRun(message.runId);
         if (this.store.state.coverage) {
             this.app.fetchCoverageReport(message.runId);

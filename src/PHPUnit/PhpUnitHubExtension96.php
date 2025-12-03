@@ -13,7 +13,7 @@ use PHPUnit\Framework\Warning;
 use PHPUnit\Framework\TestListenerDefaultImplementation;
 use Throwable;
 
-class PhpUnitHubExtension95 implements TestListener
+class PhpUnitHubExtension96 implements TestListener
 {
     use TestListenerDefaultImplementation;
 
@@ -22,6 +22,7 @@ class PhpUnitHubExtension95 implements TestListener
     private function writeEvent(string $event, array $data): void
     {
         fwrite(STDERR, json_encode(['event' => $event, 'data' => $data]) . "\n");
+        fflush(STDERR);
     }
 
     private function formatTestName(Test $test): string
@@ -60,12 +61,17 @@ class PhpUnitHubExtension95 implements TestListener
 
     public function startTestSuite(TestSuite $suite): void
     {
-        if (class_exists($suite->getName(), false)) {
-            $this->writeEvent('suite.started', [
-                'name' => $suite->getName(),
-                'count' => $suite->count(),
-            ]);
-        }
+        $this->writeEvent('suite.started', [
+            'name' => $suite->getName(),
+            'count' => $suite->count(),
+        ]);
+    }
+
+    public function endTestSuite(TestSuite $suite): void
+    {
+        $this->writeEvent('suite.finished', [
+            'name' => $suite->getName(),
+        ]);
     }
 
     public function startTest(Test $test): void

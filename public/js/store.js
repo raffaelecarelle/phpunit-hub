@@ -25,6 +25,9 @@ export class Store {
 
     constructor() {
         this.state = reactive({
+            // Server info
+            serverInfo: null,
+
             // Test suites
             testSuites: [],
             availableSuites: [],
@@ -377,6 +380,21 @@ export class Store {
         this.state.isStarting = false;
         this.updateSidebarAfterRun(runId);
         updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
+    }
+
+    markRunAsComplete(runId) {
+        const run = this.state.realtimeTestRuns[runId];
+        if (run && !run.executionEnded) {
+            run.executionEnded = true;
+            run.status = 'finished';
+            this.state.lastCompletedRunId = runId;
+            delete this.state.runningTestIds[runId];
+            delete this.state.stopPending[runId];
+            this.state.isStarting = false;
+            this.updateSidebarAfterRun(runId);
+            // We don't have the final summary, so we can't accurately set the favicon here.
+            // It will be updated on the next run or when the summary eventually arrives.
+        }
     }
 
     /**

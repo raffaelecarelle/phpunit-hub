@@ -4,6 +4,8 @@ namespace PhpUnitHub\Coverage;
 
 use SimpleXMLElement;
 
+use function property_exists;
+
 class Coverage
 {
     private readonly ?SimpleXMLElement $config;
@@ -38,9 +40,9 @@ class Coverage
         $files = [];
         $sourceDirectories = $this->getSourceDirectories();
 
-        $fileNodes = $project->xpath('//package/file');
+        $fileNodes = $project->xpath('//package/file') !== [] ? $project->xpath('//package/file') : $project->xpath('//file');
 
-        if ($fileNodes) {
+        if ($fileNodes !== []) {
             foreach ($fileNodes as $fileNode) {
                 $filePath = (string)$fileNode['name'];
                 $relativePath = $this->getRelativePath($filePath, $sourceDirectories);
@@ -183,16 +185,47 @@ class Coverage
      */
     private function getSourceDirectories(): array
     {
-        if (!$this->config instanceof SimpleXMLElement || (!property_exists($this->config->source->include, 'directory') || $this->config->source->include->directory === null)) {
-            return ['src']; // Default
+        if (!$this->config instanceof SimpleXMLElement) {
+            return [];
         }
 
-        $directories = [];
-        foreach ($this->config->source->include->directory as $dir) {
-            $directories[] = (string)$dir;
+        // PHPUnit >= 10
+        if (property_exists($this->config, 'source') && $this->config->source !== null) {
+            if (!property_exists($this->config->source->include, 'directory')) {
+                return [];
+            }
+
+            if ($this->config->source->include->directory === null) {
+                return [];
+            }
+
+            $directories = [];
+            foreach ($this->config->source->include->directory as $dir) {
+                $directories[] = (string)$dir;
+            }
+
+            return $directories;
         }
 
-        return $directories;
+        // PHPUnit < 10
+        if (property_exists($this->config, 'coverage') && $this->config->coverage !== null) {
+            if (!property_exists($this->config->coverage->include, 'directory')) {
+                return [];
+            }
+
+            if ($this->config->coverage->include->directory === null) {
+                return [];
+            }
+
+            $directories = [];
+            foreach ($this->config->coverage->include->directory as $dir) {
+                $directories[] = (string)$dir;
+            }
+
+            return $directories;
+        }
+
+        return [];
     }
 
     /**
