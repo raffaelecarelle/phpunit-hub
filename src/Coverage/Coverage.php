@@ -38,7 +38,7 @@ class Coverage
         $files = [];
         $sourceDirectories = $this->getSourceDirectories();
 
-        $fileNodes = $project->xpath('//package/file');
+        $fileNodes = $project->xpath('//project/file');
 
         if ($fileNodes) {
             foreach ($fileNodes as $fileNode) {
@@ -102,6 +102,7 @@ class Coverage
             return ['lines' => []];
         }
 
+        // Changed XPath query to find all 'file' nodes regardless of parent 'package'
         $fileNode = $xml->xpath(sprintf("//file[@name='%s']", $fullPath))[0] ?? null;
         $coverageData = [];
         if ($fileNode) {
