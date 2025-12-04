@@ -52,8 +52,6 @@ export class App {
             this.store.state.availableGroups = data.availableGroups || [];
             this.store.state.coverageDriverMissing = !data.coverageDriver;
 
-            console.log('Fetched test suites:', this.store.state.testSuites);
-
             // Build test index
             this.buildTestIndex();
         } catch (error) {
@@ -61,7 +59,6 @@ export class App {
             throw error; // Re-throw the error
         } finally {
             this.store.state.isLoading = false;
-            console.log('isLoading after fetchTests:', this.store.state.isLoading); // Added this log
         }
     }
 

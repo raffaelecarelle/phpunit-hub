@@ -13,6 +13,18 @@ export const MainContent = {
         'toggleTestDetails'
     ],
     template: `
+    <style>
+    [v-cloak] {
+                display: none;
+            }
+            .token-keyword { color: #c586c0; }
+            .token-string { color: #ce9178; }
+            .token-comment { color: #6a9955; }
+            .token-variable { color: #9cdcfe; }
+            .token-default { color: #d4d4d4; }
+            .line-covered { background-color: rgba(16, 185, 129, 0.1); }
+            .line-uncovered { background-color: rgba(248, 113, 113, 0.1); }
+    </style>
     <main id="main-content" class="flex-1 p-4 flex flex-col">
         <div class="mb-4">
             <nav class="flex space-x-2">
@@ -140,7 +152,7 @@ export const MainContent = {
                                             <span v-if="store.state.options.displayWarnings && testcase.warnings?.length > 0" class="text-amber-400">⚠ {{ testcase.warnings.length }} warning(s)</span>
                                             <span v-if="store.state.options.displayDeprecations && testcase.deprecations?.length > 0" class="text-purple-400 ml-2">⚠ {{ testcase.deprecations.length }} deprecation(s)</span>
                                             <span v-if="store.state.options.displayNotices && testcase.notices?.length > 0" class="text-sky-400 ml-2">⚠ {{ testcase.notices.length }} notice(s)</span>
-                                        </div>
+                                            </div>
                                         <div class="w-28 text-right flex-shrink-0 pr-3">
                                             <span class="text-sm" :class="{'text-yellow-400': (testcase.duration / 1000000000) > 0.5 }">{{ formatNanoseconds(testcase.duration) }}</span>
                                         </div>
@@ -334,7 +346,7 @@ export const MainContent = {
                             &larr; Back to Coverage Report
                         </button>
                         <h3 class="text-lg font-semibold text-white mb-2">{{ store.state.fileCoverage.path }}</h3>
-                        <pre class="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono"><div v-for="line in store.state.fileCoverage.lines" :class="line-line.coverage" style="display: flex; line-height: 1.4;"><span class="text-gray-500 flex-shrink-0 text-right pr-3" style="min-width: 3rem; user-select: none;">{{ line.number }}</span><span style="flex: 1; white-space: pre;"><span v-for="token in line.tokens" :class="token-getTokenClass(token.type)">{{ token.value }}</span></span></div></pre>
+                        <pre class="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono"><div v-for="line in store.state.fileCoverage.lines" :class="[line.coverage === 'covered' ? 'line-covered' : '', line.coverage === 'uncovered' ? 'line-uncovered' : '']" style="display: flex; line-height: 1.4;"><span class="text-gray-500 flex-shrink-0 text-right pr-3" style="min-width: 3rem; user-select: none;">{{ line.number }}</span><span style="flex: 1; white-space: pre;"><span v-for="item in line.tokens" :key="item.value" :class="getTokenClassForTemplate(item.type)">{{ item.value }}</span></span></div></pre>
                     </div>
                 </div>
                 <div v-else>
@@ -371,6 +383,9 @@ export const MainContent = {
     methods: {
         toggleTestcaseGroup(className) {
             this.app.store.toggleTestcaseGroupExpansion(className);
+        },
+        getTokenClassForTemplate(tokenType) {
+            return 'token-' + this.getTokenClass(tokenType);
         }
     }
 };

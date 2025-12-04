@@ -86,8 +86,14 @@ export class ApiClient {
         try {
             const response = await fetch(`${this.baseUrl}/api/coverage/${runId}`);
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch coverage report');
+                let errorDetails = 'Unknown error';
+                try {
+                    const errorData = await response.json();
+                    errorDetails = errorData.error || JSON.stringify(errorData);
+                } catch (jsonError) {
+                    errorDetails = response.statusText;
+                }
+                throw new Error(`Failed to fetch coverage report: ${errorDetails}`);
             }
             return await response.json();
         } catch (error) {
