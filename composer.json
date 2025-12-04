@@ -3,6 +3,7 @@
     "description": "A modern web UI for running and analyzing PHPUnit tests.",
     "type": "project",
     "license": "MIT",
+    "keywords": ["phpunit", "web", "ui", "test", "runner"],
     "authors": [
         {
             "name": "Raffaele Carelle",
@@ -17,7 +18,7 @@
         "react/event-loop": "^1.3",
         "react/child-process": "^0.6.1",
         "ramsey/uuid": "^4.7",
-        "phpunit/phpunit": "^10.6|^11.0|^12.0",
+        "phpunit/phpunit": "^10.5",
         "ext-simplexml": "*",
         "ext-dom": "*"
     },
