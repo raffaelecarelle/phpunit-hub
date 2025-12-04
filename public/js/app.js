@@ -52,6 +52,8 @@ export class App {
             this.store.state.availableGroups = data.availableGroups || [];
             this.store.state.coverageDriverMissing = !data.coverageDriver;
 
+            console.log('Fetched test suites:', this.store.state.testSuites);
+
             // Build test index
             this.buildTestIndex();
         } catch (error) {
@@ -59,6 +61,7 @@ export class App {
             throw error; // Re-throw the error
         } finally {
             this.store.state.isLoading = false;
+            console.log('isLoading after fetchTests:', this.store.state.isLoading); // Added this log
         }
     }
 
@@ -354,7 +357,7 @@ export class App {
             summary.numberOfDeprecations = realtimeSummary.deprecations;
             summary.numberOfIncomplete = realtimeSummary.incomplete;
             summary.numberOfRisky = realtimeSummary.risky;
-            summary.numberOfNotices = realtimeSummary.notices;
+            summary.notices = realtimeSummary.notices;
         }
 
         // Transform suites data
@@ -396,7 +399,7 @@ export class App {
                 deprecations: summary.numberOfDeprecations,
                 incomplete: summary.numberOfIncomplete,
                 risky: summary.numberOfRisky,
-                notices: summary.numberOfNotices,
+                notices: summary.notices,
             },
             suites: transformedSuites,
         };
@@ -625,19 +628,24 @@ export class App {
      */
     getFilteredTestSuites() {
         const query = this.store.state.searchQuery;
-        if (!query) return this.store.state.testSuites;
+        let filtered = this.store.state.testSuites;
 
-        const lower = query.toLowerCase();
-        return this.store.state.testSuites.map(suite => {
-            const methods = suite.methods.filter(m => m.name.toLowerCase().includes(lower));
-            if (suite.name.toLowerCase().includes(lower)) {
-                return { ...suite, methods: suite.methods };
-            }
-            if (methods.length > 0) {
-                return { ...suite, methods };
-            }
-            return null;
-        }).filter(Boolean);
+        if (query) {
+            const lower = query.toLowerCase();
+            filtered = this.store.state.testSuites.map(suite => {
+                const methods = suite.methods.filter(m => m.name.toLowerCase().includes(lower));
+                if (suite.name.toLowerCase().includes(lower)) {
+                    return { ...suite, methods: suite.methods };
+                }
+                if (methods.length > 0) {
+                    return { ...suite, methods };
+                }
+                return null;
+            }).filter(Boolean);
+        }
+
+        console.log('FilteredTestSuites output (final):', filtered);
+        return filtered;
     }
 
     async fetchCoverageReport(runId) {
