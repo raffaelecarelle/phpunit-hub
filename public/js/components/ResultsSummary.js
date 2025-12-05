@@ -2,7 +2,8 @@ export const ResultsSummary = {
     props: [
         'results',
         'statusCounts',
-        'formatNanoseconds'
+        'formatNanoseconds',
+        'store'
     ],
     template: `
         <div class="bg-gray-800 rounded-lg shadow-lg p-4">
