@@ -66,7 +66,6 @@ const emit = defineEmits(['toggleTestDetails', 'toggleTestcaseGroup', 'showFileC
 
 function toggleTestcaseGroup(className) {
     store.toggleTestcaseGroupExpansion(className);
-    emit('toggleTestcaseGroup', className);
 }
 
 function handleToggleTestDetails(testcase) {
@@ -75,7 +74,6 @@ function handleToggleTestDetails(testcase) {
     } else {
         store.setExpandedTest(testcase.id);
     }
-    emit('toggleTestDetails', testcase);
 }
 
 function showFileCoverage(filePath) {
