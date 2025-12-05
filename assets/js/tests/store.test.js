@@ -1,18 +1,16 @@
 // Mock Vue's reactive function
-import { vi } from 'vitest'; // Import vi from vitest
+import { vi } from 'vitest';
 
-// Change the mock target from URL to 'vue' module
 vi.mock('vue', () => ({
-    reactive: (obj) => obj, // Simply return the object for testing purposes
+    reactive: (obj) => obj,
 }));
 
 // Mock parseTestId from utils.js
-// Use vi.importActual to get the real module, then mock specific functions
 vi.mock('../utils.js', async () => {
     const actualUtils = await vi.importActual('../utils.js');
     return {
-        ...actualUtils, // Import and retain default behavior
-        parseTestId: vi.fn((testId) => { // Mock only parseTestId
+        ...actualUtils,
+        parseTestId: vi.fn((testId) => {
             const separatorIndex = testId.indexOf('::');
             if (separatorIndex === -1) {
                 return {
@@ -37,10 +35,10 @@ describe('Store', () => {
     let store;
 
     beforeEach(() => {
+        vi.clearAllMocks();
         store = storeModule.useStore();
         localStorage.clear();
-        vi.clearAllMocks();
-        vi.spyOn(console, 'warn').mockImplementation(() => {}); // Suppress console.warn
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -61,8 +59,8 @@ describe('Store', () => {
             expandedTestId: null,
             showFilterPanel: false,
             activeTab: 'results',
-            sortBy: 'default', // 'default' or 'duration'
-            sortDirection: 'desc', // 'asc' or 'desc'
+            sortBy: 'default',
+            sortDirection: 'desc',
             selectedSuites: [],
             selectedGroups: [],
             coverage: false,
@@ -104,7 +102,7 @@ describe('Store', () => {
             const runId = 'run123';
             const contextId = 'global';
             store.state.isStarting = true;
-            store.state.stopPending[runId] = true; // Simulate a pending stop
+            store.state.stopPending[runId] = true;
 
             store.initializeTestRun(runId, contextId);
 
@@ -129,12 +127,12 @@ describe('Store', () => {
             store.state.expandedTestcaseGroups.add('someGroup');
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
 
-            const resetSidebarSpy = vi.spyOn(storeModule, 'resetSidebarTestStatuses');
-
             store.initializeTestRun(runId, 'failed');
+
             expect(store.state.expandedTestId).toBeNull();
             expect(store.state.expandedTestcaseGroups.size).toBe(0);
-            expect(resetSidebarSpy).toHaveBeenCalled();
+            // Verify the effect of resetSidebarTestStatuses
+            expect(store.state.testSuites[0].methods[0].status).toBeNull();
         });
 
         test('should reset results for global context', () => {
@@ -155,55 +153,102 @@ describe('Store', () => {
         beforeEach(() => {
             store.initializeTestRun(runId, 'global');
             run = store.state.realtimeTestRuns[runId];
-            vi.spyOn(store, 'handleSuiteStarted');
-            vi.spyOn(store, 'handleTestPrepared');
-            vi.spyOn(store, 'handleTestWarningOrDeprecation');
-            vi.spyOn(store, 'handleTestNotice');
-            vi.spyOn(store, 'handleTestCompleted');
-            vi.spyOn(store, 'handleTestFinished');
-            vi.spyOn(store, 'handleExecutionEnded');
         });
 
         test('should call handleSuiteStarted for suite.started event', () => {
             const eventData = { event: 'suite.started', data: { name: 'SuiteA', count: 1 } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleSuiteStarted).toHaveBeenCalledWith(run, eventData);
+
+            // Verify the effect instead of spying
+            expect(run.suites['SuiteA']).toBeDefined();
+            expect(run.suites['SuiteA'].name).toBe('SuiteA');
         });
 
         test('should call handleTestPrepared for test.prepared event', () => {
+            run.suites['SuiteA'] = { name: 'SuiteA', tests: {} };
             const eventData = { event: 'test.prepared', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestPrepared).toHaveBeenCalledWith(run, eventData, runId);
+
+            // Verify the effect
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod']).toBeDefined();
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].status).toBe('running');
         });
 
         test('should call handleTestWarningOrDeprecation for test.warning event', () => {
-            const eventData = { event: 'test.warning', data: { testId: 'SuiteA::testMethod' } };
+            run.suites['SuiteA'] = {
+                name: 'SuiteA',
+                tests: {
+                    'SuiteA::testMethod': { id: 'SuiteA::testMethod', warnings: [], deprecations: [] }
+                },
+                warning: 0,
+                hasIssues: false,
+            };
+            const eventData = { event: 'test.warning', data: { testId: 'SuiteA::testMethod', message: 'Warning!' } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestWarningOrDeprecation).toHaveBeenCalledWith(run, eventData);
+
+            // Verify the effect
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].warnings.length).toBe(1);
+            expect(run.suites['SuiteA'].warning).toBe(1);
         });
 
         test('should call handleTestNotice for test.notice event', () => {
-            const eventData = { event: 'test.notice', data: { testId: 'SuiteA::testMethod' } };
+            run.suites['SuiteA'] = {
+                name: 'SuiteA',
+                tests: {
+                    'SuiteA::testMethod': { id: 'SuiteA::testMethod', notices: [] }
+                },
+                notice: 0,
+                hasIssues: false,
+            };
+            const eventData = { event: 'test.notice', data: { testId: 'SuiteA::testMethod', message: 'Notice!' } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestNotice).toHaveBeenCalledWith(run, eventData);
+
+            // Verify the effect
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].notices.length).toBe(1);
+            expect(run.suites['SuiteA'].notice).toBe(1);
         });
 
         test('should call handleTestCompleted for test.passed event', () => {
+            run.suites['SuiteA'] = {
+                name: 'SuiteA',
+                tests: {
+                    'SuiteA::testMethod': { id: 'SuiteA::testMethod', status: 'running' }
+                },
+                passed: 0,
+                hasIssues: false,
+            };
             const eventData = { event: 'test.passed', data: { testId: 'SuiteA::testMethod' } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestCompleted).toHaveBeenCalledWith(run, eventData, runId);
+
+            // Verify the effect
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].status).toBe('passed');
+            expect(run.suites['SuiteA'].passed).toBe(1);
         });
 
         test('should call handleTestFinished for test.finished event', () => {
-            const eventData = { event: 'test.finished', data: { testId: 'SuiteA::testMethod', duration: 0.1 } };
+            run.suites['SuiteA'] = {
+                name: 'SuiteA',
+                tests: {
+                    'SuiteA::testMethod': { id: 'SuiteA::testMethod', duration: null, status: 'passed' }
+                }
+            };
+            const eventData = { event: 'test.finished', data: { testId: 'SuiteA::testMethod', duration: 0.1, assertions: 5 } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleTestFinished).toHaveBeenCalledWith(run, eventData, 'run123');
+
+            // Verify the effect
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].duration).toBe(0.1);
+            expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].assertions).toBe(5);
         });
 
         test('should call handleExecutionEnded for execution.ended event', () => {
-            const eventData = { event: 'execution.ended', data: { summary: {} } };
+            const summary = { numberOfTests: 10, status: 'passed' };
+            const eventData = { event: 'execution.ended', data: { summary } };
             store.handleTestEvent(runId, eventData);
-            expect(store.handleExecutionEnded).toHaveBeenCalledWith(run, eventData, runId);
+
+            // Verify the effect
+            expect(run.summary).toEqual(summary);
+            expect(run.status).toBe('finished');
+            expect(store.state.lastCompletedRunId).toBe(runId);
         });
 
         test('should warn for unknown runId', () => {
@@ -418,13 +463,18 @@ describe('Store', () => {
         const runId = 'run123';
         beforeEach(() => {
             store.initializeTestRun(runId, 'global');
+            run = store.state.realtimeTestRuns[runId];
             store.state.runningTestIds[runId] = true;
             store.state.stopPending[runId] = true;
             store.state.isStarting = true;
-            vi.spyOn(store, 'updateSidebarAfterRun');
         });
 
         test('should set summary, status, clear flags, and reset isStarting', () => {
+            store.state.testSuites = [
+                { id: 'SuiteA', runId: runId, methods: [{ id: 'SuiteA::test1', runId: runId }] },
+                { id: 'SuiteB', runId: 'anotherRunId', methods: [{ id: 'SuiteB::test2', runId: 'anotherRunId' }] },
+            ];
+
             const summary = { numberOfTests: 10, numberOfFailures: 1, status: 'failure' };
             const eventData = { event: 'execution.ended', data: { summary: summary } };
             store.handleExecutionEnded(run, eventData, runId);
@@ -435,7 +485,12 @@ describe('Store', () => {
             expect(store.state.runningTestIds[runId]).toBeUndefined();
             expect(store.state.stopPending[runId]).toBeUndefined();
             expect(store.state.isStarting).toBe(false);
-            expect(store.updateSidebarAfterRun).toHaveBeenCalledWith(runId);
+
+            // Assert the effects of updateSidebarAfterRun
+            expect(store.state.testSuites[0].runId).toBeNull();
+            expect(store.state.testSuites[0].methods[0].runId).toBeNull();
+            expect(store.state.testSuites[1].runId).toBe('anotherRunId');
+            expect(store.state.testSuites[1].methods[0].runId).toBe('anotherRunId');
         });
     });
 
@@ -446,16 +501,24 @@ describe('Store', () => {
             store.state.runningTestIds[runId] = true;
             store.state.stopPending[runId] = true;
             store.state.isStarting = true;
-            vi.spyOn(store, 'updateSidebarAfterRun');
         });
 
         test('should mark run as stopped, clear flags, and reset isStarting', () => {
+            store.state.testSuites = [
+                { id: 'SuiteA', runId: runId, methods: [{ id: 'SuiteA::test1', runId: runId }] },
+                { id: 'SuiteB', runId: 'anotherRunId', methods: [{ id: 'SuiteB::test2', runId: 'anotherRunId' }] },
+            ];
+
             store.stopTestRun(runId);
             expect(store.state.realtimeTestRuns[runId].status).toBe('stopped');
             expect(store.state.runningTestIds[runId]).toBeUndefined();
             expect(store.state.stopPending[runId]).toBeUndefined();
             expect(store.state.isStarting).toBe(false);
-            expect(store.updateSidebarAfterRun).toHaveBeenCalledWith(runId);
+
+            expect(store.state.testSuites[0].runId).toBeNull();
+            expect(store.state.testSuites[0].methods[0].runId).toBeNull();
+            expect(store.state.testSuites[1].runId).toBe('anotherRunId');
+            expect(store.state.testSuites[1].methods[0].runId).toBe('anotherRunId');
         });
     });
 
@@ -488,14 +551,14 @@ describe('Store', () => {
             store.state.lastCompletedRunId = 'run1';
             store.state.expandedTestId = 'someTest';
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
-            const resetSidebarSpy = vi.spyOn(storeModule, 'resetSidebarTestStatuses');
 
             store.clearAllResults();
 
             expect(store.state.realtimeTestRuns).toEqual({});
             expect(store.state.lastCompletedRunId).toBeNull();
             expect(store.state.expandedTestId).toBeNull();
-            expect(resetSidebarSpy).toHaveBeenCalled();
+            // Verify the effect of resetSidebarTestStatuses
+            expect(store.state.testSuites[0].methods[0].status).toBeNull();
         });
     });
 });

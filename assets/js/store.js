@@ -253,10 +253,10 @@ function handleTestWarningOrDeprecation(run, eventData) {
         const suite = run.suites[suiteName];
 
         if (eventData.event === 'test.warning') {
-            test.warnings.push(eventData.data.message || 'Warning triggered');
+            test.warnings.push(eventData.data.message || 'Some warning triggered');
             suite.warning++;
         } else if (eventData.event === 'test.deprecation') {
-            test.deprecations.push(eventData.data.message || 'Deprecation triggered');
+            test.deprecations.push(eventData.data.message || 'Some deprecation triggered');
             suite.deprecation++;
         }
 
@@ -272,7 +272,7 @@ function handleTestNotice(run, eventData) {
         const test = run.suites[suiteName].tests[testId];
         const suite = run.suites[suiteName];
 
-        test.notices.push(eventData.data.message || 'Notice triggered');
+        test.notices.push(eventData.data.message || 'Some notice triggered');
         suite.notice++;
         suite.hasIssues = true;
     }
@@ -444,17 +444,6 @@ function hasFailedTests() {
     return run ? run.failedTestIds.size > 0 : false;
 }
 
-function clearAllResults() {
-    state.realtimeTestRuns = {};
-    state.lastCompletedRunId = null;
-    state.expandedTestId = null;
-    state.expandedTestcaseGroups = new Set();
-    state.coverageReport = null;
-    state.fileCoverage = null;
-    resetSidebarTestStatuses();
-    updateFavicon('neutral');
-}
-
 function clearFilters() {
     state.selectedSuites = [];
     state.selectedGroups = [];
@@ -508,7 +497,16 @@ export function useStore() {
         toggleFilterPanel,
         getFailedTestIds,
         hasFailedTests,
-        clearAllResults,
+        clearAllResults() {
+            this.state.realtimeTestRuns = {};
+            this.state.lastCompletedRunId = null;
+            this.state.expandedTestId = null;
+            this.state.expandedTestcaseGroups = new Set();
+            this.state.coverageReport = null;
+            this.state.fileCoverage = null;
+            this.resetSidebarTestStatuses();
+            updateFavicon('neutral');
+        },
         clearFilters,
         setActiveTab,
         setCoverageReport,
