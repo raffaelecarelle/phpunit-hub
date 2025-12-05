@@ -1,0 +1,11 @@
+{
+  "public/js/main.js": {
+    "file": "assets/main-B64Oxaem.js",
+    "name": "main",
+    "src": "public/js/main.js",
+    "isEntry": true,
+    "css": [
+      "assets/main-1B33L-JK.css"
+    ]
+  }
+}
