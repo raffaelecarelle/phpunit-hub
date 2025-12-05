@@ -31,6 +31,9 @@ use function property_exists;
 use function realpath;
 use function sprintf;
 use function str_replace;
+use function str_starts_with;
+
+// Aggiunto per chiarezza, anche se probabilmente già presente
 
 class Router implements RouterInterface
 {
@@ -170,14 +173,39 @@ class Router implements RouterInterface
 
             if (file_exists($filePath) && is_file($filePath) && str_starts_with(realpath($filePath), $this->publicPath)) {
                 $content = file_get_contents($filePath);
+
                 if ($path === '/' || $path === '/index.html') {
+                    $manifestPath = $this->publicPath . '/build/.vite/manifest.json';
+                    $viteScriptTag = '<script type="module" src="/js/main.js"></script>'; // Fallback per lo sviluppo
+                    $viteCssTags = ''; // Conterrà i tag CSS generati da Vite
+
+                    // Tag CSS di fallback (per lo sviluppo o se Vite non genera CSS)
                     $cssPath = $this->publicPath . '/css/styles.css';
                     $cssVersion = file_exists($cssPath) ? hash_file('md5', $cssPath) : 'dev';
-                    $content = str_replace(
-                        ['{{ws_host}}', '{{ws_port}}', '{{css_version}}'],
-                        [$this->host, $this->port, $cssVersion],
-                        $content
-                    );
+                    $fallbackCssTag = '<link rel="stylesheet" href="css/styles.css?v=' . $cssVersion . '">';
+
+                    if (file_exists($manifestPath)) {
+                        $manifest = json_decode(file_get_contents($manifestPath), true);
+                        $mainEntry = $manifest['public/js/main.js'] ?? null;
+
+                        if ($mainEntry) {
+                            $viteScriptTag = '<script type="module" src="/build/' . $mainEntry['file'] . '"></script>';
+
+                            if (!empty($mainEntry['css'])) {
+                                foreach ($mainEntry['css'] as $cssFile) {
+                                    $viteCssTags .= '<link rel="stylesheet" href="/build/' . $cssFile . '">';
+                                }
+                            }
+                        }
+                    }
+
+                    // Sostituisci il vecchio tag script con quello di Vite o il fallback
+                    $content = str_replace('<script type="module" src="/js/main.js"></script>', $viteScriptTag, $content);
+
+                    // Rimuovi il vecchio link al manifest di Vite (non è per il browser)
+                    // Sostituisci il vecchio link CSS. Se Vite ha generato CSS, usa quello. Altrimenti, usa il fallback.
+                    // Sostituisci i placeholder di host/port
+                    $content = str_replace(array('<link rel="manifest" href="/.vite/manifest.json" />', '<link rel="stylesheet" href="css/styles.css?v={{css_version}}">', '{{ws_host}}', '{{ws_port}}'), array('', !empty($viteCssTags) ? $viteCssTags : $fallbackCssTag, $this->host, $this->port), $content);
                 }
 
                 $response = new GuzzleResponse(200, ['Content-Type' => $this->getMimeType($filePath)], $content);
