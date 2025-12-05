@@ -285,7 +285,7 @@ describe('MainContent', () => {
       },
     });
 
-    wrapper.vm.toggleTestDetails({ id: 123 });
+    wrapper.vm.handleToggleTestDetails({ id: 123 });
     expect(mockStore.setExpandedTest).toHaveBeenCalledWith(null);
   });
 
@@ -302,7 +302,7 @@ describe('MainContent', () => {
       },
     });
 
-    wrapper.vm.toggleTestDetails({ id: 456 });
+    wrapper.vm.handleToggleTestDetails({ id: 456 });
     expect(mockStore.setExpandedTest).toHaveBeenCalledWith(456);
   });
 });

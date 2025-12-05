@@ -3,7 +3,7 @@
         <tab-navigation></tab-navigation>
 
         <div class="flex-grow overflow-y-auto">
-            <div v-show="store.state.activeTab === 'results'">
+            <div v-if="store.state.activeTab === 'results'">
                 <results-summary :results="results" :status-counts="statusCounts" :format-nanoseconds="formatNanoseconds"></results-summary>
 
                 <!-- Empty State -->
@@ -12,7 +12,7 @@
                 </div>
 
                 <!-- Results Content -->
-                <div v-else class="space-y-2 mt-4">
+                <div v-if="results" class="space-y-2 mt-4">
                     <!-- Spinner during execution -->
                     <div v-if="isAnyTestRunning" class="flex justify-center items-center pt-10">
                         <div class="spinner-big"></div>
@@ -23,7 +23,7 @@
                         <individual-test-results
                             :individual-results="individualResults"
                             :format-nanoseconds="formatNanoseconds"
-                            @toggleTestDetails="toggleTestDetails"
+                            @toggleTestDetails="handleToggleTestDetails"
                         ></individual-test-results>
                     </template>
 
@@ -33,12 +33,12 @@
                             :grouped-results="groupedResults"
                             :format-nanoseconds="formatNanoseconds"
                             @toggleTestcaseGroup="toggleTestcaseGroup"
-                            @toggleTestDetails="toggleTestDetails"
+                            @toggleTestDetails="handleToggleTestDetails"
                         ></grouped-test-results>
                     </template>
                 </div>
             </div>
-            <div v-show="store.state.activeTab === 'coverage'">
+            <div v-if="store.state.activeTab === 'coverage'">
                 <coverage-report @showFileCoverage="showFileCoverage"></coverage-report>
             </div>
         </div>
@@ -66,14 +66,16 @@ const emit = defineEmits(['toggleTestDetails', 'toggleTestcaseGroup', 'showFileC
 
 function toggleTestcaseGroup(className) {
     store.toggleTestcaseGroupExpansion(className);
+    emit('toggleTestcaseGroup', className);
 }
 
-function toggleTestDetails(testcase) {
+function handleToggleTestDetails(testcase) {
     if (store.state.expandedTestId === testcase.id) {
         store.setExpandedTest(null);
     } else {
         store.setExpandedTest(testcase.id);
     }
+    emit('toggleTestDetails', testcase);
 }
 
 function showFileCoverage(filePath) {

@@ -36,7 +36,7 @@ const filterSuites = (query) => {
 
 watch(searchQuery, (newQuery) => {
     filterSuites(newQuery);
-});
+}, { immediate: true }); // Added immediate: true
 
 watch(() => store.state.testSuites, (newSuites) => {
     searchQuery.value = '';
