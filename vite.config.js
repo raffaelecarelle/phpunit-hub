@@ -20,6 +20,10 @@ export default defineConfig({
             overlay: true, // Mostra errori overlay
         },
     },
+    test: {
+        globals: true,
+        environment: 'jsdom', // Necessario per testare componenti Vue
+    },
     publicDir: false, // ← Disabilita publicDir o usa un'altra cartella
     // Oppure se hai assets statici: publicDir: 'assets'
 });

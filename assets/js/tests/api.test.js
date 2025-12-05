@@ -1,5 +1,7 @@
 // Mock the global fetch function
-const mockFetch = jest.fn();
+import { vi } from 'vitest'; // Import vi from vitest
+
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import { ApiClient } from '../api.js';
@@ -11,11 +13,11 @@ describe('ApiClient', () => {
     beforeEach(() => {
         api = new ApiClient(baseUrl);
         mockFetch.mockClear();
-        jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error during tests
+        vi.spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error during tests
     });
 
     afterEach(() => {
-        jest.restoreAllMocks(); // Restore console.error
+        vi.restoreAllMocks(); // Restore console.error
     });
 
     describe('fetchTests', () => {

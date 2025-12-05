@@ -1,12 +1,14 @@
-/** @jest-environment jsdom */
+/** @vitest-environment jsdom */
 // Mock btoa as it's not available in a Node.js test environment
-global.btoa = jest.fn((str) => Buffer.from(str).toString('base64'));
+import { vi } from 'vitest'; // Import vi from vitest
+
+global.btoa = vi.fn((str) => Buffer.from(str).toString('base64'));
 
 import { favicons, updateFavicon, parseTestId, formatTime, calculatePassedTests } from '../utils.js';
 
 describe('utils.js', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('favicons', () => {
@@ -24,7 +26,7 @@ describe('utils.js', () => {
 
         beforeEach(() => {
             mockFaviconLink = { href: '' };
-            jest.spyOn(document, 'getElementById').mockReturnValue(mockFaviconLink);
+            vi.spyOn(document, 'getElementById').mockReturnValue(mockFaviconLink);
         });
 
         test('should update favicon with neutral status by default', () => {
@@ -60,7 +62,7 @@ describe('utils.js', () => {
         });
 
         test('should do nothing if favicon element is not found', () => {
-            document.getElementById.mockReturnValue(null);
+            vi.spyOn(document, 'getElementById').mockReturnValue(null); // Use vi.spyOn here
             updateFavicon('success');
             expect(document.getElementById).toHaveBeenCalledWith('favicon');
             expect(global.btoa).not.toHaveBeenCalled();

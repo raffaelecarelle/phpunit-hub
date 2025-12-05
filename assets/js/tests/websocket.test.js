@@ -1,18 +1,20 @@
 // Mock the global WebSocket object
+import { vi } from 'vitest'; // Import vi from vitest
+
 const mockWebSocketInstance = {
     onopen: null,
     onmessage: null,
     onerror: null,
     onclose: null,
-    close: jest.fn(),
-    send: jest.fn(),
+    close: vi.fn(),
+    send: vi.fn(),
 };
-const MockWebSocket = jest.fn(() => mockWebSocketInstance);
+const MockWebSocket = vi.fn(() => mockWebSocketInstance);
 global.WebSocket = MockWebSocket;
 
 // Mock dependencies
 import * as Utils from '../utils.js'; // Import the module
-jest.mock('../utils.js'); // Mock the module
+vi.mock('../utils.js'); // Mock the module
 
 class MockStore {
     constructor() {
@@ -23,12 +25,12 @@ class MockStore {
                 resultUpdateMode: 'update', // Default to update mode
             },
         };
-        this.initializeTestRun = jest.fn();
-        this.handleTestEvent = jest.fn();
-        this.stopTestRun = jest.fn();
-        this.clearRunningTests = jest.fn();
-        this.getTestRun = jest.fn((runId) => this.state.realtimeTestRuns[runId]);
-        this.getRunningTestCount = jest.fn(() => Object.keys(this.state.runningTestIds || {}).length); // Corrected property and added safety
+        this.initializeTestRun = vi.fn();
+        this.handleTestEvent = vi.fn();
+        this.stopTestRun = vi.fn();
+        this.clearRunningTests = vi.fn();
+        this.getTestRun = vi.fn((runId) => this.state.realtimeTestRuns[runId]);
+        this.getRunningTestCount = vi.fn(() => Object.keys(this.state.runningTestIds || {}).length); // Corrected property and added safety
     }
 }
 
@@ -43,17 +45,17 @@ describe('WebSocketManager', () => {
         store = new MockStore();
         wsManager = new WebSocketManager(wsUrl, store);
 
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         Utils.updateFavicon.mockClear(); // Clear the mock here
-        jest.spyOn(console, 'log').mockImplementation(() => {});
-        jest.spyOn(console, 'error').mockImplementation(() => {});
-        jest.spyOn(console, 'warn').mockImplementation(() => {});
-        jest.useFakeTimers(); // Mock timers for setTimeout
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.useFakeTimers(); // Mock timers for setTimeout
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
-        jest.useRealTimers(); // Restore real timers
+        vi.restoreAllMocks();
+        vi.useRealTimers(); // Restore real timers
     });
 
     describe('connect', () => {
@@ -91,19 +93,19 @@ describe('WebSocketManager', () => {
         test('should attempt to reconnect if reconnect attempts are less than max', () => {
             wsManager.reconnectAttempts = 0;
             wsManager.maxReconnectAttempts = 1;
-            const connectSpy = jest.spyOn(wsManager, 'connect').mockResolvedValueOnce();
+            const connectSpy = vi.spyOn(wsManager, 'connect').mockResolvedValueOnce();
 
             wsManager.handleDisconnect();
             expect(wsManager.reconnectAttempts).toBe(1);
             expect(console.log).toHaveBeenCalledWith('Attempting to reconnect in 2000ms...');
 
-            jest.advanceTimersByTime(2000);
+            vi.advanceTimersByTime(2000);
             expect(connectSpy).toHaveBeenCalledTimes(1);
         });
 
         test('should not attempt to reconnect if reconnect attempts exceed max', () => {
             wsManager.reconnectAttempts = wsManager.maxReconnectAttempts;
-            const connectSpy = jest.spyOn(wsManager, 'connect');
+            const connectSpy = vi.spyOn(wsManager, 'connect');
 
             wsManager.handleDisconnect();
             expect(connectSpy).not.toHaveBeenCalled();
@@ -126,14 +128,14 @@ describe('WebSocketManager', () => {
 
         test('should call handleTestExit for "exit" message type', () => {
             const message = { type: 'exit', runId: '123' };
-            const updateFaviconSpy = jest.spyOn(wsManager, 'updateFaviconFromRun');
+            const updateFaviconSpy = vi.spyOn(wsManager, 'updateFaviconFromRun');
             wsManager.handleMessage(message);
             expect(updateFaviconSpy).toHaveBeenCalledWith('123');
         });
 
         test('should call handleTestStopped for "stopped" message type', () => {
             const message = { type: 'stopped', runId: '123' };
-            const updateFaviconSpy = jest.spyOn(wsManager, 'updateFaviconIfComplete');
+            const updateFaviconSpy = vi.spyOn(wsManager, 'updateFaviconIfComplete');
             wsManager.handleMessage(message);
             expect(store.stopTestRun).toHaveBeenCalledWith('123');
             expect(updateFaviconSpy).toHaveBeenCalledTimes(1);

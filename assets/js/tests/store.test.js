@@ -1,13 +1,16 @@
 // Mock Vue's reactive function
-jest.mock('https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js', () => ({
+import { vi } from 'vitest'; // Import vi from vitest
+
+vi.mock('https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js', () => ({
     reactive: (obj) => obj, // Simply return the object for testing purposes
 }));
 
 // Mock parseTestId from utils.js
-const { parseTestId } = jest.requireActual('../utils.js'); // Use requireActual to get the real module, then mock specific functions
-jest.mock('../utils.js', () => ({
-    ...jest.requireActual('../utils.js'), // Import and retain default behavior
-    parseTestId: jest.fn((testId) => { // Mock only parseTestId
+// Use vi.importActual to get the real module, then mock specific functions
+const { parseTestId: actualParseTestId } = vi.importActual('../utils.js');
+vi.mock('../utils.js', () => ({
+    ...vi.importActual('../utils.js'), // Import and retain default behavior
+    parseTestId: vi.fn((testId) => { // Mock only parseTestId
         const separatorIndex = testId.indexOf('::');
         if (separatorIndex === -1) {
             return {
@@ -22,7 +25,7 @@ jest.mock('../utils.js', () => ({
             fullId: testId
         };
     }),
-    updateFavicon: jest.fn(),
+    updateFavicon: vi.fn(),
 }));
 
 import { Store } from '../store.js';
@@ -33,12 +36,12 @@ describe('Store', () => {
     beforeEach(() => {
         store = new Store();
         localStorage.clear();
-        jest.clearAllMocks();
-        jest.spyOn(console, 'warn').mockImplementation(() => {}); // Suppress console.warn
+        vi.clearAllMocks();
+        vi.spyOn(console, 'warn').mockImplementation(() => {}); // Suppress console.warn
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     test('should initialize with correct default state', () => {
@@ -111,7 +114,7 @@ describe('Store', () => {
             store.state.expandedTestcaseGroups.add('someGroup');
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
 
-            const resetSidebarSpy = jest.spyOn(store, 'resetSidebarTestStatuses');
+            const resetSidebarSpy = vi.spyOn(store, 'resetSidebarTestStatuses');
 
             store.initializeTestRun(runId, 'failed');
             expect(store.state.expandedTestId).toBeNull();
@@ -138,12 +141,12 @@ describe('Store', () => {
         beforeEach(() => {
             store.initializeTestRun(runId, 'global');
             run = store.state.realtimeTestRuns[runId];
-            jest.spyOn(store, 'handleSuiteStarted');
-            jest.spyOn(store, 'handleTestPrepared');
-            jest.spyOn(store, 'handleTestWarningOrDeprecation');
-            jest.spyOn(store, 'handleTestCompleted');
-            jest.spyOn(store, 'handleTestFinished');
-            jest.spyOn(store, 'handleExecutionEnded');
+            vi.spyOn(store, 'handleSuiteStarted');
+            vi.spyOn(store, 'handleTestPrepared');
+            vi.spyOn(store, 'handleTestWarningOrDeprecation');
+            vi.spyOn(store, 'handleTestCompleted');
+            vi.spyOn(store, 'handleTestFinished');
+            vi.spyOn(store, 'handleExecutionEnded');
         });
 
         test('should call handleSuiteStarted for suite.started event', () => {
@@ -367,11 +370,10 @@ describe('Store', () => {
         const runId = 'run123';
         beforeEach(() => {
             store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
             store.state.runningTestIds[runId] = true;
             store.state.stopPending[runId] = true;
             store.state.isStarting = true;
-            jest.spyOn(store, 'updateSidebarAfterRun');
+            vi.spyOn(store, 'updateSidebarAfterRun');
         });
 
         test('should set summary, status, clear flags, and reset isStarting', () => {
@@ -396,7 +398,7 @@ describe('Store', () => {
             store.state.runningTestIds[runId] = true;
             store.state.stopPending[runId] = true;
             store.state.isStarting = true;
-            jest.spyOn(store, 'updateSidebarAfterRun');
+            vi.spyOn(store, 'updateSidebarAfterRun');
         });
 
         test('should mark run as stopped, clear flags, and reset isStarting', () => {
@@ -440,7 +442,7 @@ describe('Store', () => {
             store.state.lastCompletedRunId = 'run1';
             store.state.expandedTestId = 'someTest';
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
-            const resetSidebarSpy = jest.spyOn(store, 'resetSidebarTestStatuses');
+            const resetSidebarSpy = vi.spyOn(store, 'resetSidebarTestStatuses');
 
             store.clearAllResults();
 
