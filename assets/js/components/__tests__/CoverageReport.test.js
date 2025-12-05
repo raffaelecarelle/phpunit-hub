@@ -77,6 +77,8 @@ describe('CoverageReport', () => {
 
   it('renders FileCoverageDetail when fileCoverage is active', () => {
     mockStore.state.isCoverageLoading = false;
+    // Ensure coverageReport is not empty so the v-else-if condition for empty report is false
+    mockStore.state.coverageReport = { files: [{ path: 'src/FileA.php', coverage_percent: 90.0 }] };
     mockStore.state.fileCoverage = { path: '/path/to/file.php' };
     const wrapper = mount(CoverageReport);
 

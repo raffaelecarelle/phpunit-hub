@@ -31,7 +31,7 @@ function getTokenClass(tokenType) {
 
     const t = tokenType.substring(2).toLowerCase();
 
-    if (['string', 'encapsed_and_whitespace'].includes(t)) {
+    if (['encapsed_and_whitespace', 'constant_encapsed_string', 'string'].includes(t)) {
         return TOKEN_TYPE_PREFIX + 'string';
     }
     if (['comment', 'doc_comment'].includes(t)) {

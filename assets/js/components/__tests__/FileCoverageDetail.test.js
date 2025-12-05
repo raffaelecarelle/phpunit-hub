@@ -26,7 +26,7 @@ describe('FileCoverageDetail', () => {
             { number: 7, coverage: 'covered', tokens: [{ type: 'T_RBRACE', value: '}' }] },
             { number: 8, coverage: 'none', tokens: [{ type: 'T_COMMENT', value: '// A comment' }] },
             { number: 9, coverage: 'none', tokens: [{ type: 'T_ENCAPSED_AND_WHITESPACE', value: ' ' }] }, // Empty line or whitespace
-            { number: 10, coverage: 'covered', tokens: [{ type: 'T_STRING', value: '"hello"' }] }, // String token
+            { number: 10, coverage: 'covered', tokens: [{ type: 'T_CONSTANT_ENCAPSED_STRING', value: '"hello"' }] }, // String token
           ],
         },
       },
@@ -73,7 +73,7 @@ describe('FileCoverageDetail', () => {
     // Check line 10 (string)
     expect(lines[9].text()).toContain('10');
     expect(lines[9].classes()).toContain('line-covered');
-    expect(lines[9].find('span:nth-child(2) > span').classes()).toContain('token-string'); // T_STRING (for string literal)
+    expect(lines[9].find('span:nth-child(2) > span').classes()).toContain('token-string'); // T_CONSTANT_ENCAPSED_STRING (for string literal)
   });
 
   it('calls store.setFileCoverage(null) when "Back to Coverage Report" button is clicked', async () => {
@@ -103,6 +103,7 @@ describe('FileCoverageDetail', () => {
       // So, the original test expectation for T_STRING was incorrect.
       expect(vm.getTokenClass('T_STRING')).toBe('token-default');
       expect(vm.getTokenClass('T_ENCAPSED_AND_WHITESPACE')).toBe('token-string');
+      expect(vm.getTokenClass('T_CONSTANT_ENCAPSED_STRING')).toBe('token-string');
     });
 
     it('returns token-comment for comment related tokens', () => {
