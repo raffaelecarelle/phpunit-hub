@@ -256,7 +256,6 @@ export class App {
             groupedResults: computed(() => this.getGroupedResults()),
             individualResults: computed(() => this.getIndividualResults()),
             statusCounts: computed(() => this.getStatusCounts()),
-            filteredTestSuites: computed(() => this.getFilteredTestSuites()),
         };
     }
 
@@ -562,7 +561,7 @@ export class App {
                 if (t.status === 'passed') return false;
             }
             if (t.notices?.length > 0 && !this.store.state.options.displayNotices) {
-                if (t.status === 'passed') return false;
+                if (t.status ==='passed') return false;
             }
             return true;
         });
@@ -618,31 +617,6 @@ export class App {
         counts.passed = (s.tests || 0) - actualFailures;
 
         return counts;
-    }
-
-    /**
-     * Get filtered test suites based on search query
-     */
-    getFilteredTestSuites() {
-        const query = this.store.state.searchQuery;
-        let filtered = this.store.state.testSuites;
-
-        if (query) {
-            const lower = query.toLowerCase();
-            filtered = this.store.state.testSuites.map(suite => {
-                const methods = suite.methods.filter(m => m.name.toLowerCase().includes(lower));
-                if (suite.name.toLowerCase().includes(lower)) {
-                    return { ...suite, methods: suite.methods };
-                }
-                if (methods.length > 0) {
-                    return { ...suite, methods };
-                }
-                return null;
-            }).filter(Boolean);
-        }
-
-        console.log('FilteredTestSuites output (final):', filtered);
-        return filtered;
     }
 
     async fetchCoverageReport(runId) {

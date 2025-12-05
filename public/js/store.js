@@ -33,7 +33,6 @@ export class Store {
             // UI state
             isLoading: false,
             isStarting: false,
-            searchQuery: '',
             expandedSuites: new Set(),
             expandedTestcaseGroups: new Set(),
             expandedTestId: null,
@@ -550,7 +549,7 @@ export class Store {
         this.state.options = { ...Store.defaultOptions };
     }
 
-setActiveTab(tab) {
+    setActiveTab(tab) {
         this.state.activeTab = tab;
     }
 
