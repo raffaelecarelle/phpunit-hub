@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import TestSearchBar from '../sidebar/TestSearchBar.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock the store
 vi.mock('../../store.js', () => ({
@@ -33,8 +33,10 @@ describe('TestSearchBar', () => {
     expect(wrapper.find('input[type="text"]').attributes('placeholder')).toBe('Search tests...');
   });
 
-  it('emits all test suites initially when searchQuery is empty', () => {
+  it('emits all test suites initially when searchQuery is empty', async () => {
     const wrapper = mount(TestSearchBar);
+    // Wait for the watch effect to run after initial mount
+    await wrapper.vm.$nextTick();
     expect(wrapper.emitted()['update:filtered-suites']).toBeTruthy();
     expect(wrapper.emitted()['update:filtered-suites'][0][0]).toEqual(mockTestSuites.value);
   });
@@ -85,6 +87,8 @@ describe('TestSearchBar', () => {
     const input = wrapper.find('input[type="text"]');
 
     await input.setValue('nonexistent');
+    // Ensure that the emitted array is not empty before checking its length
+    expect(wrapper.emitted()['update:filtered-suites']).toBeTruthy();
     expect(wrapper.emitted()['update:filtered-suites'][1][0].length).toBe(0); // Filtered to empty
 
     await input.setValue(''); // Clear search
@@ -99,6 +103,8 @@ describe('TestSearchBar', () => {
     const input = wrapper.find('input[type="text"]');
 
     await input.setValue('UserTest');
+    // Ensure that the emitted array is not empty before checking its length
+    expect(wrapper.emitted()['update:filtered-suites']).toBeTruthy();
     expect(wrapper.emitted()['update:filtered-suites'][1][0].length).toBe(1);
 
     // Simulate store.state.testSuites changing

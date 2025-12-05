@@ -1,15 +1,20 @@
-// Mock the global WebSocket object
 import { vi } from 'vitest'; // Import vi from vitest
 
+// Mock the global WebSocket object
 const mockWebSocketInstance = {
-    onopen: null,
-    onmessage: null,
-    onerror: null,
-    onclose: null,
+    onopen: vi.fn(), // Make it a mock function
+    onmessage: vi.fn(), // Make it a mock function
+    onerror: vi.fn(), // Make it a mock function
+    onclose: vi.fn(), // Make it a mock function
     close: vi.fn(),
     send: vi.fn(),
 };
-const MockWebSocket = vi.fn(() => mockWebSocketInstance);
+// Mock WebSocket as a constructor that returns mockWebSocketInstance
+const MockWebSocket = vi.fn(function WebSocket(url) {
+    // In a real scenario, you might want to store the URL or other constructor args
+    // For now, just return the predefined mock instance
+    return mockWebSocketInstance;
+});
 global.WebSocket = MockWebSocket;
 
 // Mock dependencies
@@ -61,7 +66,8 @@ describe('WebSocketManager', () => {
     describe('connect', () => {
         test('should create a new WebSocket instance', async () => {
             const connectPromise = wsManager.connect();
-            mockWebSocketInstance.onopen(); // Simulate connection open
+            // Simulate connection open by calling the mocked onopen handler
+            mockWebSocketInstance.onopen();
             await connectPromise;
 
             expect(MockWebSocket).toHaveBeenCalledWith(wsUrl);
@@ -72,7 +78,8 @@ describe('WebSocketManager', () => {
         test('should reject if WebSocket connection fails', async () => {
             const connectPromise = wsManager.connect();
             const error = new Error('Connection failed');
-            mockWebSocketInstance.onerror(error); // Simulate connection error
+            // Simulate connection error by calling the mocked onerror handler
+            mockWebSocketInstance.onerror(error);
             await expect(connectPromise).rejects.toThrow('Connection failed');
             expect(console.error).toHaveBeenCalledWith('WebSocket error:', error);
         });

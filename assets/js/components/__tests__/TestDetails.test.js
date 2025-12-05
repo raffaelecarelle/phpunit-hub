@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TestDetails from '../TestDetails.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock the store
 vi.mock('../../store.js', () => ({

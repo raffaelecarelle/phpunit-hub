@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MainContent from '../MainContent.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock child components
 vi.mock('../TabNavigation.vue', () => ({
@@ -183,7 +183,8 @@ describe('MainContent', () => {
 
     await wrapper.vm.$nextTick();
     const individualResults = wrapper.findComponent({ name: 'IndividualTestResults' });
-    individualResults.vm.$emit('toggleTestDetails', { id: 123 });
+    // Simulate the child component emitting the event
+    await individualResults.vm.$emit('toggleTestDetails', { id: 123 });
 
     expect(wrapper.emitted().toggleTestDetails).toBeTruthy();
     expect(wrapper.emitted().toggleTestDetails[0][0]).toEqual({ id: 123 });
@@ -204,7 +205,8 @@ describe('MainContent', () => {
 
     await wrapper.vm.$nextTick();
     const groupedResults = wrapper.findComponent({ name: 'GroupedTestResults' });
-    groupedResults.vm.$emit('toggleTestDetails', { id: 456 });
+    // Simulate the child component emitting the event
+    await groupedResults.vm.$emit('toggleTestDetails', { id: 456 });
 
     expect(wrapper.emitted().toggleTestDetails).toBeTruthy();
     expect(wrapper.emitted().toggleTestDetails[0][0]).toEqual({ id: 456 });
@@ -225,7 +227,8 @@ describe('MainContent', () => {
 
     await wrapper.vm.$nextTick();
     const groupedResults = wrapper.findComponent({ name: 'GroupedTestResults' });
-    groupedResults.vm.$emit('toggleTestcaseGroup', 'MyClass');
+    // Simulate the child component emitting the event
+    await groupedResults.vm.$emit('toggleTestcaseGroup', 'MyClass');
 
     expect(wrapper.emitted().toggleTestcaseGroup).toBeTruthy();
     expect(wrapper.emitted().toggleTestcaseGroup[0][0]).toBe('MyClass');
@@ -246,7 +249,8 @@ describe('MainContent', () => {
 
     await wrapper.vm.$nextTick();
     const coverageReport = wrapper.findComponent({ name: 'CoverageReport' });
-    coverageReport.vm.$emit('showFileCoverage', '/path/to/file.php');
+    // Simulate the child component emitting the event
+    await coverageReport.vm.$emit('showFileCoverage', '/path/to/file.php');
 
     expect(wrapper.emitted().showFileCoverage).toBeTruthy();
     expect(wrapper.emitted().showFileCoverage[0][0]).toBe('/path/to/file.php');

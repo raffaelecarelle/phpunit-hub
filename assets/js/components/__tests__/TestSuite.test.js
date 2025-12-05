@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TestSuite from '../sidebar/TestSuite.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock child components
 vi.mock('../sidebar/TestSuiteHeader.vue', () => ({

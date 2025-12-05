@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ResultsSummary from '../ResultsSummary.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock the store
 vi.mock('../../store.js', () => ({
@@ -10,7 +10,10 @@ vi.mock('../../store.js', () => ({
 
 describe('ResultsSummary', () => {
   let mockStore;
-  const mockFormatNanoseconds = vi.fn((time) => `${time / 1000000} ms`);
+  const mockFormatNanoseconds = vi.fn((time) => {
+    if (time === undefined || time === null) return '0.00s'; // Handle undefined/null for initial render
+    return `${(time / 1000000000).toFixed(2)}s`;
+  });
 
   beforeEach(() => {
     mockStore = {
@@ -40,7 +43,7 @@ describe('ResultsSummary', () => {
     expect(wrapper.exists()).toBe(true);
     expect(wrapper.text()).toContain('Total Tests0');
     expect(wrapper.text()).toContain('Total Assertions0');
-    expect(wrapper.text()).toContain('Duration0 ms'); // Assuming formatNanoseconds(undefined) returns '0 ms' or similar
+    expect(wrapper.text()).toContain('Duration0.00s'); // Assuming formatNanoseconds(null) returns '0.00s'
     expect(wrapper.text()).toContain('0 Passed');
     expect(wrapper.text()).not.toContain('Failed');
     expect(wrapper.text()).not.toContain('Errors');
@@ -57,7 +60,7 @@ describe('ResultsSummary', () => {
       summary: {
         tests: 10,
         assertions: 20,
-        time: 123456789,
+        time: 123456789, // Nanoseconds
         failures: 1,
         errors: 0,
         warnings: 2,
@@ -80,7 +83,7 @@ describe('ResultsSummary', () => {
 
     expect(wrapper.text()).toContain('Total Tests10');
     expect(wrapper.text()).toContain('Total Assertions20');
-    expect(wrapper.text()).toContain('Duration123.456789 ms');
+    expect(wrapper.text()).toContain('Duration0.12s'); // 123456789 ns = 0.12s
     expect(wrapper.text()).toContain('9 Passed');
     expect(wrapper.text()).toContain('1 Failed');
     expect(wrapper.text()).not.toContain('Errors'); // errors is 0

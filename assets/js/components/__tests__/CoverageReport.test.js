@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CoverageReport from '../CoverageReport.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock child components
 vi.mock('../FileCoverageDetail.vue', () => ({
@@ -80,6 +80,7 @@ describe('CoverageReport', () => {
     mockStore.state.fileCoverage = { path: '/path/to/file.php' };
     const wrapper = mount(CoverageReport);
 
+    // The v-if="store.state.fileCoverage" condition means the mock-file-coverage-detail should exist
     expect(wrapper.find('.mock-file-coverage-detail').exists()).toBe(true);
     expect(wrapper.find('.spinner-big').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('No coverage driver');

@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TestSidebar from '../TestSidebar.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 import { ref } from 'vue';
 
 // Mock child components
@@ -83,6 +83,9 @@ describe('TestSidebar', () => {
   });
 
   it('updates suitesToDisplay when TestSearchBar emits update:filtered-suites', async () => {
+    // Initial state: no test suites in the store
+    mockStore.state.testSuites = []; // Ensure it's empty initially
+
     const wrapper = mount(TestSidebar, {
       props: {
         isTestRunning: false,
@@ -90,33 +93,22 @@ describe('TestSidebar', () => {
       },
     });
 
+    // Initially, no TestSuite components should be rendered
+    expect(wrapper.findAll('.mock-test-suite').length).toBe(0);
+    expect(wrapper.text()).toContain('No tests found.');
+
     const testSearchBar = wrapper.findComponent({ name: 'TestSearchBar' });
     const filteredSuites = [{ id: 'filtered1', name: 'Filtered Suite' }];
+
+    // Emit the event from the mock TestSearchBar
     await testSearchBar.vm.$emit('update:filtered-suites', filteredSuites);
 
-    // Since TestSuite is mocked, we can't directly check its props,
-    // but we can check if the "No tests found" message disappears
-    // or if a TestSuite mock would be rendered.
-    // For this test, we'll assume if suitesToDisplay is updated,
-    // the TestSuite component would receive it.
-    // A more robust test might involve checking the v-for rendering logic if TestSuite wasn't mocked.
-    expect(wrapper.text()).not.toContain('No tests found.');
-    // If we had a way to inspect the internal `suitesToDisplay` ref, we would do that.
-    // For now, we rely on the visual output or the presence of the mock component.
-    // Given the current mock, we can't easily assert the number of TestSuite mocks.
-    // Let's re-mount with a direct check on the v-for condition.
-    const wrapperWithFiltered = mount(TestSidebar, {
-        props: {
-            isTestRunning: false,
-            isTestStopPending: false,
-        },
-        data() {
-            return {
-                suitesToDisplay: filteredSuites, // Directly set data for testing
-            };
-        },
-    });
-    expect(wrapperWithFiltered.find('.mock-test-suite').exists()).toBe(true);
+    // Wait for Vue to react to the change in suitesToDisplay
+    await wrapper.vm.$nextTick();
+
+    // Now, a TestSuite component should be rendered for each filtered suite
+    expect(wrapper.findAll('.mock-test-suite').length).toBe(filteredSuites.length);
+    expect(wrapper.text()).not.toContain('No tests found.'); // The message should disappear
   });
 
   it('emits toggle-suite when TestSuite emits toggle-suite', async () => {

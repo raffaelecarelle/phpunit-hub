@@ -32,7 +32,7 @@ import TestSearchBar from './sidebar/TestSearchBar.vue';
 import TestSuite from './sidebar/TestSuite.vue';
 
 const store = useStore();
-const suitesToDisplay = ref(store.state.testSuites);
+const suitesToDisplay = ref(store.state.testSuites || []); // Added || [] for safe initialization
 
 defineProps(['isTestRunning', 'isTestStopPending']);
 const emit = defineEmits(['toggle-suite', 'stopSingleTest', 'runSuiteTests', 'runSingleTest']);

@@ -18,19 +18,22 @@ vi.mock('../header/FilterPanel.vue', () => ({
 vi.mock('../header/ClearResultsButton.vue', () => ({
   default: {
     name: 'ClearResultsButton',
-    template: '<button class="mock-clear-results-button"></button>',
+    props: ['isAnyTestRunning', 'results'], // Define expected props
+    template: '<button class="mock-clear-results-button" @click="$emit(\'clearAllResults\')"></button>', // Added @click to emit
   },
 }));
 vi.mock('../header/RunFailedButton.vue', () => ({
   default: {
     name: 'RunFailedButton',
-    template: '<button class="mock-run-failed-button"></button>',
+    props: ['isAnyTestRunning', 'hasFailedTests'], // Define expected props
+    template: '<button class="mock-run-failed-button" @click="$emit(\'runFailedTests\')"></button>', // Added @click to emit
   },
 }));
 vi.mock('../header/RunStopAllButton.vue', () => ({
   default: {
     name: 'RunStopAllButton',
-    template: '<button class="mock-run-stop-all-button"></button>',
+    props: ['isAnyTestRunning', 'isAnyStopPending'], // Define expected props
+    template: '<button class="mock-run-stop-all-button" @click="$emit(\'togglePlayStop\')"></button>', // Added @click to emit
   },
 }));
 
@@ -79,8 +82,8 @@ describe('Header', () => {
     });
 
     const clearResultsButton = wrapper.findComponent({ name: 'ClearResultsButton' });
-    await clearResultsButton.trigger('clearAllResults');
-
+    await clearResultsButton.trigger('click'); // Trigger the click on the button in the mock
+    // Now check if the parent component (Header) emitted the event
     expect(wrapper.emitted().clearAllResults).toBeTruthy();
     expect(wrapper.emitted().clearAllResults.length).toBe(1);
   });
@@ -96,8 +99,7 @@ describe('Header', () => {
     });
 
     const runFailedButton = wrapper.findComponent({ name: 'RunFailedButton' });
-    await runFailedButton.trigger('runFailedTests');
-
+    await runFailedButton.trigger('click'); // Trigger the click on the button in the mock
     expect(wrapper.emitted().runFailedTests).toBeTruthy();
     expect(wrapper.emitted().runFailedTests.length).toBe(1);
   });
@@ -113,8 +115,7 @@ describe('Header', () => {
     });
 
     const runStopAllButton = wrapper.findComponent({ name: 'RunStopAllButton' });
-    await runStopAllButton.trigger('togglePlayStop');
-
+    await runStopAllButton.trigger('click'); // Trigger the click on the button in the mock
     expect(wrapper.emitted().togglePlayStop).toBeTruthy();
     expect(wrapper.emitted().togglePlayStop.length).toBe(1);
   });

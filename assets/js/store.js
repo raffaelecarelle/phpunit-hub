@@ -359,7 +359,7 @@ function updateSidebarTestStatus(suiteName, testId, status, time = null, runId =
     });
 }
 
-function resetSidebarTestStatuses() {
+export function resetSidebarTestStatuses() {
     state.testSuites.forEach(suite => {
         suite.methods?.forEach(method => {
             method.status = null;
@@ -489,6 +489,13 @@ export function useStore() {
         setStarting,
         initializeTestRun,
         handleTestEvent,
+        handleSuiteStarted, // Exporting handleSuiteStarted
+        handleTestPrepared, // Exporting handleTestPrepared
+        handleTestWarningOrDeprecation, // Exporting handleTestWarningOrDeprecation
+        handleTestNotice, // Exporting handleTestNotice
+        handleTestCompleted, // Exporting handleTestCompleted
+        handleTestFinished, // Exporting handleTestFinished
+        handleExecutionEnded, // Exporting handleExecutionEnded
         stopTestRun,
         getTestRun,
         getRunningTestCount,
@@ -507,5 +514,7 @@ export function useStore() {
         setCoverageReport,
         setCoverageLoading,
         setFileCoverage,
+        resetSidebarTestStatuses,
+        updateSidebarAfterRun,
     };
 }

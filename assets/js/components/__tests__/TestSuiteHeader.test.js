@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TestSuiteHeader from '../sidebar/TestSuiteHeader.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js';
 
 // Mock the store
 vi.mock('../../store.js', () => ({
@@ -74,8 +74,10 @@ describe('TestSuiteHeader', () => {
     });
 
     expect(wrapper.find('.spinner').exists()).toBe(true);
-    expect(wrapper.find('svg[d="M6 6h8v8H6z"]').exists()).toBe(true); // Stop icon
-    expect(wrapper.find('svg[d^="M6.3 2.841A1.5"]').exists()).toBe(false); // Play icon
+    // Check for the stop button by its title
+    expect(wrapper.find('span[title="Stop this suite"]').exists()).toBe(true);
+    // Check that the play button is not present
+    expect(wrapper.find('span[title="Run all tests in this suite"]').exists()).toBe(false);
   });
 
   it('shows run button when suite is not running and not stop pending', () => {
@@ -90,9 +92,11 @@ describe('TestSuiteHeader', () => {
     });
 
     expect(wrapper.find('.spinner').exists()).toBe(false);
-    expect(wrapper.find('svg[d="M6 6h8v8H6z"]').exists()).toBe(false); // Stop icon
-    expect(wrapper.find('svg[d^="M6.3 2.841A1.5"]').exists()).toBe(true); // Play icon
-    expect(wrapper.find('svg[d^="M6.3 2.841A1.5"]').parent('span').classes()).toContain('text-green-500');
+    // Check that the stop button is not present
+    expect(wrapper.find('span[title="Stop this suite"]').exists()).toBe(false);
+    // Check for the play button by its title
+    expect(wrapper.find('span[title="Run all tests in this suite"]').exists()).toBe(true);
+    expect(wrapper.find('span[title="Run all tests in this suite"]').classes()).toContain('text-green-500');
   });
 
   it('run button is disabled (gray) when suite is stop pending', () => {
@@ -106,7 +110,8 @@ describe('TestSuiteHeader', () => {
       },
     });
 
-    expect(wrapper.find('svg[d^="M6.3 2.841A1.5"]').parent('span').classes()).toContain('text-gray-500');
+    // Find the play button and check its parent span's classes
+    expect(wrapper.find('span[title="Stopping..."]').classes()).toContain('text-gray-500');
   });
 
   it('emits "toggle-suite" when suite header is clicked', async () => {
@@ -118,7 +123,11 @@ describe('TestSuiteHeader', () => {
       },
     });
 
-    await wrapper.find('.suite-header > div:first-child').trigger('click');
+    // Find the clickable div directly using its classes
+    const clickableDiv = wrapper.find('.flex.items-center.flex-grow.cursor-pointer');
+    expect(clickableDiv.exists()).toBe(true); // Ensure the div is found
+
+    await clickableDiv.trigger('click');
     expect(wrapper.emitted()['toggle-suite']).toBeTruthy();
     expect(wrapper.emitted()['toggle-suite'][0][0]).toBe('suite1');
   });
@@ -133,7 +142,9 @@ describe('TestSuiteHeader', () => {
       },
     });
 
-    await wrapper.find('svg[d="M6 6h8v8H6z"]').parent('span').trigger('click');
+    // Find the stop button by its title and trigger click
+    await wrapper.find('span[title="Stop this suite"]').trigger('click');
+    // Assert on emitted event for TestSuiteHeader.vue
     expect(wrapper.emitted().stopSingleTest).toBeTruthy();
     expect(wrapper.emitted().stopSingleTest[0][0]).toBe('run123');
   });
@@ -149,7 +160,9 @@ describe('TestSuiteHeader', () => {
       },
     });
 
-    await wrapper.find('svg[d^="M6.3 2.841A1.5"]').parent('span').trigger('click');
+    // Find the run button by its title and trigger click
+    await wrapper.find('span[title="Run all tests in this suite"]').trigger('click');
+    // Assert on emitted event for TestSuiteHeader.vue
     expect(wrapper.emitted().runSuiteTests).toBeTruthy();
     expect(wrapper.emitted().runSuiteTests[0][0]).toBe('suite1');
   });

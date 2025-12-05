@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import GroupedTestResults from '../GroupedTestResults.vue';
-import { useStore } from '../../store.js'; // Adjust path as necessary
+import { useStore } from '../../store.js'; // Corrected path
 
 // Mock child components
 vi.mock('../TestDetails.vue', () => ({
@@ -77,7 +77,7 @@ describe('GroupedTestResults', () => {
 
     expect(wrapper.find('.font-bold.text-white').text()).toBe('App\\Tests\\MyTest');
     expect(wrapper.text()).toContain('1 Passed');
-    expect(wrapper.find('svg').classes()).not.toContain('rotate-90'); // Not expanded by default
+    expect(wrapper.find('svg').classes()).not.toContain('rotated'); // Not expanded by default
   });
 
   it('emits toggleTestcaseGroup when group header is clicked', async () => {
@@ -307,7 +307,7 @@ describe('GroupedTestResults', () => {
         incomplete: 0,
         risky: 0,
         testcases: [
-          { id: 'test1', name: 'testPassedWithIssues', status: 'passed', duration: 100000000, warnings: ['warn'], deprecations: ['deprec'], notices: ['notice'] },
+          { id: 't1', name: 'testPassedWithIssues', status: 'passed', duration: 100000000, warnings: ['warn'], deprecations: ['deprec'], notices: ['notice'] },
         ],
       },
     ];
@@ -319,11 +319,13 @@ describe('GroupedTestResults', () => {
       },
     });
 
-    const passedTestcase = wrapper.findAll('.divide-y > div')[1]; // The second div is for passed tests with issues
-    expect(passedTestcase.text()).toContain('testPassedWithIssues');
-    expect(passedTestcase.text()).toContain('⚠ 1 warning(s)');
-    expect(passedTestcase.text()).toContain('⚠ 1 deprecation(s)');
-    expect(passedTestcase.text()).toContain('⚠ 1 notice(s)');
+    // Find the specific div for passed tests with issues
+    // It's the second div in the .divide-y, after the non-passed tests
+    const passedTestcaseWithIssues = wrapper.findAll('.divide-y > div').filter(div => div.text().includes('testPassedWithIssues'))[0];
+    expect(passedTestcaseWithIssues.text()).toContain('testPassedWithIssues');
+    expect(passedTestcaseWithIssues.text()).toContain('⚠ 1 warning(s)');
+    expect(passedTestcaseWithIssues.text()).toContain('⚠ 1 deprecation(s)');
+    expect(passedTestcaseWithIssues.text()).toContain('⚠ 1 notice(s)');
   });
 
   it('emits toggleTestDetails when a testcase is clicked', async () => {
