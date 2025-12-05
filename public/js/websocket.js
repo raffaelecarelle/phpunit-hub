@@ -5,10 +5,10 @@
 import { updateFavicon } from './utils.js';
 
 export class WebSocketManager {
-    constructor(url = 'ws://127.0.0.1:8080/ws/status', store, app) {
+    constructor(url = 'ws://127.0.0.1:8080/ws/status', store, callbacks = {}) {
         this.url = url;
         this.store = store;
-        this.app = app;
+        this.callbacks = callbacks; // { fetchCoverageReport: Function }
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
@@ -114,8 +114,8 @@ export class WebSocketManager {
      */
     handleTestExit(message) {
         this.updateFaviconFromRun(message.runId);
-        if (this.store.state.coverage) {
-            this.app.fetchCoverageReport(message.runId);
+        if (this.store.state.coverage && this.callbacks.fetchCoverageReport) {
+            this.callbacks.fetchCoverageReport(message.runId);
         }
     }
 

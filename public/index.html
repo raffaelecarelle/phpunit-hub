@@ -9,112 +9,16 @@
         window.WS_HOST = '{{ws_host}}';
         window.WS_PORT = '{{ws_port}}';
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <!-- Placeholder per il CSS di Vite o il fallback C SS -->
     <link rel="stylesheet" href="css/styles.css?v={{css_version}}">
+    <!-- Placeholder per il link al manifest di Vite (il PHP lo rimuoverà) -->
+    <link rel="manifest" href="/.vite/manifest.json" />
 </head>
 <body class="bg-gray-900 text-gray-300 font-sans">
 <div id="app" class="flex flex-col h-screen" v-cloak>
-    <app-header
-        :store="store"
-        :app="app"
-        :is-any-test-running="isAnyTestRunning"
-        :has-failed-tests="hasFailedTests"
-        :is-any-stop-pending="isAnyStopPending"
-        :results="results"
-    ></app-header>
-
-    <!-- Main Container -->
-    <div class="flex flex-grow overflow-hidden">
-        <test-sidebar
-            :store="store"
-            :app="app"
-            :is-test-running="isTestRunning"
-            :is-test-stop-pending="isTestStopPending"
-        ></test-sidebar>
-
-        <!-- Resizer -->
-        <div id="resizer" class="w-1.5 cursor-col-resize bg-gray-700 hover:bg-blue-600 transition-colors duration-200"></div>
-
-        <main-content
-            :store="store"
-            :app="app"
-            :results="results"
-            :grouped-results="groupedResults"
-            :individual-results="individualResults"
-            :status-counts="statusCounts"
-            :is-any-test-running="isAnyTestRunning"
-            :format-nanoseconds="formatNanoseconds"
-            :toggle-test-details="toggleTestDetails"
-        ></main-content>
-    </div>
+    <!-- Il componente Vue App.vue si monterà qui e renderà il contenuto -->
 </div>
-
-<script type="module">
-    import { createApp, onMounted, watch, computed } from 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js';
-    import { App } from './js/app.js';
-    import { toggleTestDetails } from './js/utils.js';
-    import { Header } from './js/components/Header.js';
-    import { TestSidebar } from './js/components/TestSidebar.js';
-    import { MainContent } from './js/components/MainContent.js';
-
-    const app = new App();
-
-    const vueApp = createApp({
-        setup() {
-            const computedVals = app.getComputedValues();
-
-            onMounted(async () => {
-                await app.initialize();
-                document.addEventListener('click', () => {
-                    if (app.store.state.showFilterPanel) {
-                        app.store.toggleFilterPanel();
-                    }
-                });
-            });
-
-            // Watch for changes in filters and options, and save them to localStorage
-            watch(() => [app.store.state.options, app.store.state.selectedSuites, app.store.state.selectedGroups, app.store.state.coverage], (newState, oldState) => {
-                app.store.saveState();
-            }, { deep: true });
-
-            return {
-                app,
-                store: app.store,
-                results: computedVals.results,
-                groupedResults: computedVals.groupedResults,
-                individualResults: computedVals.individualResults,
-                statusCounts: computedVals.statusCounts,
-                filteredTestSuites: computed(() => computedVals.filteredTestSuites()), // Original line, commented out
-                isAnyTestRunning: computedVals.isAnyTestRunning,
-                isAnyStopPending: computedVals.isAnyStopPending,
-                hasFailedTests: computedVals.hasFailedTests,
-
-                // Methods
-                toggleSuite: (suiteId) => app.store.toggleSuiteExpansion(suiteId),
-                toggleTestcaseGroup: (className) => app.store.toggleTestcaseGroupExpansion(className),
-                toggleTestDetails,
-                toggleFilterPanel: () => app.store.toggleFilterPanel(),
-                isTestRunning: (runId) => app.store.state.runningTestIds[runId] === true,
-                isTestStopPending: (runId) => app.store.state.stopPending[runId] === true,
-                formatNanoseconds: (nanoseconds) => {
-                    if (nanoseconds === undefined || nanoseconds === null) {
-                        return '0.00ms';
-                    }
-                    const seconds = nanoseconds / 1_000_000_000;
-                    if (seconds >= 1) {
-                        return `${seconds.toFixed(2)}s`;
-                    }
-                    return `${(nanoseconds / 1_000_000).toFixed(2)}ms`;
-                },
-            };
-        }
-    });
-
-    vueApp.component('app-header', Header);
-    vueApp.component('test-sidebar', TestSidebar);
-    vueApp.component('main-content', MainContent);
-
-    vueApp.mount('#app');
-</script>
+<!-- Placeholder per lo script JS di Vite -->
+<script type="module" src="/js/main.js"></script>
 </body>
 </html>
