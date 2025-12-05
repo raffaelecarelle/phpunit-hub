@@ -129,7 +129,7 @@ describe('Store', () => {
             store.state.expandedTestcaseGroups.add('someGroup');
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
 
-            const resetSidebarSpy = vi.spyOn(store, 'resetSidebarTestStatuses');
+            const resetSidebarSpy = vi.spyOn(storeModule, 'resetSidebarTestStatuses');
 
             store.initializeTestRun(runId, 'failed');
             expect(store.state.expandedTestId).toBeNull();
@@ -488,7 +488,7 @@ describe('Store', () => {
             store.state.lastCompletedRunId = 'run1';
             store.state.expandedTestId = 'someTest';
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
-            const resetSidebarSpy = vi.spyOn(store, 'resetSidebarTestStatuses');
+            const resetSidebarSpy = vi.spyOn(storeModule, 'resetSidebarTestStatuses');
 
             store.clearAllResults();
 
