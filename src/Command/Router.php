@@ -186,7 +186,7 @@ class Router implements RouterInterface
 
                     if (file_exists($manifestPath)) {
                         $manifest = json_decode(file_get_contents($manifestPath), true);
-                        $mainEntry = $manifest['public/js/main.js'] ?? null;
+                        $mainEntry = $manifest['assets/js/main.js'] ?? null;
 
                         if ($mainEntry) {
                             $viteScriptTag = '<script type="module" src="/build/' . $mainEntry['file'] . '"></script>';

@@ -3,11 +3,8 @@
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
-    "type": "module",
     "scripts": {
         "test": "jest",
-        "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --minify",
-        "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch",
         "dev": "vite",
         "build": "vite build"
     },

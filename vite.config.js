@@ -5,18 +5,21 @@ export default defineConfig({
     plugins: [vue()],
     build: {
         outDir: 'public/build',
-        manifest: true, // Genera manifest.json
+        manifest: true,
         rollupOptions: {
             input: {
-                main: 'public/js/main.js',
+                main: 'assets/js/main.js',
             },
         },
     },
     server: {
         watch: {
-            usePolling: true, // Questo può aiutare in alcuni ambienti (es. WSL)
+            usePolling: true,
         },
-        hmr: true, // Abilita Hot Module Replacement
+        hmr: {
+            overlay: true, // Mostra errori overlay
+        },
     },
-    publicDir: 'public',
+    publicDir: false, // ← Disabilita publicDir o usa un'altra cartella
+    // Oppure se hai assets statici: publicDir: 'assets'
 });

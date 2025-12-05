@@ -1,8 +1,8 @@
 {
-  "public/js/main.js": {
-    "file": "assets/main-B64Oxaem.js",
+  "assets/js/main.js": {
+    "file": "assets/main-BbLX8FxR.js",
     "name": "main",
-    "src": "public/js/main.js",
+    "src": "assets/js/main.js",
     "isEntry": true,
     "css": [
       "assets/main-1B33L-JK.css"
