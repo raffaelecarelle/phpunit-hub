@@ -105,7 +105,6 @@ export class App {
         } catch (error) {
             console.error('Failed to run tests:', error);
             updateFavicon('failure');
-        } finally {
             this.store.setStarting(false);
         }
     }
@@ -114,6 +113,9 @@ export class App {
      * Run tests with options. This is the main entry point for running tests.
      */
     runTests(runOptions = {}) {
+        if (this.store.state.isStarting) {
+            return;
+        }
         this._runTests(runOptions);
     }
 
