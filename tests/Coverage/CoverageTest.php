@@ -43,14 +43,12 @@ class CoverageTest extends TestCase
             <coverage generated="1678886400">
               <project timestamp="1678886400">
                 <metrics files="1" loc="10" ncloc="10" packages="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
-                <package name="App">
                   <file name="$this->tempDir/src/Example.php">
                     <metrics loc="10" ncloc="10" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
                     <class name="App\Example" namespace="App">
                       <metrics complexity="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
                     </class>
                   </file>
-                </package>
               </project>
             </coverage>
             XML;
@@ -227,11 +225,9 @@ class CoverageTest extends TestCase
             <coverage generated="1678886400">
               <project timestamp="1678886400">
                 <metrics files="1" loc="10" ncloc="10" packages="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="0" coveredstatements="0" elements="1" coveredelements="1"/>
-                <package name="App">
                   <file name="$this->tempDir/src/Example.php">
                     <metrics loc="10" ncloc="10" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="0" coveredstatements="0" elements="1" coveredelements="1"/>
                   </file>
-                </package>
               </project>
             </coverage>
             XML;
@@ -264,11 +260,9 @@ class CoverageTest extends TestCase
             <coverage generated="1678886400">
               <project timestamp="1678886400">
                 <metrics files="1" loc="10" ncloc="10" packages="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
-                <package name="App">
                   <file name="$this->tempDir/src/Example.php">
                     <metrics loc="10" ncloc="10" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="2" coveredstatements="2" elements="3" coveredelements="3"/>
                   </file>
-                </package>
               </project>
             </coverage>
             XML;
