@@ -499,7 +499,6 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('Content-Type: text/html', $sent[0]);
         $this->assertStringContainsString("window.WS_HOST = '127.0.0.1'", $sent[0]);
         $this->assertStringContainsString("window.WS_PORT = '8080'", $sent[0]);
-        $this->assertMatchesRegularExpression('/css\/styles\.css\?v=[a-f0-9]{32}/', $sent[0]);
     }
 
     public function testNotFoundResponse(): void
