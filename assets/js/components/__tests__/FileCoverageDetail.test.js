@@ -62,7 +62,7 @@ describe('FileCoverageDetail', () => {
     expect(lines[3].classes()).toContain('line-covered');
     expect(lines[3].find('span:nth-child(2) > span:nth-child(2)').classes()).toContain('token-keyword'); // T_PUBLIC
     expect(lines[3].find('span:nth-child(2) > span:nth-child(4)').classes()).toContain('token-keyword'); // T_FUNCTION
-    expect(lines[3].find('span:nth-child(2) > span:nth-child(7)').classes()).toContain('token-variable'); // T_VARIABLE
+    expect(lines[3].find('span:nth-child(2) > span:nth-child(8)').classes()).toContain('token-variable'); // T_VARIABLE
 
     // Check line 8 (comment)
     expect(lines[7].text()).toContain('8');

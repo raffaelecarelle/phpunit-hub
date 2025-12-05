@@ -31,7 +31,10 @@ function getTokenClass(tokenType) {
 
     const t = tokenType.substring(2).toLowerCase();
 
-    if (['encapsed_and_whitespace', 'constant_encapsed_string', 'string'].includes(t)) {
+    // T_STRING is a generic token, not always a string literal.
+    // It should be classified as 'token-default' unless it's specifically
+    // an encapsed string or constant encapsed string.
+    if (['encapsed_and_whitespace', 'constant_encapsed_string'].includes(t)) {
         return TOKEN_TYPE_PREFIX + 'string';
     }
     if (['comment', 'doc_comment'].includes(t)) {
