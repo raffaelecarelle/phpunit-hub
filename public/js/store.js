@@ -534,6 +534,8 @@ export class Store {
         this.state.lastCompletedRunId = null;
         this.state.expandedTestId = null;
         this.state.expandedTestcaseGroups = new Set();
+        this.state.coverageReport = null;
+        this.state.fileCoverage = null;
         this.resetSidebarTestStatuses();
         updateFavicon('neutral');
     }
