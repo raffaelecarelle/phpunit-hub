@@ -44,7 +44,6 @@
             :status-counts="statusCounts"
             :is-any-test-running="isAnyTestRunning"
             :format-nanoseconds="formatNanoseconds"
-            :get-token-class="getTokenClass"
             :toggle-test-details="toggleTestDetails"
         ></main-content>
     </div>
@@ -107,17 +106,6 @@
                     }
                     return `${(nanoseconds / 1_000_000).toFixed(2)}ms`;
                 },
-                getTokenClass(tokenType) {
-                    if (tokenType.startsWith('T_')) {
-                        const t = tokenType.substring(2).toLowerCase();
-                        if (['string', 'encapsed_and_whitespace'].includes(t)) return 'string';
-                        if (['comment', 'doc_comment'].includes(t)) return 'comment';
-                        if (t.includes('variable')) return 'variable';
-                        const keywords = ['class', 'function', 'public', 'private', 'protected', 'readonly', 'new', 'echo', 'return', 'if', 'else', 'elseif', 'while', 'do', 'for', 'foreach', 'switch', 'case', 'break', 'continue', 'declare', 'const', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile', 'use', 'namespace', 'try', 'catch', 'finally', 'throw', 'extends', 'implements', 'interface', 'trait', 'abstract', 'final', 'static', 'instanceof', 'insteadof', 'global', 'goto', 'include', 'include_once', 'require', 'require_once', 'unset', 'isset', 'empty'];
-                        if (keywords.includes(t)) return 'keyword';
-                    }
-                    return 'default';
-                }
             };
         }
     });
