@@ -121,7 +121,7 @@ class TestRunner
 
         $cloverReport = $domxPath->query('//coverage/report/clover')->item(0);
 
-        $cloverFile =  $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+        $cloverFile =  $this->projectRoot . sprintf('/clover.xml');
 
         if ($cloverReport instanceof DOMElement) {
             $cloverFile = $cloverReport->getAttribute('outputFile');

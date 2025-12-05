@@ -16,7 +16,7 @@ function install(): int
 #[\Castor\Attribute\AsTask]
 function phpunit(): int
 {
-    run('rm -f clover-*.xml');
+    run('rm -f clover*.xml');
 
     return exit_code(dockerize('vendor/bin/phpunit'));
 

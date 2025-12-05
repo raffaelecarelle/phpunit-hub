@@ -546,7 +546,7 @@ class Router implements RouterInterface
     private function getCoverage(string $runId): GuzzleResponse
     {
         if (!$this->coverage instanceof Coverage) {
-            $coveragePath = $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+            $coveragePath = $this->projectRoot . sprintf('/clover.xml');
             $this->coverage = new Coverage($this->projectRoot, $coveragePath);
         }
 
@@ -565,7 +565,7 @@ class Router implements RouterInterface
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'Run ID not provided.'], JSON_THROW_ON_ERROR));
         }
 
-        $coveragePath = $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+        $coveragePath = $this->projectRoot . sprintf('/clover.xml');
 
         $coverage = new Coverage($this->projectRoot, $coveragePath);
 
