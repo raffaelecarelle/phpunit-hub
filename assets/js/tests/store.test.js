@@ -37,7 +37,6 @@ describe('Store', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         store = storeModule.useStore();
-        localStorage.clear();
         vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 

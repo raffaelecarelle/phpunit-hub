@@ -18,3 +18,4 @@ node_modules export-ignore
 public/js/tests export-ignore
 tests export-ignore
 vendor export-ignore
+__tests__ export-ignore

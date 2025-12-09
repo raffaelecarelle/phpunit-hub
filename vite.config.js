@@ -23,6 +23,7 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'jsdom', // Necessario per testare componenti Vue
+        setupFiles: ['assets/js/tests/vitest.setup.js'],
     },
     publicDir: false, // ← Disabilita publicDir o usa un'altra cartella
     // Oppure se hai assets statici: publicDir: 'assets'

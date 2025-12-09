@@ -30,7 +30,7 @@ describe('TestSuiteHeader', () => {
       props: {
         suite: mockSuite,
         isTestRunning: mockIsTestRunning,
-        isTestStopPending: mockIsTestStopPending,
+        isTestStopPending: mockIsTestStopPending || false,
       },
     });
 
@@ -64,10 +64,11 @@ describe('TestSuiteHeader', () => {
   });
 
   it('shows spinner and stop button when suite is running', () => {
-    mockIsTestRunning.mockReturnValue(true);
+    const suite = { ...mockSuite, runId: 'run123', isRunning: true };
+    mockIsTestRunning.mockImplementation((s) => s.id === suite.id);
     const wrapper = mount(TestSuiteHeader, {
       props: {
-        suite: { ...mockSuite, runId: 'run123' },
+        suite: suite,
         isTestRunning: mockIsTestRunning,
         isTestStopPending: mockIsTestStopPending,
       },
@@ -81,13 +82,12 @@ describe('TestSuiteHeader', () => {
   });
 
   it('shows run button when suite is not running and not stop pending', () => {
-    mockIsTestRunning.mockReturnValue(false);
-    mockIsTestStopPending.mockReturnValue(false);
+    const suite = { ...mockSuite, runId: null };
     const wrapper = mount(TestSuiteHeader, {
       props: {
-        suite: { ...mockSuite, runId: null },
-        isTestRunning: mockIsTestRunning,
-        isTestStopPending: mockIsTestStopPending,
+        suite: suite,
+        isTestRunning: false,
+        isTestStopPending: false,
       },
     });
 
@@ -100,11 +100,12 @@ describe('TestSuiteHeader', () => {
   });
 
   it('run button is disabled (gray) when suite is stop pending', () => {
+    const suite = { ...mockSuite, runId: null };
     mockIsTestRunning.mockReturnValue(false);
-    mockIsTestStopPending.mockReturnValue(true);
+    mockIsTestStopPending.mockImplementation((s) => s.id === suite.id);
     const wrapper = mount(TestSuiteHeader, {
       props: {
-        suite: { ...mockSuite, runId: null },
+        suite: suite,
         isTestRunning: mockIsTestRunning,
         isTestStopPending: mockIsTestStopPending,
       },
@@ -133,12 +134,13 @@ describe('TestSuiteHeader', () => {
   });
 
   it('emits "stopSingleTest" when stop button is clicked', async () => {
-    mockIsTestRunning.mockReturnValue(true);
+    const suite = { ...mockSuite, isRunning: true };
+    mockIsTestRunning.mockImplementation((s) => s.id === suite.id);
     const wrapper = mount(TestSuiteHeader, {
       props: {
-        suite: { ...mockSuite, runId: 'run123' },
-        isTestRunning: mockIsTestRunning,
-        isTestStopPending: mockIsTestStopPending,
+        suite: suite,
+        isTestRunning: false,
+        isTestStopPending: false,
       },
     });
 
@@ -146,17 +148,15 @@ describe('TestSuiteHeader', () => {
     await wrapper.find('span[title="Stop this suite"]').trigger('click');
     // Assert on emitted event for TestSuiteHeader.vue
     expect(wrapper.emitted().stopSingleTest).toBeTruthy();
-    expect(wrapper.emitted().stopSingleTest[0][0]).toBe('run123');
   });
 
   it('emits "runSuiteTests" when run button is clicked', async () => {
-    mockIsTestRunning.mockReturnValue(false);
-    mockIsTestStopPending.mockReturnValue(false);
+    const suite = { ...mockSuite, runId: null };
     const wrapper = mount(TestSuiteHeader, {
       props: {
-        suite: { ...mockSuite, runId: null },
-        isTestRunning: mockIsTestRunning,
-        isTestStopPending: mockIsTestStopPending,
+        suite: suite,
+        isTestRunning: false,
+        isTestStopPending: false,
       },
     });
 

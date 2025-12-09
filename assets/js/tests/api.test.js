@@ -42,10 +42,7 @@ describe('ApiClient', () => {
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
             // Mock 4 rejections (initial attempt + 3 retries)
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -114,10 +111,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -178,6 +172,7 @@ describe('ApiClient', () => {
         test('should stop all tests successfully', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopAllTests()).resolves.toBeUndefined();
@@ -190,10 +185,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -212,6 +204,7 @@ describe('ApiClient', () => {
             mockFetch.mockRejectedValueOnce(networkError);
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopAllTests()).resolves.toBeUndefined();
@@ -223,6 +216,7 @@ describe('ApiClient', () => {
         test('should throw an error if API returns non-ok response (no retry for non-network errors)', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopAllTests()).rejects.toThrow('Failed to stop tests');
@@ -236,6 +230,7 @@ describe('ApiClient', () => {
         test('should stop a single test successfully', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopSingleTest()).resolves.toBeUndefined();
@@ -248,10 +243,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -270,6 +262,7 @@ describe('ApiClient', () => {
             mockFetch.mockRejectedValueOnce(networkError);
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopSingleTest()).resolves.toBeUndefined();
@@ -281,6 +274,7 @@ describe('ApiClient', () => {
         test('should throw an error if API returns non-ok response (no retry for non-network errors)', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                json: () => Promise.resolve({}),
             });
 
             await expect(api.stopSingleTest()).rejects.toThrow(`Failed to stop test run`);
@@ -308,10 +302,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -400,10 +391,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -479,10 +467,7 @@ describe('ApiClient', () => {
 
         test('should throw a specific network error after multiple retries if fetch fails persistently', async () => {
             const networkError = new TypeError('Failed to fetch');
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
-            mockFetch.mockRejectedValueOnce(networkError);
+            mockFetch.mockRejectedValue(networkError);
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
@@ -516,7 +501,7 @@ describe('ApiClient', () => {
         test('should throw an error if API returns non-ok response', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                json: () => Promise.resolve({ error: 'File not found' }),
+                text: () => Promise.resolve('File not found'),
             });
 
             await expect(api.fetchFileContent(filePath)).rejects.toThrow('File not found');
@@ -528,7 +513,7 @@ describe('ApiClient', () => {
         test('should throw a generic error if API returns non-ok response without specific error message', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await expect(api.fetchFileContent(filePath)).rejects.toThrow('Failed to fetch file content');

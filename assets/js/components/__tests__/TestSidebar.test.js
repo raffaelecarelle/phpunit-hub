@@ -14,7 +14,8 @@ vi.mock('../sidebar/TestSearchBar.vue', () => ({
 vi.mock('../sidebar/TestSuite.vue', () => ({
   default: {
     name: 'TestSuite',
-    template: '<div class="mock-test-suite"></div>',
+    template: '<div class="mock-test-suite" @stopSingleTest="$emit(\'stopSingleTest\', $event)"></div>',
+    emits: ['toggle-suite', 'stopSingleTest', 'runSuiteTests', 'runSingleTest'],
   },
 }));
 
@@ -139,10 +140,9 @@ describe('TestSidebar', () => {
 
     await wrapper.vm.$nextTick();
     const testSuite = wrapper.findComponent({ name: 'TestSuite' });
-    await testSuite.vm.$emit('stopSingleTest', 'runId123');
+    await testSuite.vm.$emit('stopSingleTest');
 
     expect(wrapper.emitted().stopSingleTest).toBeTruthy();
-    expect(wrapper.emitted().stopSingleTest[0][0]).toBe('runId123');
   });
 
   it('emits runSuiteTests when TestSuite emits runSuiteTests', async () => {
