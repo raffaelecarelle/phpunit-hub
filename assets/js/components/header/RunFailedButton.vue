@@ -18,9 +18,9 @@ function runFailedTests() {
     store.runFailedTests();
 }
 
+const isAnyStopPending = computed(() => store.state.isStopping);
+
 const isAnyTestRunning = computed(() => {
     return store.state.isStarting || store.state.isRunning || isAnyStopPending.value;
 });
-
-const isAnyStopPending = computed(() => store.state.isStopping);
 </script>

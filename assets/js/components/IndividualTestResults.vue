@@ -43,7 +43,15 @@
                         <span class="text-sm" :class="{'text-yellow-400': (testcase.duration / 1000000000) > 0.5 }">{{ formatNanoseconds(testcase.duration) }}</span>
                     </div>
                 </div>
-                <TestDetails v-if="store.state.expandedTestId === testcase.id" :testcase="testcase"></TestDetails>
+                <TestDetails v-if="
+                    store.state.expandedTestId === testcase.id &&
+                    (
+                        store.state.options.displayWarnings && testcase.warnings?.length > 0 ||
+                        store.state.options.displayDeprecations && testcase.deprecations?.length > 0 ||
+                        store.state.options.displayNotices && testcase.notices?.length > 0
+                    )
+                    "
+                    :testcase="testcase"></TestDetails>
             </div>
         </div>
     </div>
