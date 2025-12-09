@@ -99,7 +99,11 @@ export class WebSocketManager {
     handleRealtimeEvent(message) {
         try {
             const event = JSON.parse(message.data);
-            this.store.handleTestEvent(event);
+            if (event.event === 'execution.ended') {
+                this.handleExecutionEnded(event);
+            } else {
+                this.store.handleTestEvent(event);
+            }
 
             if (event.event === 'execution.ended' && this.store.state.coverage) {
                 this.store.setCoverageLoading(true);
@@ -109,10 +113,15 @@ export class WebSocketManager {
         }
     }
 
+    handleExecutionEnded(eventData) {
+        this.store.handleExecutionEnded(eventData);
+    }
+
     /**
      * Handle test exit event
      */
     handleTestExit() {
+        this.store.finishTestRun();
         if (this.store.state.coverage && this.callbacks.fetchCoverageReport) {
             this.callbacks.fetchCoverageReport();
         }

@@ -116,26 +116,18 @@ function initializeTestRun(contextId) {
     state.isRunning = true;
     state.isStopping = false;
 
-    // Always reset for 'global' runs or for 'failed' runs (to show only re-run tests)
-    const shouldReset = contextId === 'global' || contextId === 'failed';
-
-    if (shouldReset) {
-        state.testRun = {
-            status: 'running',
-            contextId,
-            suites: {},
-            summary: null,
-            failedTestIds: new Set(),
-            executionEnded: false,
-            sumOfDurations: 0,
-        };
-        state.expandedTestId = null;
-        state.expandedTestcaseGroups = new Set();
-        resetSidebarTestStatuses();
-    } else {
-        // This is a single suite run, we don't reset the whole state
-        state.testRun.contextId = contextId;
-    }
+    state.testRun = {
+        status: 'running',
+        contextId: contextId,
+        suites: {},
+        summary: null,
+        failedTestIds: new Set(),
+        executionEnded: false,
+        sumOfDurations: 0,
+    };
+    state.expandedTestId = null;
+    state.expandedTestcaseGroups = new Set();
+    resetSidebarTestStatuses();
 
     // Assign runId to suite if this is a suite-level run
     state.testSuites.forEach(suite => {
@@ -179,9 +171,6 @@ function handleTestEvent(eventData) {
             break;
         case 'test.finished':
             handleTestFinished(run, eventData);
-            break;
-        case 'execution.ended':
-            handleExecutionEnded(run, eventData);
             break;
     }
 }
@@ -329,15 +318,24 @@ function handleTestFinished(run, eventData) {
     }
 }
 
-function handleExecutionEnded(run, eventData) {
-    run.summary = eventData.data.summary;
-    run.executionEnded = true;
-    run.status = 'finished';
+function handleExecutionEnded(eventData) {
+    const run = state.testRun;
+    if (run) {
+        run.summary = eventData.data.summary;
+        run.executionEnded = true;
+        updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
+    }
+}
+
+function finishTestRun() {
+    const run = state.testRun;
+    if (run) {
+        run.status = 'finished';
+    }
     state.isRunning = false;
     state.isStopping = false;
     state.isStarting = false;
     updateSidebarAfterRun();
-    updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
 }
 
 function updateSidebarTestStatus(suiteName, testId, status, time = null) {
@@ -347,9 +345,6 @@ function updateSidebarTestStatus(suiteName, testId, status, time = null) {
                 if (method.id === testId) {
                     method.status = status;
                     if (time !== null) method.duration = time;
-                    if (status !== 'running') {
-                        suite.isRunning = false;
-                    }
                 }
             });
         }
@@ -479,6 +474,7 @@ export function useStore() {
         handleTestCompleted, // Exporting handleTestCompleted
         handleTestFinished, // Exporting handleTestFinished
         handleExecutionEnded, // Exporting handleExecutionEnded
+        finishTestRun,
         stopTestRun,
         getTestRun,
         isTestRunning,

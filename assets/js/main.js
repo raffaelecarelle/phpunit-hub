@@ -3,4 +3,3 @@ import App from './App.vue';
 import '../css/styles.css';
 
 createApp(App).mount('#app');
-console.log('asdasds');
