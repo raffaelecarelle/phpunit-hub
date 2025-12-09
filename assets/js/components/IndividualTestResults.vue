@@ -52,9 +52,10 @@
 <script setup>
 import { useStore } from '../store.js';
 import TestDetails from './TestDetails.vue';
+import {formatNanoseconds} from '../utils.js';
 
 const store = useStore();
-defineProps(['individualResults', 'formatNanoseconds']);
+defineProps(['individualResults']);
 const emit = defineEmits(['toggleTestDetails']);
 
 function setSortBy(sortBy) {

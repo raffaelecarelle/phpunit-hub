@@ -96,9 +96,10 @@
 <script setup>
 import { useStore } from '../store.js';
 import TestDetails from './TestDetails.vue';
+import {formatNanoseconds} from '../utils.js';
 
 const store = useStore();
-defineProps(['groupedResults', 'formatNanoseconds']);
+defineProps(['groupedResults']);
 const emit = defineEmits(['toggleTestcaseGroup', 'toggleTestDetails']);
 
 function toggleTestcaseGroup(className) {

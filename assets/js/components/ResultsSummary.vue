@@ -57,7 +57,8 @@
 
 <script setup>
 import { useStore } from '../store.js';
+import {formatNanoseconds} from '../utils.js';
 
 const store = useStore();
-defineProps(['results', 'statusCounts', 'formatNanoseconds']);
+defineProps(['results', 'statusCounts']);
 </script>

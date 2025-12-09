@@ -77,3 +77,14 @@ export function toggleTestDetails(store, testcase) {
     const id = testcase.id;
     store.setExpandedTest(state.expandedTestId === id ? null : id);
 }
+
+export function formatNanoseconds(nanoseconds) {
+    if (nanoseconds === undefined || nanoseconds === null) {
+        return '0.00ms';
+    }
+    const seconds = nanoseconds / 1_000_000_000;
+    if (seconds >= 1) {
+        return `${seconds.toFixed(2)}s`;
+    }
+    return `${(nanoseconds / 1_000_000).toFixed(2)}ms`;
+}

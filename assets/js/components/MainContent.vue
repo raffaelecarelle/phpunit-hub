@@ -4,7 +4,7 @@
 
         <div class="flex-grow overflow-y-auto">
             <div v-if="store.state.activeTab === 'results'">
-                <results-summary :results="results" :status-counts="statusCounts" :format-nanoseconds="formatNanoseconds"></results-summary>
+                <results-summary :results="results" :status-counts="statusCounts"></results-summary>
 
                 <!-- Empty State -->
                 <div v-if="!results" class="text-gray-500 text-center pt-10">
@@ -22,7 +22,6 @@
                     <template v-if="!isAnyTestRunning && store.state.options.displayMode === 'individual'">
                         <individual-test-results
                             :individual-results="individualResults"
-                            :format-nanoseconds="formatNanoseconds"
                             @toggleTestDetails="handleToggleTestDetails"
                         ></individual-test-results>
                     </template>
@@ -31,7 +30,6 @@
                     <template v-if="!isAnyTestRunning && store.state.options.displayMode === 'default'">
                         <grouped-test-results
                             :grouped-results="groupedResults"
-                            :format-nanoseconds="formatNanoseconds"
                             @toggleTestcaseGroup="toggleTestcaseGroup"
                             @toggleTestDetails="handleToggleTestDetails"
                         ></grouped-test-results>
@@ -58,7 +56,6 @@ defineProps([
     'results',
     'statusCounts',
     'isAnyTestRunning',
-    'formatNanoseconds',
     'individualResults',
     'groupedResults'
 ]);

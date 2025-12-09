@@ -25,7 +25,6 @@
                 :individual-results="individualResults"
                 :status-counts="statusCounts"
                 :is-any-test-running="isAnyTestRunning"
-                :format-nanoseconds="formatNanoseconds"
                 @toggleTestDetails="toggleTestDetails"
                 @toggleTestcaseGroup="toggleTestcaseGroupExpansion"
             ></MainContent>
@@ -456,17 +455,6 @@ function isTestRunning() {
 
 function isTestStopPending() {
     return store.state.isStopping;
-}
-
-function formatNanoseconds(nanoseconds) {
-    if (nanoseconds === undefined || nanoseconds === null) {
-        return '0.00ms';
-    }
-    const seconds = nanoseconds / 1_000_000_000;
-    if (seconds >= 1) {
-        return `${seconds.toFixed(2)}s`;
-    }
-    return `${(nanoseconds / 1_000_000).toFixed(2)}ms`;
 }
 
 function toggleSuiteExpansion(suiteId) {
