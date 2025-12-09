@@ -4,7 +4,6 @@
             v-for="method in suite.methods"
             :key="method.id"
             :method="method"
-            :is-test-running="isTestRunning"
             @runSingleTest="runSingleTest"
         />
     </ul>
@@ -13,7 +12,7 @@
 <script setup>
 import TestItem from './TestItem.vue';
 
-defineProps(['suite', 'isTestRunning']);
+defineProps(['suite']);
 const emit = defineEmits(['runSingleTest']);
 
 function runSingleTest(testId) {

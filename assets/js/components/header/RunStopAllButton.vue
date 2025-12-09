@@ -22,9 +22,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useStore } from '../../store.js';
-
-defineProps(['isAnyTestRunning', 'isAnyStopPending']);
 
 const store = useStore();
 
@@ -35,4 +34,10 @@ function togglePlayStop() {
         store.runAllTests();
     }
 }
+
+const isAnyTestRunning = computed(() => {
+    return store.state.isStarting || store.state.isRunning || isAnyStopPending.value;
+});
+
+const isAnyStopPending = computed(() => store.state.isStopping);
 </script>

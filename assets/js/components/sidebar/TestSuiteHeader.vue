@@ -23,8 +23,8 @@
                 </span>
             <span v-else
                   @click.stop="runSuiteTests(suite.id)"
-                  :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending, 'text-gray-500': isTestStopPending}"
-                  :title="isTestStopPending ? 'Stopping...' : 'Run all tests in this suite'">
+                  :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(), 'text-gray-500': isTestStopPending()}"
+                  :title="isTestStopPending() ? 'Stopping...' : 'Run all tests in this suite'">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                         <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                     </svg>
@@ -35,19 +35,35 @@
 
 <script setup>
 import { useStore } from '../../store.js';
+import { ApiClient } from '../../api.js';
 
+const api = new ApiClient('');
 const store = useStore();
-const props = defineProps(['suite', 'isTestRunning', 'isTestStopPending']);
-const emit = defineEmits(['toggle-suite', 'stopSingleTest', 'runSuiteTests']);
+const props = defineProps(['suite']);
+const emit = defineEmits(['toggle-suite', 'runSuiteTests']);
 
-function stopSingleTest() {
-    emit('stopSingleTest');
+async function stopSingleTest() {
+    try {
+        store.markStopPending();
+        await api.stopSingleTest();
+    } catch (error) {
+        console.error(`Failed to stop test run:`, error);
+        store.clearStopPending();
+    }
 }
 
 function runSuiteTests(suiteId) {
-    if (props.isTestRunning) {
+    if (isTestRunning()) {
         return;
     }
     emit('runSuiteTests', suiteId);
+}
+
+function isTestRunning() {
+    return store.state.isRunning;
+}
+
+function isTestStopPending() {
+    return store.state.isStopping;
 }
 </script>

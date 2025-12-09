@@ -7,13 +7,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useStore } from '../../store.js';
 
-defineProps(['isAnyTestRunning', 'hasFailedTests']);
+const hasFailedTests = computed(() => store.hasFailedTests());
 
 const store = useStore();
 
 function runFailedTests() {
     store.runFailedTests();
 }
+
+const isAnyTestRunning = computed(() => {
+    return store.state.isStarting || store.state.isRunning || isAnyStopPending.value;
+});
+
+const isAnyStopPending = computed(() => store.state.isStopping);
 </script>

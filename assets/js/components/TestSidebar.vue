@@ -15,10 +15,6 @@
             v-for="suite in suitesToDisplay"
             :key="suite.id"
             :suite="suite"
-            :is-test-running="isTestRunning"
-            :is-test-stop-pending="isTestStopPending"
-            @toggle-suite="toggleSuite"
-            @stopSingleTest="stopSingleTest"
         />
     </aside>
 </template>
@@ -34,17 +30,6 @@ const api = new ApiClient('');
 const store = useStore();
 const suitesToDisplay = ref(store.state.testSuites || []);
 const testIndex = {};
-
-defineProps(['isTestRunning', 'isTestStopPending']);
-const emit = defineEmits(['toggle-suite', 'stopSingleTest']);
-
-function toggleSuite(suiteId) {
-    emit('toggle-suite', suiteId);
-}
-
-function stopSingleTest() {
-    emit('stopSingleTest');
-}
 
 onMounted(async () => {
     try {

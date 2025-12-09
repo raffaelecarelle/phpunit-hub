@@ -94,19 +94,114 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useStore } from '../store.js';
 import TestDetails from './TestDetails.vue';
 import {formatNanoseconds} from '../utils.js';
 
 const store = useStore();
-defineProps(['groupedResults']);
-const emit = defineEmits(['toggleTestcaseGroup', 'toggleTestDetails']);
+const prop = defineProps(['results']);
+const groupedResults = computed(() => getGroupedResults());
+
+function getGroupedResults() {
+    const resultsVal = prop.results;
+    if (!resultsVal) return [];
+
+    const groups = {};
+    resultsVal.suites.forEach(suite => {
+        suite.testcases.forEach(tc => {
+            if (!groups[tc.class]) {
+                groups[tc.class] = {
+                    className: tc.class,
+                    testcases: [],
+                    passed: 0,
+                    failed: 0,
+                    errored: 0,
+                    skipped: 0,
+                    warning: 0,
+                    deprecation: 0,
+                    incomplete: 0,
+                    risky: 0,
+                    notice: 0,
+                    hasIssues: false
+                };
+            }
+
+            const group = groups[tc.class];
+            group.testcases.push(tc);
+            const status = tc.status || 'passed';
+            if (group[status] !== undefined) {
+                group[status]++;
+            }
+
+            if (tc.warnings?.length > 0) {
+                group.warning += tc.warnings.length;
+            }
+            if (tc.deprecations?.length > 0) {
+                group.deprecation += tc.deprecations.length;
+            }
+            if (tc.notices?.length > 0) {
+                group.notice += tc.notices.length;
+            }
+
+            if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || tc.notices?.length > 0 || status !== 'passed') {
+                group.hasIssues = true;
+            }
+        });
+    });
+
+    const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'risky': 4, 'skipped': 5, 'warning': 6, 'deprecation': 7, 'notice': 8, 'passed': 9 };
+
+    Object.values(groups).forEach(group => {
+        let highestPriorityStatus = statusOrder['passed'];
+        group.testcases.forEach(tc => {
+            const tcStatus = tc.status || 'passed';
+            const priority = statusOrder[tcStatus];
+            if (priority && priority < highestPriorityStatus) {
+                highestPriorityStatus = priority;
+            }
+        });
+        group.suiteStatus = highestPriorityStatus;
+    });
+
+    const sortedGroups = Object.values(groups).sort((a, b) => {
+        if (a.suiteStatus !== b.suiteStatus) {
+            return a.suiteStatus - b.suiteStatus;
+        }
+        return a.className.localeCompare(b.className);
+    });
+
+    sortedGroups.forEach(group => {
+        group.testcases.sort((a, b) => {
+            const durationA = a.duration || 0;
+            const durationB = b.duration || 0;
+            if (store.state.sortBy === 'duration') {
+                if (durationA !== durationB) {
+                    return store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
+                }
+            }
+
+            const statusA = statusOrder[a.status || 'passed'] || 99;
+            const statusB = statusOrder[b.status || 'passed'] || 99;
+            if (statusA !== statusB) {
+                return statusA - statusB;
+            }
+            return durationB - durationA;
+        });
+    });
+
+    return sortedGroups;
+}
 
 function toggleTestcaseGroup(className) {
-    emit('toggleTestcaseGroup', className);
+    store.toggleTestcaseGroupExpansion(className);
 }
 
 function toggleTestDetails(testcase) {
-    emit('toggleTestDetails', testcase);
+    if (store.state.expandedTestId === testcase.id) {
+        store.setExpandedTest(null);
+    } else {
+        store.setExpandedTest(testcase.id);
+    }
 }
 </script>

@@ -13,10 +13,21 @@
 </template>
 
 <script setup>
-defineProps(['method', 'isTestRunning']);
+import { useStore } from '../../store.js';
+defineProps(['method']);
+
 const emit = defineEmits(['runSingleTest']);
+const store = useStore();
 
 function runSingleTest(testId) {
     emit('runSingleTest', testId);
+}
+
+function isTestRunning() {
+    return store.state.isRunning;
+}
+
+function isTestStopPending() {
+    return store.state.isStopping;
 }
 </script>
