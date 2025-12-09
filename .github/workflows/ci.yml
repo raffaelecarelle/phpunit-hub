@@ -34,12 +34,12 @@ jobs:
                 run: vendor/bin/phpstan analyse
 
     vitest:
-        name: Jest (Node ${{ matrix.node }})
+        name: Vitest (Node ${{ matrix.node }})
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
-                node: [ '18', '20', '22', '24' ]
+                node: [ '20', '22', '24' ]
         steps:
             -   name: Checkout code
                 uses: actions/checkout@v4
