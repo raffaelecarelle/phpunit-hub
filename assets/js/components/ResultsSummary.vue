@@ -56,34 +56,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { toRefs } from 'vue';
 import { useStore } from '../store.js';
 import {formatNanoseconds} from '../utils.js';
+import { useTestResults } from '../composables/useTestResults.js';
 
 const store = useStore();
-const prop = defineProps(['results']);
+const props = defineProps(['results']);
+const { results } = toRefs(props);
+const { getStatusCounts } = useTestResults(results);
 
-const statusCounts = computed(() => getStatusCounts());
-
-function getStatusCounts() {
-    const resultsVal = prop.results;
-    if (!resultsVal) {
-        return { passed: 0, failed: 0, error: 0, warnings: 0, skipped: 0, deprecations: 0, incomplete: 0, risky: 0, notices: 0 };
-    }
-    const s = resultsVal.summary;
-    const counts = {
-        passed: 0,
-        failed: s.failures || 0,
-        error: s.errors || 0,
-        warnings: s.warnings || 0,
-        skipped: s.skipped || 0,
-        deprecations: s.deprecations || 0,
-        incomplete: s.incomplete || 0,
-        risky: s.risky || 0,
-        notices: s.notices || 0,
-    };
-    const actualFailures = counts.failed + counts.error + counts.skipped + counts.incomplete + counts.risky;
-    counts.passed = (s.tests || 0) - actualFailures;
-    return counts;
-}
+const statusCounts = getStatusCounts;
 </script>

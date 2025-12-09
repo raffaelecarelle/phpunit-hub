@@ -50,72 +50,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { toRefs } from 'vue';
 import { useStore } from '../store.js';
 import TestDetails from './TestDetails.vue';
 import {formatNanoseconds} from '../utils.js';
+import { useTestDetails } from '../composables/useTestDetails.js';
+import { useTestResults } from '../composables/useTestResults.js';
 
 const store = useStore();
-const prop = defineProps(['results']);
-const emit = defineEmits(['toggleTestDetails']);
+const props = defineProps(['results']);
+const { results } = toRefs(props);
+const { toggleTestDetails } = useTestDetails();
+const { getIndividualResults } = useTestResults(results);
 
-const individualResults = computed(() => getIndividualResults());
-
-function getIndividualResults() {
-    const resultsVal = prop.results;
-    if (!resultsVal) return [];
-
-    let allTests = [];
-    resultsVal.suites.forEach(suite => {
-        allTests.push(...suite.testcases);
-    });
-
-    allTests = allTests.filter(t => {
-        if (t.status === 'skipped' && !store.state.options.displaySkipped) return false;
-        if (t.status === 'incomplete' && !store.state.options.displayIncomplete) return false;
-        if (t.status === 'risky' && !store.state.options.displayRisky) return false;
-        if (t.warnings?.length > 0 && !store.state.options.displayWarnings) {
-            if (t.status === 'passed') return false;
-        }
-        if (t.deprecations?.length > 0 && !store.state.options.displayDeprecations) {
-            if (t.status === 'passed') return false;
-        }
-        if (t.notices?.length > 0 && !store.state.options.displayNotices) {
-            if (t.status ==='passed') return false;
-        }
-        return true;
-    });
-
-    allTests.sort((a, b) => {
-        const durationA = a.duration || 0;
-        const durationB = b.duration || 0;
-
-        if (store.state.sortBy === 'duration') {
-            return store.state.sortDirection === 'asc' ? durationA - durationB : durationB - durationA;
-        }
-
-        const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'risky': 4, 'skipped': 5, 'warning': 6, 'deprecation': 7, 'notice': 8, 'passed': 9 };
-        const statusA = statusOrder[a.status || 'passed'] || 99;
-        const statusB = statusOrder[b.status || 'passed'] || 99;
-        if (statusA !== statusB) {
-            return statusA - statusB;
-        }
-
-        return durationB - durationA;
-    });
-
-    return allTests;
-}
+const individualResults = getIndividualResults;
 
 function setSortBy(sortBy) {
     store.setSortBy(sortBy);
-}
-
-function toggleTestDetails(testcase) {
-    if (store.state.expandedTestId === testcase.id) {
-        store.setExpandedTest(null);
-    } else {
-        store.setExpandedTest(testcase.id);
-    }
 }
 </script>

@@ -15,19 +15,20 @@
 </template>
 
 <script setup>
-import { onMounted, computed, watch } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useStore } from './store.js';
-import { ApiClient } from './api.js';
 import { WebSocketManager } from './websocket.js';
 import { updateFavicon } from './utils.js';
+import { useResizer } from './composables/useResizer.js';
 
 import Header from './components/Header.vue';
 import TestSidebar from './components/TestSidebar.vue';
 import MainContent from './components/MainContent.vue';
 
 const store = useStore();
-const api = new ApiClient('');
 let wsManager = null;
+
+useResizer('resizer', 'test-sidebar');
 
 onMounted(async () => {
     try {
@@ -38,9 +39,6 @@ onMounted(async () => {
             fetchCoverageReport: store.fetchCoverageReport,
         });
         await wsManager.connect();
-
-        // Setup resizer
-        setupResizer();
 
         // Update favicon
         updateFavicon('neutral');
@@ -57,39 +55,4 @@ watch(() => [
 ], () => {
     store.saveState();
 }, { deep: true });
-
-function setupResizer() {
-    const resizer = document.getElementById('resizer');
-    const sidebar = document.getElementById('test-sidebar');
-
-    if (!resizer || !sidebar) return;
-
-    let isResizing = false;
-
-    resizer.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        isResizing = true;
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-
-        const mouseMoveHandler = (e) => {
-            if (!isResizing) return;
-            const sidebarWidth = e.clientX;
-            if (sidebarWidth > 200 && sidebarWidth < window.innerWidth - 200) {
-                sidebar.style.width = `${sidebarWidth}px`;
-            }
-        };
-
-        const mouseUpHandler = () => {
-            isResizing = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            document.removeEventListener('mousemove', mouseMoveHandler);
-            document.removeEventListener('mouseup', mouseUpHandler);
-        };
-
-        document.addEventListener('mousemove', mouseMoveHandler);
-        document.addEventListener('mouseup', mouseUpHandler);
-    });
-}
 </script>
