@@ -1,9 +1,6 @@
 <template>
     <div id="app" class="flex flex-col h-screen">
         <Header
-            @clearAllResults="clearAllResults"
-            @runFailedTests="runFailedTests"
-            @togglePlayStop="togglePlayStop"
             :is-any-test-running="isAnyTestRunning"
             :has-failed-tests="hasFailedTests"
             :is-any-stop-pending="isAnyStopPending"
@@ -17,8 +14,6 @@
                 @isTestStopPending="isTestStopPending"
                 @toggle-suite="toggleSuiteExpansion"
                 @stopSingleTest="stopSingleTest"
-                @runSuiteTests="runSuiteTests"
-                @runSingleTest="runSingleTest"
             ></TestSidebar>
 
             <!-- Resizer -->
@@ -33,7 +28,6 @@
                 :format-nanoseconds="formatNanoseconds"
                 @toggleTestDetails="toggleTestDetails"
                 @toggleTestcaseGroup="toggleTestcaseGroupExpansion"
-                @showFileCoverage="showFileCoverage"
             ></MainContent>
         </div>
     </div>
@@ -64,7 +58,7 @@ onMounted(async () => {
         const wsHost = window.WS_HOST || '127.0.0.1';
         const wsPort = window.WS_PORT || '8080';
         wsManager = new WebSocketManager(`ws://${wsHost}:${wsPort}/ws/status`, store, {
-            fetchCoverageReport: fetchCoverageReport,
+            fetchCoverageReport: store.fetchCoverageReport,
         });
         await wsManager.connect();
 
@@ -115,69 +109,6 @@ function buildTestIndex() {
     });
 }
 
-async function _runTests(runOptions = {}) {
-    store.setStarting(true);
-    store.state.activeTab = 'results';
-
-    // Filter out frontend-only options that PHPUnit doesn't understand
-    const { displayMode, ...phpunitOptions } = store.state.options;
-
-    const payload = {
-        filters: runOptions.filters || [],
-        groups: store.state.selectedGroups,
-        suites: store.state.selectedSuites,
-        options: { ...phpunitOptions, colors: true },
-        coverage: !!store.state.coverage,
-        contextId: runOptions.contextId || 'global',
-    };
-
-    try {
-        await api.runTests(payload);
-    } catch (error) {
-        console.error('Failed to run tests:', error);
-        updateFavicon('failure');
-        store.setStarting(false);
-    }
-}
-
-function runTests(runOptions = {}) {
-    if (store.state.isStarting) {
-        return;
-    }
-    _runTests(runOptions);
-}
-
-function runAllTests() {
-    runTests({ contextId: 'global' });
-}
-
-function runFailedTests() {
-    const failedTestIds = store.getFailedTestIds();
-    if (failedTestIds.length === 0) {
-        console.log('No failed tests to run.');
-        return;
-    }
-    runTests({ filters: failedTestIds, contextId: 'failed' });
-}
-
-function runSingleTest(testId) {
-    runTests({ filters: [testId], contextId: testId });
-}
-
-function runSuiteTests(suiteId) {
-    runTests({ filters: [suiteId], contextId: suiteId });
-}
-
-async function stopAllTests() {
-    try {
-        store.markStopPending();
-        await api.stopAllTests();
-    } catch (error) {
-        console.error('Failed to stop tests:', error);
-        store.clearStopPending();
-    }
-}
-
 async function stopSingleTest() {
     try {
         store.markStopPending();
@@ -185,14 +116,6 @@ async function stopSingleTest() {
     } catch (error) {
         console.error(`Failed to stop test run:`, error);
         store.clearStopPending();
-    }
-}
-
-function togglePlayStop() {
-    if (store.state.isRunning) {
-        stopAllTests();
-    } else {
-        runAllTests();
     }
 }
 
@@ -307,9 +230,6 @@ function getSingleRunResults(run) {
     };
     const summary = { ...defaultSummary, ...(run.summary || {}) };
 
-    // If the run is in progress, calculate totals in real-time
-    // We check for `!run.summary` because the final summary from PHPUnit is the source of truth.
-    // We only calculate in real-time if that final summary hasn't arrived yet.
     if (run && !run.summary) {
         const realtimeSummary = calculateRealtimeSummary(run);
         summary.numberOfTests = realtimeSummary.tests;
@@ -324,7 +244,6 @@ function getSingleRunResults(run) {
         summary.notices = realtimeSummary.notices;
     }
 
-    // Transform suites data
     const transformedSuites = [];
     for (const suiteName in run.suites) {
         const suiteData = run.suites[suiteName];
@@ -369,42 +288,6 @@ function getSingleRunResults(run) {
     };
 }
 
-function calculateSummaryFromTests(suites) {
-    const summary = {
-        tests: 0,
-        assertions: 0,
-        time: 0,
-        failures: 0,
-        errors: 0,
-        warnings: 0,
-        skipped: 0,
-        deprecations: 0,
-        incomplete: 0,
-        risky: 0,
-        notices: 0,
-    };
-
-    suites.forEach(suite => {
-        suite.testcases.forEach(tc => {
-            summary.tests++;
-            summary.time += tc.duration || 0;
-            summary.assertions += tc.assertions || 0;
-
-            if (tc.status === 'failed') summary.failures++;
-            else if (tc.status === 'errored') summary.errors++;
-            else if (tc.status === 'skipped') summary.skipped++;
-            else if (tc.status === 'incomplete') summary.incomplete++;
-            else if (tc.status === 'risky') summary.risky++;
-
-            summary.warnings += tc.warnings?.length || 0;
-            summary.deprecations += tc.deprecations?.length || 0;
-            summary.notices += tc.notices?.length || 0;
-        });
-    });
-
-    return summary;
-}
-
 function getGroupedResults() {
     const resultsVal = results.value;
     if (!resultsVal) return [];
@@ -436,7 +319,6 @@ function getGroupedResults() {
                 group[status]++;
             }
 
-            // Count warnings and deprecations
             if (tc.warnings?.length > 0) {
                 group.warning += tc.warnings.length;
             }
@@ -447,7 +329,6 @@ function getGroupedResults() {
                 group.notice += tc.notices.length;
             }
 
-            // Set hasIssues if any issues are present (warnings array, deprecations array, or non-passed status)
             if (tc.warnings?.length > 0 || tc.deprecations?.length > 0 || tc.notices?.length > 0 || status !== 'passed') {
                 group.hasIssues = true;
             }
@@ -456,9 +337,8 @@ function getGroupedResults() {
 
     const statusOrder = { 'errored': 1, 'failed': 2, 'incomplete': 3, 'risky': 4, 'skipped': 5, 'warning': 6, 'deprecation': 7, 'notice': 8, 'passed': 9 };
 
-    // Determine suite status
     Object.values(groups).forEach(group => {
-        let highestPriorityStatus = statusOrder['passed']; // Start with the lowest priority
+        let highestPriorityStatus = statusOrder['passed'];
         group.testcases.forEach(tc => {
             const tcStatus = tc.status || 'passed';
             const priority = statusOrder[tcStatus];
@@ -507,13 +387,11 @@ function getIndividualResults() {
         allTests.push(...suite.testcases);
     });
 
-    // Filter based on options
     allTests = allTests.filter(t => {
         if (t.status === 'skipped' && !store.state.options.displaySkipped) return false;
         if (t.status === 'incomplete' && !store.state.options.displayIncomplete) return false;
         if (t.status === 'risky' && !store.state.options.displayRisky) return false;
         if (t.warnings?.length > 0 && !store.state.options.displayWarnings) {
-            // if it's just a warning and we hide them, don't show if it passed
             if (t.status === 'passed') return false;
         }
         if (t.deprecations?.length > 0 && !store.state.options.displayDeprecations) {
@@ -525,7 +403,6 @@ function getIndividualResults() {
         return true;
     });
 
-    // Sort by duration, descending
     allTests.sort((a, b) => {
         const durationA = a.duration || 0;
         const durationB = b.duration || 0;
@@ -541,7 +418,7 @@ function getIndividualResults() {
             return statusA - statusB;
         }
 
-        return durationB - durationA; // Default to duration descending if statuses are equal
+        return durationB - durationA;
     });
 
     return allTests;
@@ -567,32 +444,10 @@ function getStatusCounts() {
         notices: s.notices || 0,
     };
 
-    // Only subtract actual failures (failed, error, skipped, incomplete) from total
-    // Warnings and deprecations don't prevent a test from being "passed"
     const actualFailures = counts.failed + counts.error + counts.skipped + counts.incomplete + counts.risky;
     counts.passed = (s.tests || 0) - actualFailures;
 
     return counts;
-}
-
-async function fetchCoverageReport() {
-    try {
-        const report = await api.fetchCoverage();
-        store.setCoverageReport(report);
-    } catch (error) {
-        console.error('Failed to fetch coverage report:', error);
-    } finally {
-        store.setCoverageLoading(false);
-    }
-}
-
-async function showFileCoverage(filePath) {
-    try {
-        const coverage = await api.fetchFileCoverage(filePath);
-        store.setFileCoverage({ ...coverage, path: filePath });
-    } catch (error) {
-        console.error('Failed to fetch file coverage:', error);
-    }
 }
 
 function isTestRunning() {
@@ -628,9 +483,5 @@ function toggleTestDetails(testcase) {
     } else {
         store.setExpandedTest(testcase.id);
     }
-}
-
-function clearAllResults() {
-    store.clearAllResults();
 }
 </script>

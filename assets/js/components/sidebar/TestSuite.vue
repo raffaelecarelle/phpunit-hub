@@ -24,17 +24,17 @@ import TestList from './TestList.vue';
 
 const store = useStore();
 defineProps(['suite', 'isTestRunning', 'isTestStopPending']);
-const emit = defineEmits(['toggle-suite', 'stopSingleTest', 'runSuiteTests', 'runSingleTest']);
+const emit = defineEmits(['toggle-suite', 'stopSingleTest']);
 
 function stopSingleTest(runId) {
     emit('stopSingleTest', runId);
 }
 
 function runSuiteTests(suiteId) {
-    emit('runSuiteTests', suiteId);
+    store.runSuiteTests(suiteId);
 }
 
 function runSingleTest(testId) {
-    emit('runSingleTest', testId);
+    store.runSingleTest(testId);
 }
 </script>

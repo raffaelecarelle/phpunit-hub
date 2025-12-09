@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 import { parseTestId, updateFavicon } from './utils.js';
+import { ApiClient } from './api.js';
 
 const STORAGE_KEY = 'phpunit-hub-settings';
 
@@ -53,13 +54,45 @@ const state = reactive({
     coverageDriverMissing: false,
 });
 
+// --- Private Store Functions ---
+
+async function _runTests(runOptions = {}) {
+    if (state.isStarting) {
+        return;
+    }
+
+    state.isStarting = true;
+    state.activeTab = 'results';
+
+    const api = new ApiClient('');
+    const { displayMode, ...phpunitOptions } = state.options;
+
+    const payload = {
+        filters: runOptions.filters || [],
+        groups: state.selectedGroups,
+        suites: state.selectedSuites,
+        options: { ...phpunitOptions, colors: true },
+        coverage: !!state.coverage,
+        contextId: runOptions.contextId || 'global',
+    };
+
+    try {
+        await api.runTests(payload);
+    } catch (error) {
+        console.error('Failed to run tests:', error);
+        updateFavicon('failure');
+        state.isStarting = false;
+    }
+}
+
+// --- Public Store Functions / Actions ---
+
 function loadState() {
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
         try {
             const parsedState = JSON.parse(savedState);
             if (parsedState.options) {
-                // Ensure resultUpdateMode is not loaded from old state
                 const { resultUpdateMode, ...restOptions } = parsedState.options;
                 state.options = { ...state.options, ...restOptions };
             }
@@ -87,6 +120,53 @@ function saveState() {
         coverage: state.coverage,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+}
+
+function runTests(runOptions = {}) {
+    _runTests(runOptions);
+}
+
+function runAllTests() {
+    runTests({ contextId: 'global' });
+}
+
+function runFailedTests() {
+    const failedTestIds = getFailedTestIds();
+    if (failedTestIds.length === 0) {
+        console.log('No failed tests to run.');
+        return;
+    }
+    runTests({ filters: failedTestIds, contextId: 'failed' });
+}
+
+function runSingleTest(testId) {
+    runTests({ filters: [testId], contextId: testId });
+}
+
+function runSuiteTests(suiteId) {
+    runTests({ filters: [suiteId], contextId: suiteId });
+}
+
+async function stopAllTests() {
+    const api = new ApiClient('');
+    try {
+        markStopPending();
+        await api.stopAllTests();
+    } catch (error) {
+        console.error('Failed to stop tests:', error);
+        clearStopPending();
+    }
+}
+
+async function stopSingleTest() {
+    const api = new ApiClient('');
+    try {
+        markStopPending();
+        await api.stopSingleTest();
+    } catch (error) {
+        console.error(`Failed to stop test run:`, error);
+        clearStopPending();
+    }
 }
 
 function setSortBy(sortBy) {
@@ -129,7 +209,6 @@ function initializeTestRun(contextId) {
     state.expandedTestcaseGroups = new Set();
     resetSidebarTestStatuses();
 
-    // Assign runId to suite if this is a suite-level run
     state.testSuites.forEach(suite => {
         if (suite.id === contextId) {
             suite.isRunning = true;
@@ -228,7 +307,6 @@ function handleTestPrepared(run, eventData) {
         notices: [],
     };
 
-    // Update sidebar
     updateSidebarTestStatus(suiteName, eventData.data.testId, 'running');
 }
 
@@ -278,24 +356,20 @@ function handleTestCompleted(run, eventData) {
         test.message = eventData.data.message || null;
         test.trace = eventData.data.trace || null;
 
-        // Update suite counts
         const suite = run.suites[suiteName];
         if (suite[status] !== undefined) {
             suite[status]++;
         }
 
-        // Track failed tests
         if (status === 'failed' || status === 'errored') {
             run.failedTestIds.add(testId);
             suite.hasIssues = true;
         } else if (status === 'passed') {
-            // Remove from current run
             run.failedTestIds.delete(testId);
         } else if (status !== 'passed') {
             suite.hasIssues = true;
         }
 
-        // Update sidebar
         updateSidebarTestStatus(suiteName, testId, status, test.duration);
     }
 }
@@ -310,8 +384,6 @@ function handleTestFinished(run, eventData) {
         test.assertions = eventData.data.assertions;
         run.sumOfDurations += test.duration;
 
-        // Also update the sidebar with the final duration.
-        // The status might have already been set by handleTestCompleted.
         if (test.status) {
             updateSidebarTestStatus(suiteName, testId, test.status, test.duration);
         }
@@ -352,7 +424,7 @@ function updateSidebarTestStatus(suiteName, testId, status, time = null) {
     });
 }
 
-export function resetSidebarTestStatuses() {
+function resetSidebarTestStatuses() {
     state.testSuites.forEach(suite => {
         suite.isRunning = false;
         suite.methods?.forEach(method => {
@@ -457,24 +529,43 @@ function setFileCoverage(coverage) {
     state.fileCoverage = coverage;
 }
 
+async function fetchCoverageReport() {
+    const api = new ApiClient('');
+    try {
+        const report = await api.fetchCoverage();
+        setCoverageReport(report);
+    } catch (error) {
+        console.error('Failed to fetch coverage report:', error);
+    } finally {
+        setCoverageLoading(false);
+    }
+}
+
 loadState();
 
 export function useStore() {
     return {
         state,
         saveState,
+        runTests,
+        runAllTests,
+        runFailedTests,
+        runSingleTest,
+        runSuiteTests,
+        stopAllTests,
+        stopSingleTest,
         setSortBy,
         setDisplayMode,
         setStarting,
         initializeTestRun,
         handleTestEvent,
-        handleSuiteStarted, // Exporting handleSuiteStarted
-        handleTestPrepared, // Exporting handleTestPrepared
-        handleTestWarningOrDeprecation, // Exporting handleTestWarningOrDeprecation
-        handleTestNotice, // Exporting handleTestNotice
-        handleTestCompleted, // Exporting handleTestCompleted
-        handleTestFinished, // Exporting handleTestFinished
-        handleExecutionEnded, // Exporting handleExecutionEnded
+        handleSuiteStarted,
+        handleTestPrepared,
+        handleTestWarningOrDeprecation,
+        handleTestNotice,
+        handleTestCompleted,
+        handleTestFinished,
+        handleExecutionEnded,
         finishTestRun,
         stopTestRun,
         getTestRun,
@@ -502,6 +593,7 @@ export function useStore() {
         setCoverageReport,
         setCoverageLoading,
         setFileCoverage,
+        fetchCoverageReport,
         resetSidebarTestStatuses,
         updateSidebarAfterRun,
     };

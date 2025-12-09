@@ -45,12 +45,18 @@
 
 <script setup>
 import { useStore } from '../store.js';
+import { ApiClient } from '../api.js';
 import FileCoverageDetail from './FileCoverageDetail.vue';
 
 const store = useStore();
-const emit = defineEmits(['showFileCoverage']);
+const api = new ApiClient('');
 
-function showFileCoverage(filePath) {
-    emit('showFileCoverage', filePath);
+async function showFileCoverage(filePath) {
+    try {
+        const coverage = await api.fetchFileCoverage(filePath);
+        store.setFileCoverage({ ...coverage, path: filePath });
+    } catch (error) {
+        console.error('Failed to fetch file coverage:', error);
+    }
 }
 </script>

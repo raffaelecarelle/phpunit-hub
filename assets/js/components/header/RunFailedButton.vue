@@ -7,10 +7,13 @@
 </template>
 
 <script setup>
+import { useStore } from '../../store.js';
+
 defineProps(['isAnyTestRunning', 'hasFailedTests']);
-const emit = defineEmits(['runFailedTests']);
+
+const store = useStore();
 
 function runFailedTests() {
-    emit('runFailedTests');
+    store.runFailedTests();
 }
 </script>

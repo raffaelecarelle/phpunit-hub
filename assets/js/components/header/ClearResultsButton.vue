@@ -8,10 +8,13 @@
 </template>
 
 <script setup>
+import { useStore } from '../../store.js';
+
 defineProps(['isAnyTestRunning', 'results']);
-const emit = defineEmits(['clearAllResults']);
+
+const store = useStore();
 
 function clearAllResults() {
-    emit('clearAllResults');
+    store.clearAllResults();
 }
 </script>

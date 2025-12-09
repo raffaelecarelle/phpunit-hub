@@ -19,8 +19,6 @@
             :is-test-stop-pending="isTestStopPending"
             @toggle-suite="toggleSuite"
             @stopSingleTest="stopSingleTest"
-            @runSuiteTests="runSuiteTests"
-            @runSingleTest="runSingleTest"
         />
     </aside>
 </template>
@@ -32,10 +30,10 @@ import TestSearchBar from './sidebar/TestSearchBar.vue';
 import TestSuite from './sidebar/TestSuite.vue';
 
 const store = useStore();
-const suitesToDisplay = ref(store.state.testSuites || []); // Added || [] for safe initialization
+const suitesToDisplay = ref(store.state.testSuites || []);
 
 defineProps(['isTestRunning', 'isTestStopPending']);
-const emit = defineEmits(['toggle-suite', 'stopSingleTest', 'runSuiteTests', 'runSingleTest']);
+const emit = defineEmits(['toggle-suite', 'stopSingleTest']);
 
 function toggleSuite(suiteId) {
     emit('toggle-suite', suiteId);
@@ -43,13 +41,5 @@ function toggleSuite(suiteId) {
 
 function stopSingleTest() {
     emit('stopSingleTest');
-}
-
-function runSuiteTests(suiteId) {
-    emit('runSuiteTests', suiteId);
-}
-
-function runSingleTest(testId) {
-    emit('runSingleTest', testId);
 }
 </script>

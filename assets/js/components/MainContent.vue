@@ -39,7 +39,7 @@
                 </div>
             </div>
             <div v-if="store.state.activeTab === 'coverage'">
-                <coverage-report @showFileCoverage="showFileCoverage"></coverage-report>
+                <coverage-report></coverage-report>
             </div>
         </div>
     </main>
@@ -62,7 +62,7 @@ defineProps([
     'individualResults',
     'groupedResults'
 ]);
-const emit = defineEmits(['toggleTestDetails', 'toggleTestcaseGroup', 'showFileCoverage']);
+const emit = defineEmits(['toggleTestDetails', 'toggleTestcaseGroup']);
 
 function toggleTestcaseGroup(className) {
     store.toggleTestcaseGroupExpansion(className);
@@ -74,9 +74,5 @@ function handleToggleTestDetails(testcase) {
     } else {
         store.setExpandedTest(testcase.id);
     }
-}
-
-function showFileCoverage(filePath) {
-    emit('showFileCoverage', filePath);
 }
 </script>

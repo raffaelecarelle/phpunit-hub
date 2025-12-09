@@ -4,17 +4,14 @@
         <div class="flex items-center space-x-4">
             <filter-panel></filter-panel>
             <clear-results-button
-                @clearAllResults="clearAllResults"
                 :is-any-test-running="isAnyTestRunning"
                 :results="results"
             ></clear-results-button>
             <run-failed-button
-                @runFailedTests="runFailedTests"
                 :is-any-test-running="isAnyTestRunning"
                 :has-failed-tests="hasFailedTests"
             ></run-failed-button>
             <run-stop-all-button
-                @togglePlayStop="togglePlayStop"
                 :is-any-test-running="isAnyTestRunning"
                 :is-any-stop-pending="isAnyStopPending"
             ></run-stop-all-button>
@@ -30,17 +27,4 @@ import RunFailedButton from './header/RunFailedButton.vue';
 import RunStopAllButton from './header/RunStopAllButton.vue';
 
 defineProps(['isAnyTestRunning', 'hasFailedTests', 'isAnyStopPending', 'results']);
-const emit = defineEmits(['clearAllResults', 'runFailedTests', 'togglePlayStop']);
-
-function clearAllResults() {
-    emit('clearAllResults');
-}
-
-function runFailedTests() {
-    emit('runFailedTests');
-}
-
-function togglePlayStop() {
-    emit('togglePlayStop');
-}
 </script>

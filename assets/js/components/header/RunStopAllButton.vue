@@ -22,10 +22,17 @@
 </template>
 
 <script setup>
+import { useStore } from '../../store.js';
+
 defineProps(['isAnyTestRunning', 'isAnyStopPending']);
-const emit = defineEmits(['togglePlayStop']);
+
+const store = useStore();
 
 function togglePlayStop() {
-    emit('togglePlayStop');
+    if (store.state.isRunning) {
+        store.stopAllTests();
+    } else {
+        store.runAllTests();
+    }
 }
 </script>
