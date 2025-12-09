@@ -52,7 +52,7 @@ class TestRunnerTest extends TestCase
     public function testRunReturnsProcessInstance(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $process = $testRunner->run(['filters' => [], 'coverage' => false], 'test-run-id');
+        $process = $testRunner->run(['filters' => [], 'coverage' => false]);
         $this->assertInstanceOf(Process::class, $process);
     }
 
@@ -85,7 +85,7 @@ class TestRunnerTest extends TestCase
         file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
 
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['filters' => [], 'coverage' => true], 'test-run-id');
+        $testRunner->run(['filters' => [], 'coverage' => true]);
 
         $command = $testRunner->getLastCommand();
 
@@ -98,7 +98,7 @@ class TestRunnerTest extends TestCase
     public function testRunBuildsCorrectCommandWithFilters(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['filters' => ['MyTest', 'AnotherTest'], 'coverage' => false], 'test-run-id');
+        $testRunner->run(['filters' => ['MyTest', 'AnotherTest'], 'coverage' => false]);
 
         $command = $testRunner->getLastCommand();
 
@@ -109,7 +109,7 @@ class TestRunnerTest extends TestCase
     public function testRunBuildsCorrectCommandWithSuites(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['suites' => ['MySuite', 'AnotherSuite'], 'filters' => [], 'coverage' => false], 'test-run-id');
+        $testRunner->run(['suites' => ['MySuite', 'AnotherSuite'], 'filters' => [], 'coverage' => false]);
 
         $command = $testRunner->getLastCommand();
 
@@ -121,7 +121,7 @@ class TestRunnerTest extends TestCase
     public function testRunBuildsCorrectCommandWithGroups(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['groups' => ['MyGroup', 'AnotherGroup'], 'filters' => [], 'coverage' => false], 'test-run-id');
+        $testRunner->run(['groups' => ['MyGroup', 'AnotherGroup'], 'filters' => [], 'coverage' => false]);
 
         $command = $testRunner->getLastCommand();
 
@@ -133,7 +133,7 @@ class TestRunnerTest extends TestCase
     public function testRunBuildsCorrectCommandWithOptions(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['options' => ['stopOnFailure' => true], 'filters' => [], 'coverage' => false], 'test-run-id');
+        $testRunner->run(['options' => ['stopOnFailure' => true], 'filters' => [], 'coverage' => false]);
 
         $command = $testRunner->getLastCommand();
 
@@ -163,7 +163,7 @@ class TestRunnerTest extends TestCase
         file_put_contents($this->tempDir . '/phpunit.xml', $phpunitXmlContent);
 
         $testRunner = new TestRunner($this->loop, $this->tempDir);
-        $testRunner->run(['filters' => [], 'coverage' => true], 'test-run-id');
+        $testRunner->run(['filters' => [], 'coverage' => true]);
 
         $command = $testRunner->getLastCommand();
 

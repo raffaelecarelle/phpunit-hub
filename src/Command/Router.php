@@ -40,8 +40,10 @@ class Router implements RouterInterface
 
     private ?Process $runningProcess = null;
 
+    /** @var array<string, mixed>|null */
     private ?array $runContext = null;
 
+    /** @var array<string, mixed>|null */
     private ?array $lastRunSummary = null;
 
     /** @var string[] */
@@ -77,8 +79,7 @@ class Router implements RouterInterface
     public function onOpen(ConnectionInterface $conn, ?RequestInterface $request = null): void
     {
         $path = $request?->getUri()->getPath();
-        $method = $request?->getMethod();
-        $response = null;
+        $request?->getMethod();
 
         if ($path === '/ws/status') {
             $this->httpServer->onOpen($conn, $request);
@@ -200,7 +201,7 @@ class Router implements RouterInterface
                     // Rimuovi il vecchio link al manifest di Vite (non è per il browser)
                     // Sostituisci il vecchio link CSS. Se Vite ha generato CSS, usa quello. Altrimenti, usa il fallback.
                     // Sostituisci i placeholder di host/port
-                    $content = str_replace(array('<link rel="manifest" href="/.vite/manifest.json" />', '<link rel="stylesheet" href="css/styles.css?v={{css_version}}">', '{{ws_host}}', '{{ws_port}}'), array('', !empty($viteCssTags) ? $viteCssTags : $fallbackCssTag, $this->host, $this->port), $content);
+                    $content = str_replace(['<link rel="manifest" href="/.vite/manifest.json" />', '<link rel="stylesheet" href="css/styles.css?v={{css_version}}">', '{{ws_host}}', '{{ws_port}}'], ['', $viteCssTags === '' || $viteCssTags === '0' ? $fallbackCssTag : $viteCssTags, $this->host, $this->port], $content);
                 }
 
                 $response = new GuzzleResponse(200, ['Content-Type' => $this->getMimeType($filePath)], $content);
@@ -223,7 +224,7 @@ class Router implements RouterInterface
      */
     public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): void
     {
-        if ($this->runningProcess !== null) {
+        if ($this->runningProcess instanceof Process) {
             $this->output->writeln('<error>A test run is already in progress.</error>');
             return;
         }
@@ -389,7 +390,7 @@ class Router implements RouterInterface
      */
     private function stopAllTests(): GuzzleResponse
     {
-        if ($this->runningProcess === null) {
+        if (!$this->runningProcess instanceof Process) {
             $json = json_encode(['error' => 'No test run in progress.'], JSON_THROW_ON_ERROR);
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], $json);
         }
@@ -405,7 +406,7 @@ class Router implements RouterInterface
      */
     private function stopSingleTest(): GuzzleResponse
     {
-        if ($this->runningProcess === null) {
+        if (!$this->runningProcess instanceof Process) {
             $json = json_encode(['error' => 'No test run in progress.'], JSON_THROW_ON_ERROR);
             return new GuzzleResponse(404, ['Content-Type' => 'application/json'], $json);
         }
@@ -534,7 +535,7 @@ class Router implements RouterInterface
     private function getCoverage(): GuzzleResponse
     {
         if (!$this->coverage instanceof Coverage) {
-            $coveragePath = $this->projectRoot . sprintf('/clover.xml');
+            $coveragePath = $this->projectRoot . '/clover.xml';
             $this->coverage = new Coverage($this->projectRoot, $coveragePath);
         }
 
@@ -549,7 +550,7 @@ class Router implements RouterInterface
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'File path not provided.'], JSON_THROW_ON_ERROR));
         }
 
-        $coveragePath = $this->projectRoot . sprintf('/clover.xml');
+        $coveragePath = $this->projectRoot . '/clover.xml';
 
         $coverage = new Coverage($this->projectRoot, $coveragePath);
 

@@ -16,7 +16,6 @@ use function file_exists;
 use function implode;
 use function preg_quote;
 use function preg_replace;
-use function sprintf;
 use function strtolower;
 use function trim;
 
@@ -121,7 +120,7 @@ class TestRunner
 
         $cloverReport = $domxPath->query('//coverage/report/clover')->item(0);
 
-        $cloverFile =  $this->projectRoot . sprintf('/clover.xml');
+        $cloverFile =  $this->projectRoot . '/clover.xml';
 
         if ($cloverReport instanceof DOMElement) {
             $cloverFile = $cloverReport->getAttribute('outputFile');
