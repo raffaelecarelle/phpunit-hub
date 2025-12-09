@@ -1,15 +1,15 @@
 {
-    "name": "PHPUnitGUI",
+    "name": "PHPUnitHub",
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
     "scripts": {
-        "test": "jest",
-        "build:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --minify",
-        "watch:css": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
+        "test": "vitest",
+        "dev": "vite",
+        "build": "vite build"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=20"
     },
     "keywords": [],
     "author": "",
@@ -17,20 +17,14 @@
     "devDependencies": {
         "@babel/core": "^7.23.9",
         "@babel/preset-env": "^7.23.9",
+        "@vitejs/plugin-vue": "^6.0.2",
+        "@vue/test-utils": "^2.4.6",
         "autoprefixer": "^10.4.17",
-        "babel-jest": "^29.7.0",
-        "jest": "^29.7.0",
-        "jest-environment-jsdom": "^30.2.0",
         "postcss": "^8.4.35",
-        "tailwindcss": "^3.4.1"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.js$": "babel-jest"
-        },
-        "moduleNameMapper": {
-            "^https://cdn\\.jsdelivr\\.net/npm/vue@3/dist/vue\\.esm-browser\\.prod\\.js$": "<rootDir>/public/js/tests/mocks/vue.js"
-        },
-        "testEnvironment": "jsdom"
+        "tailwindcss": "^3.4.18",
+        "vite": "^7.2.6",
+        "@tailwindcss/vite": "^4.1.17",
+        "jsdom": "^27.2.0",
+        "vitest": "^4.0.15"
     }
 }

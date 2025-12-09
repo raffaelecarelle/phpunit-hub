@@ -135,14 +135,10 @@ class RouterTest extends TestCase
         $router = $this->createRouter();
 
         $process = $this->createMockProcess(true);
-        $mockProcess2 = $this->createMockProcess(true);
 
         $reflectionObject = new ReflectionObject($router);
-        $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
-        $reflectionProperty->setValue($router, [
-            'run-id-1' => $process,
-            'run-id-2' => $mockProcess2,
-        ]);
+        $reflectionProperty = $reflectionObject->getProperty('runningProcess');
+        $reflectionProperty->setValue($router, $process);
 
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
@@ -159,18 +155,14 @@ class RouterTest extends TestCase
         $router = $this->createRouter();
 
         $process = $this->createMockProcess(true);
-        $mockProcessToKeep = $this->createMockProcess(false); // Should not be terminated
 
         $reflectionObject = new ReflectionObject($router);
-        $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
-        $reflectionProperty->setValue($router, [
-            'run-id-to-terminate' => $process,
-            'run-id-to-keep' => $mockProcessToKeep,
-        ]);
+        $reflectionProperty = $reflectionObject->getProperty('runningProcess');
+        $reflectionProperty->setValue($router, $process);
 
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/stop-single-test/run-id-to-terminate', 'POST');
+        $mockRequest = $this->createMockRequest('/api/stop-single-test', 'POST');
 
         $router->onOpen($mockConnection, $mockRequest);
 
@@ -182,7 +174,7 @@ class RouterTest extends TestCase
     {
         $router = $this->createRouter();
 
-        // runningProcesses is empty by default
+        // runningProcess is null by default
 
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
@@ -195,26 +187,21 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('No test run in progress.', $sent[0]);
     }
 
-    public function testStopSingleEndpointReturns404IfRunIdNotFound(): void
+    public function testStopSingleEndpointReturns404IfNoProcessIsRunning(): void
     {
         $router = $this->createRouter();
 
-        $mockProcess = $this->createMockProcess(false); // No terminate expected
-        $reflectionObject = new ReflectionObject($router);
-        $reflectionProperty = $reflectionObject->getProperty('runningProcesses');
-        $reflectionProperty->setValue($router, [
-            'some-other-run-id' => $mockProcess,
-        ]);
+        // runningProcess is null by default
 
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/stop-single-test/non-existent-run-id', 'POST');
+        $mockRequest = $this->createMockRequest('/api/stop-single-test', 'POST');
 
         $router->onOpen($mockConnection, $mockRequest);
 
         $this->assertNotEmpty($sent, 'No response sent');
         $this->assertStringContainsString('HTTP/1.1 404', $sent[0]);
-        $this->assertStringContainsString('No test run found with ID non-existent-run-id.', $sent[0]);
+        $this->assertStringContainsString('No test run in progress.', $sent[0]);
     }
 
     public function testGetCoverageReturnsCoverageData(): void
@@ -229,7 +216,7 @@ class RouterTest extends TestCase
 
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/coverage/some-run-id', 'GET');
+        $mockRequest = $this->createMockRequest('/api/coverage', 'GET');
 
         $router->onOpen($mockConnection, $mockRequest);
 
@@ -258,7 +245,7 @@ class RouterTest extends TestCase
             '/api/file-coverage',
             'GET',
             '',
-            'runId=some-run-id&path=' . $filePath
+            'path=' . $filePath
         );
 
         $router->onOpen($mockConnection, $mockRequest);
@@ -499,7 +486,6 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('Content-Type: text/html', $sent[0]);
         $this->assertStringContainsString("window.WS_HOST = '127.0.0.1'", $sent[0]);
         $this->assertStringContainsString("window.WS_PORT = '8080'", $sent[0]);
-        $this->assertMatchesRegularExpression('/css\/styles\.css\?v=[a-f0-9]{32}/', $sent[0]);
     }
 
     public function testNotFoundResponse(): void
@@ -535,23 +521,15 @@ class RouterTest extends TestCase
         // No file path
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'runId=123');
+        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET');
         $router->onOpen($mockConnection, $mockRequest);
         $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
         $this->assertStringContainsString('File path not provided.', $sent[0]);
 
-        // No run ID
-        $sent = [];
-        $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'path=some/file.php');
-        $router->onOpen($mockConnection, $mockRequest);
-        $this->assertStringContainsString('HTTP/1.1 400', $sent[0]);
-        $this->assertStringContainsString('Run ID not provided.', $sent[0]);
-
         // Access denied
         $sent = [];
         $mockConnection = $this->createMockConnection($sent);
-        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'runId=123&path=../outside/file.php');
+        $mockRequest = $this->createMockRequest('/api/file-coverage', 'GET', '', 'path=../outside/file.php');
         $router->onOpen($mockConnection, $mockRequest);
         $this->assertStringContainsString('HTTP/1.1 403', $sent[0]);
         $this->assertStringContainsString('Access denied.', $sent[0]);

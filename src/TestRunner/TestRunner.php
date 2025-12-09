@@ -16,7 +16,6 @@ use function file_exists;
 use function implode;
 use function preg_quote;
 use function preg_replace;
-use function sprintf;
 use function strtolower;
 use function trim;
 
@@ -40,7 +39,7 @@ class TestRunner
      *     coverage: bool
      * } $context
      */
-    public function run(array $context, string $runId): Process
+    public function run(array $context): Process
     {
         $phpunitPath = Composer::getComposerBinDir($this->projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
 
@@ -97,7 +96,7 @@ class TestRunner
         }
 
         if ($context['coverage']) {
-            $this->addCoverageOptions($command, $phpunitXmlPath, $runId);
+            $this->addCoverageOptions($command, $phpunitXmlPath);
         }
 
         $this->lastCommand = $command;
@@ -113,7 +112,7 @@ class TestRunner
         return $this->lastCommand;
     }
 
-    private function addCoverageOptions(string &$command, string $phpunitXmlPath, string $runId): void
+    private function addCoverageOptions(string &$command, string $phpunitXmlPath): void
     {
         $domDocument = new DOMDocument();
         @$domDocument->load($phpunitXmlPath);
@@ -121,7 +120,7 @@ class TestRunner
 
         $cloverReport = $domxPath->query('//coverage/report/clover')->item(0);
 
-        $cloverFile =  $this->projectRoot . sprintf('/clover-%s.xml', $runId);
+        $cloverFile =  $this->projectRoot . '/clover.xml';
 
         if ($cloverReport instanceof DOMElement) {
             $cloverFile = $cloverReport->getAttribute('outputFile');

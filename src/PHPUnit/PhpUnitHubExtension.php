@@ -70,7 +70,6 @@ class PhpUnitHubExtension implements Extension
             return $testId;
         };
 
-        // Register individual subscribers for each event type
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PreparedSubscriber {
             private readonly Closure $writeEvent;
 
