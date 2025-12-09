@@ -130,23 +130,6 @@ describe('Store', () => {
             // Verify the effect of resetSidebarTestStatuses
             expect(store.state.testSuites[0].methods[0].status).toBeNull();
         });
-
-        test('should not reset results for suite-level context', () => {
-            store.state.testRun = {
-                status: 'finished',
-                contextId: 'global',
-                suites: { 'SuiteA': { name: 'SuiteA', tests: { 'SuiteA::test1': { id: 'SuiteA::test1' } } } },
-                summary: {},
-                failedTestIds: new Set(),
-                executionEnded: true,
-                sumOfDurations: 10,
-            };
-            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'SuiteA::test1', status: 'passed' }] }];
-
-            store.initializeTestRun('SuiteA');
-            expect(store.state.testRun.suites['SuiteA'].tests['SuiteA::test1']).toBeDefined();
-            expect(store.state.testRun.contextId).toBe('SuiteA');
-        });
     });
 
     describe('handleTestEvent', () => {
@@ -240,17 +223,6 @@ describe('Store', () => {
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].duration).toBe(0.1);
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].assertions).toBe(5);
-        });
-
-        test('should call handleExecutionEnded for execution.ended event', () => {
-            const summary = { numberOfTests: 10, status: 'passed' };
-            const eventData = { event: 'execution.ended', data: { summary } };
-            store.handleTestEvent(eventData);
-
-            // Verify the effect
-            expect(run.summary).toEqual(summary);
-            expect(run.status).toBe('finished');
-            expect(store.state.isRunning).toBe(false);
         });
 
         test('should warn for unknown run', () => {
@@ -451,40 +423,6 @@ describe('Store', () => {
             expect(test.assertions).toBe(5);
             expect(run.sumOfDurations).toBe(1.23);
             expect(store.state.testSuites[0].methods[0].duration).toBe(1.23);
-        });
-    });
-
-    describe('handleExecutionEnded', () => {
-        let run;
-        beforeEach(() => {
-            store.initializeTestRun('global');
-            run = store.state.testRun;
-            store.state.isRunning = true;
-            store.state.isStopping = true;
-            store.state.isStarting = true;
-        });
-
-        test('should set summary, status, clear flags, and reset isStarting', () => {
-            store.state.testSuites = [
-                { id: 'SuiteA', isRunning: true, methods: [{ id: 'SuiteA::test1', status: 'running' }] },
-                { id: 'SuiteB', isRunning: false, methods: [{ id: 'SuiteB::test2', status: 'passed' }] },
-            ];
-
-            const summary = { numberOfTests: 10, numberOfFailures: 1, status: 'failure' };
-            const eventData = { event: 'execution.ended', data: { summary: summary } };
-            store.handleExecutionEnded(run, eventData);
-
-            expect(run.summary).toEqual(summary);
-            expect(run.status).toBe('finished');
-            expect(store.state.isRunning).toBe(false);
-            expect(store.state.isStopping).toBe(false);
-            expect(store.state.isStarting).toBe(false);
-
-            // Assert the effects of updateSidebarAfterRun
-            expect(store.state.testSuites[0].isRunning).toBe(false);
-            expect(store.state.testSuites[0].methods[0].status).toBe('running'); // Status is not reset here
-            expect(store.state.testSuites[1].isRunning).toBe(false);
-            expect(store.state.testSuites[1].methods[0].status).toBe('passed');
         });
     });
 

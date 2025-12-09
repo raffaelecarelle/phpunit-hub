@@ -36,6 +36,7 @@ class MockStore {
         this.clearRunningTests = vi.fn();
         this.getTestRun = vi.fn(() => this.state.testRun);
         this.isTestRunning = vi.fn(() => this.state.isRunning);
+        this.finishTestRun = vi.fn();
     }
 }
 

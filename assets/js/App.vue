@@ -13,8 +13,8 @@
         <!-- Main Container -->
         <div class="flex flex-grow overflow-hidden">
             <TestSidebar
-                :is-test-running="isTestRunning"
-                :is-test-stop-pending="isTestStopPending"
+                @isTestRunning="isTestRunning"
+                @isTestStopPending="isTestStopPending"
                 @toggle-suite="toggleSuiteExpansion"
                 @stopSingleTest="stopSingleTest"
                 @runSuiteTests="runSuiteTests"

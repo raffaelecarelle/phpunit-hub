@@ -30,7 +30,7 @@ describe('TestSuiteHeader', () => {
       props: {
         suite: mockSuite,
         isTestRunning: mockIsTestRunning,
-        isTestStopPending: mockIsTestStopPending || false,
+        isTestStopPending: mockIsTestStopPending,
       },
     });
 

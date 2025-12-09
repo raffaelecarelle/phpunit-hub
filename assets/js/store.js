@@ -319,6 +319,7 @@ function handleTestFinished(run, eventData) {
 }
 
 function handleExecutionEnded(eventData) {
+    console.log('handleExecutionEnded', eventData);
     const run = state.testRun;
     if (run) {
         run.summary = eventData.data.summary;
