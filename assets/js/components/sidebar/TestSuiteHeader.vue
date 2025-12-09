@@ -12,9 +12,9 @@
             <span class="font-bold">{{ suite.name }}</span>
         </div>
         <div class="flex items-center">
-            <div v-if="suite.runId && isTestRunning(suite.runId)" class="spinner !w-4 !h-4"></div>
-            <span v-if="suite.runId && isTestRunning(suite.runId)"
-                  @click.stop="stopSingleTest(suite.runId)"
+            <div v-if="suite.isRunning" class="spinner !w-4 !h-4"></div>
+            <span v-if="suite.isRunning"
+                  @click.stop="stopSingleTest"
                   class="cursor-pointer text-red-500 hover:text-red-400 ml-2"
                   title="Stop this suite">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
@@ -23,8 +23,8 @@
                 </span>
             <span v-else
                   @click.stop="runSuiteTests(suite.id)"
-                  :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending(suite.runId), 'text-gray-500': isTestStopPending(suite.runId)}"
-                  :title="isTestStopPending(suite.runId) ? 'Stopping...' : 'Run all tests in this suite'">
+                  :class="{'cursor-pointer text-green-500 hover:text-green-400': !isTestStopPending, 'text-gray-500': isTestStopPending}"
+                  :title="isTestStopPending ? 'Stopping...' : 'Run all tests in this suite'">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                         <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                     </svg>
@@ -40,8 +40,8 @@ const store = useStore();
 defineProps(['suite', 'isTestRunning', 'isTestStopPending']);
 const emit = defineEmits(['toggle-suite', 'stopSingleTest', 'runSuiteTests']);
 
-function stopSingleTest(runId) {
-    emit('stopSingleTest', runId);
+function stopSingleTest() {
+    emit('stopSingleTest');
 }
 
 function runSuiteTests(suiteId) {

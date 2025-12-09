@@ -86,14 +86,14 @@ export class ApiClient {
     /**
      * Stop a single test run
      */
-    async stopSingleTest(runId) {
+    async stopSingleTest() {
         return this.retry(async () => {
-            const response = await fetch(`${this.baseUrl}/api/stop-single-test/${runId}`, {
+            const response = await fetch(`${this.baseUrl}/api/stop-single-test`, {
                 method: 'POST'
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to stop test run ${runId}`);
+                throw new Error(`Failed to stop test run`);
             }
         });
     }
@@ -101,9 +101,9 @@ export class ApiClient {
     /**
      * Fetch coverage report
      */
-    async fetchCoverage(runId) {
+    async fetchCoverage() {
         return this.retry(async () => {
-            const response = await fetch(`${this.baseUrl}/api/coverage/${runId}`);
+            const response = await fetch(`${this.baseUrl}/api/coverage`);
             if (!response.ok) {
                 let errorDetails = 'Unknown error';
                 try {
@@ -121,9 +121,9 @@ export class ApiClient {
     /**
      * Fetch file coverage
      */
-    async fetchFileCoverage(runId, filePath) {
+    async fetchFileCoverage(filePath) {
         return this.retry(async () => {
-            const response = await fetch(`${this.baseUrl}/api/file-coverage?runId=${runId}&path=${encodeURIComponent(filePath)}`);
+            const response = await fetch(`${this.baseUrl}/api/file-coverage?path=${encodeURIComponent(filePath)}`);
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to fetch file coverage');

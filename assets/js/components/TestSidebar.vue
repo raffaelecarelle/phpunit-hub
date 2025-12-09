@@ -41,8 +41,8 @@ function toggleSuite(suiteId) {
     emit('toggle-suite', suiteId);
 }
 
-function stopSingleTest(runId) {
-    emit('stopSingleTest', runId);
+function stopSingleTest() {
+    emit('stopSingleTest');
 }
 
 function runSuiteTests(suiteId) {

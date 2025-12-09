@@ -76,10 +76,10 @@ export class WebSocketManager {
                 this.handleRealtimeEvent(message);
                 break;
             case 'exit':
-                this.handleTestExit(message);
+                this.handleTestExit();
                 break;
             case 'stopped':
-                this.handleTestStopped(message);
+                this.handleTestStopped();
                 break;
             default:
                 console.warn('Unknown message type:', message.type);
@@ -90,7 +90,7 @@ export class WebSocketManager {
      * Handle test start event
      */
     handleTestStart(message) {
-        this.store.initializeTestRun(message.runId, message.contextId);
+        this.store.initializeTestRun(message.contextId);
     }
 
     /**
@@ -99,7 +99,7 @@ export class WebSocketManager {
     handleRealtimeEvent(message) {
         try {
             const event = JSON.parse(message.data);
-            this.store.handleTestEvent(message.runId, event);
+            this.store.handleTestEvent(event);
 
             if (event.event === 'execution.ended' && this.store.state.coverage) {
                 this.store.setCoverageLoading(true);
@@ -112,58 +112,25 @@ export class WebSocketManager {
     /**
      * Handle test exit event
      */
-    handleTestExit(message) {
-        this.updateFaviconFromRun(message.runId);
+    handleTestExit() {
         if (this.store.state.coverage && this.callbacks.fetchCoverageReport) {
-            this.callbacks.fetchCoverageReport(message.runId);
+            this.callbacks.fetchCoverageReport();
         }
     }
 
     /**
      * Handle test stopped event
      */
-    handleTestStopped(message) {
-        this.store.stopTestRun(message.runId);
+    handleTestStopped() {
+        this.store.stopTestRun();
         this.updateFaviconIfComplete();
-    }
-
-    /**
-     * Update favicon based on test run results
-     */
-    updateFaviconFromRun(runId) {
-        const run = this.store.getTestRun(runId);
-        if (!run || !run.summary) {
-            return;
-        }
-
-        // In update mode, check all runs to determine overall status
-        if (this.store.state.options.resultUpdateMode === 'update') {
-            let hasFailures = false;
-
-            for (const id in this.store.state.realtimeTestRuns) {
-                const r = this.store.state.realtimeTestRuns[id];
-                if (r.summary && (r.summary.numberOfFailures > 0 || r.summary.numberOfErrors > 0)) {
-                    hasFailures = true;
-                    break;
-                }
-            }
-
-            updateFavicon(hasFailures ? 'failure' : 'success');
-        } else {
-            // In reset mode, only consider current run
-            if (run.summary.numberOfFailures > 0 || run.summary.numberOfErrors > 0) {
-                updateFavicon('failure');
-            } else {
-                updateFavicon('success');
-            }
-        }
     }
 
     /**
      * Update favicon if all tests are complete
      */
     updateFaviconIfComplete() {
-        if (this.store.getRunningTestCount() === 0) {
+        if (!this.store.isTestRunning()) {
             updateFavicon('neutral');
         }
     }

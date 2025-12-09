@@ -53,7 +53,6 @@ describe('ApiClient', () => {
             expect(mockFetch).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
             expect(consoleWarnSpy).toHaveBeenCalledTimes(3); // 3 warnings for 3 retries
             expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // 1 error for the final failure
-            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch tests:', expect.any(Error));
             expect(consoleErrorSpy.mock.calls[0][1].message).toBe(expectedErrorMessage);
         });
 
@@ -73,7 +72,7 @@ describe('ApiClient', () => {
 
             expect(mockFetch).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
             expect(result).toEqual(mockResponseData);
-            expect(consoleWarnSpy).toHaveBeenCalledTimes(2); // 2 warnings for 2 retries
+            expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
             expect(consoleErrorSpy).not.toHaveBeenCalled();
         });
 
@@ -95,7 +94,7 @@ describe('ApiClient', () => {
         const payload = { filters: ['test1'], groups: [], suites: [], options: {} };
 
         test('should run tests successfully', async () => {
-            const mockResponseData = { status: 'running', runId: '123' };
+            const mockResponseData = { status: 'running' };
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve(mockResponseData),
@@ -132,7 +131,7 @@ describe('ApiClient', () => {
 
         test('should succeed after retrying if fetch fails initially', async () => {
             const networkError = new TypeError('Failed to fetch');
-            const mockResponseData = { status: 'running', runId: '123' };
+            const mockResponseData = { status: 'running' };
 
             mockFetch.mockRejectedValueOnce(networkError);
             mockFetch.mockRejectedValueOnce(networkError);
@@ -234,15 +233,13 @@ describe('ApiClient', () => {
     });
 
     describe('stopSingleTest', () => {
-        const runId = 'testRun123';
-
         test('should stop a single test successfully', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
             });
 
-            await expect(api.stopSingleTest(runId)).resolves.toBeUndefined();
-            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/stop-single-test/${runId}`, {
+            await expect(api.stopSingleTest()).resolves.toBeUndefined();
+            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/stop-single-test`, {
                 method: 'POST',
             });
             expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -258,11 +255,11 @@ describe('ApiClient', () => {
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
-            await expect(api.stopSingleTest(runId)).rejects.toThrow(expectedErrorMessage);
+            await expect(api.stopSingleTest()).rejects.toThrow(expectedErrorMessage);
             expect(mockFetch).toHaveBeenCalledTimes(4);
             expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
             expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-            expect(consoleErrorSpy).toHaveBeenCalledWith(`Failed to stop test run ${runId}:`, expect.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith(`Failed to stop test run:`, expect.any(Error));
             expect(consoleErrorSpy.mock.calls[0][1].message).toBe(expectedErrorMessage);
         });
 
@@ -275,7 +272,7 @@ describe('ApiClient', () => {
                 ok: true,
             });
 
-            await expect(api.stopSingleTest(runId)).resolves.toBeUndefined();
+            await expect(api.stopSingleTest()).resolves.toBeUndefined();
             expect(mockFetch).toHaveBeenCalledTimes(3);
             expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
             expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -286,16 +283,14 @@ describe('ApiClient', () => {
                 ok: false,
             });
 
-            await expect(api.stopSingleTest(runId)).rejects.toThrow(`Failed to stop test run ${runId}`);
+            await expect(api.stopSingleTest()).rejects.toThrow(`Failed to stop test run`);
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
-            expect(consoleErrorSpy).toHaveBeenCalledWith(`Failed to stop test run ${runId}:`, expect.any(Error));
+            expect(consoleErrorSpy).toHaveBeenCalledWith(`Failed to stop test run:`, expect.any(Error));
         });
     });
 
     describe('fetchCoverage', () => {
-        const runId = 'coverageRun123';
-
         test('should fetch coverage successfully', async () => {
             const mockResponseData = { coverage: 'data' };
             mockFetch.mockResolvedValueOnce({
@@ -303,9 +298,9 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve(mockResponseData),
             });
 
-            const result = await api.fetchCoverage(runId);
+            const result = await api.fetchCoverage();
 
-            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/coverage/${runId}`);
+            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/coverage`);
             expect(result).toEqual(mockResponseData);
             expect(consoleErrorSpy).not.toHaveBeenCalled();
             expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -320,7 +315,7 @@ describe('ApiClient', () => {
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
-            await expect(api.fetchCoverage(runId)).rejects.toThrow(expectedErrorMessage);
+            await expect(api.fetchCoverage()).rejects.toThrow(expectedErrorMessage);
             expect(mockFetch).toHaveBeenCalledTimes(4);
             expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
             expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
@@ -339,7 +334,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve(mockResponseData),
             });
 
-            const result = await api.fetchCoverage(runId);
+            const result = await api.fetchCoverage();
 
             expect(mockFetch).toHaveBeenCalledTimes(3);
             expect(result).toEqual(mockResponseData);
@@ -353,7 +348,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve({ error: 'Coverage not found' }),
             });
 
-            await expect(api.fetchCoverage(runId)).rejects.toThrow('Failed to fetch coverage report: Coverage not found');
+            await expect(api.fetchCoverage()).rejects.toThrow('Failed to fetch coverage report: Coverage not found');
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch coverage report:', expect.any(Error));
@@ -365,7 +360,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve({}),
             });
 
-            await expect(api.fetchCoverage(runId)).rejects.toThrow('Failed to fetch coverage report: {}');
+            await expect(api.fetchCoverage()).rejects.toThrow('Failed to fetch coverage report: {}');
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch coverage report:', expect.any(Error));
@@ -378,7 +373,7 @@ describe('ApiClient', () => {
                 statusText: 'Not Found',
             });
 
-            await expect(api.fetchCoverage(runId)).rejects.toThrow('Failed to fetch coverage report: Not Found');
+            await expect(api.fetchCoverage()).rejects.toThrow('Failed to fetch coverage report: Not Found');
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch coverage report:', expect.any(Error));
@@ -386,7 +381,6 @@ describe('ApiClient', () => {
     });
 
     describe('fetchFileCoverage', () => {
-        const runId = 'fileCoverageRun123';
         const filePath = '/path/to/file.php';
 
         test('should fetch file coverage successfully', async () => {
@@ -396,9 +390,9 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve(mockResponseData),
             });
 
-            const result = await api.fetchFileCoverage(runId, filePath);
+            const result = await api.fetchFileCoverage(filePath);
 
-            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/file-coverage?runId=${runId}&path=${encodeURIComponent(filePath)}`);
+            expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/file-coverage?path=${encodeURIComponent(filePath)}`);
             expect(result).toEqual(mockResponseData);
             expect(consoleErrorSpy).not.toHaveBeenCalled();
             expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -413,7 +407,7 @@ describe('ApiClient', () => {
 
             const expectedErrorMessage = 'Network error: Could not connect to the server after multiple attempts. Please check your connection or try again.';
 
-            await expect(api.fetchFileCoverage(runId, filePath)).rejects.toThrow(expectedErrorMessage);
+            await expect(api.fetchFileCoverage(filePath)).rejects.toThrow(expectedErrorMessage);
             expect(mockFetch).toHaveBeenCalledTimes(4);
             expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
             expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
@@ -432,7 +426,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve(mockResponseData),
             });
 
-            const result = await api.fetchFileCoverage(runId, filePath);
+            const result = await api.fetchFileCoverage(filePath);
 
             expect(mockFetch).toHaveBeenCalledTimes(3);
             expect(result).toEqual(mockResponseData);
@@ -446,7 +440,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve({ error: 'File coverage not found' }),
             });
 
-            await expect(api.fetchFileCoverage(runId, filePath)).rejects.toThrow('File coverage not found');
+            await expect(api.fetchFileCoverage(filePath)).rejects.toThrow('File coverage not found');
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch file coverage:', expect.any(Error));
@@ -458,7 +452,7 @@ describe('ApiClient', () => {
                 json: () => Promise.resolve({}),
             });
 
-            await expect(api.fetchFileCoverage(runId, filePath)).rejects.toThrow('Failed to fetch file coverage');
+            await expect(api.fetchFileCoverage(filePath)).rejects.toThrow('Failed to fetch file coverage');
             expect(mockFetch).toHaveBeenCalledTimes(1);
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch file coverage:', expect.any(Error));

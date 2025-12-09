@@ -66,10 +66,9 @@ describe('Store', () => {
             coverage: false,
             isCoverageLoading: false,
             coverageReport: null,
-            runningTestIds: {},
-            stopPending: {},
-            realtimeTestRuns: {},
-            lastCompletedRunId: null,
+            testRun: null,
+            isRunning: false,
+            isStopping: false,
             options: {
                 displayDeprecations: true,
                 displayIncomplete: true,
@@ -98,16 +97,17 @@ describe('Store', () => {
     });
 
     describe('initializeTestRun', () => {
-        test('should set up a new test run and reset isStarting', () => {
-            const runId = 'run123';
+        test('should set up a new test run and reset isStarting for global context', () => {
             const contextId = 'global';
             store.state.isStarting = true;
-            store.state.stopPending[runId] = true;
+            store.state.isStopping = true;
 
-            store.initializeTestRun(runId, contextId);
+            store.initializeTestRun(contextId);
 
             expect(store.state.isStarting).toBe(false);
-            expect(store.state.realtimeTestRuns[runId]).toEqual({
+            expect(store.state.isRunning).toBe(true);
+            expect(store.state.isStopping).toBe(false);
+            expect(store.state.testRun).toEqual({
                 status: 'running',
                 contextId: contextId,
                 executionEnded: false,
@@ -116,18 +116,15 @@ describe('Store', () => {
                 sumOfDurations: 0,
                 failedTestIds: new Set(),
             });
-            expect(store.state.runningTestIds[runId]).toBe(true);
-            expect(store.state.stopPending[runId]).toBeUndefined();
             expect(store.state.activeTab).toBe('results');
         });
 
         test('should reset sidebar and expanded state for failed context', () => {
-            const runId = 'run123';
             store.state.expandedTestId = 'someTest';
             store.state.expandedTestcaseGroups.add('someGroup');
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
 
-            store.initializeTestRun(runId, 'failed');
+            store.initializeTestRun('failed');
 
             expect(store.state.expandedTestId).toBeNull();
             expect(store.state.expandedTestcaseGroups.size).toBe(0);
@@ -135,29 +132,35 @@ describe('Store', () => {
             expect(store.state.testSuites[0].methods[0].status).toBeNull();
         });
 
-        test('should reset results for global context', () => {
-            const runId = 'run123';
-            store.state.realtimeTestRuns['oldRun'] = { status: 'finished' };
-            store.state.lastCompletedRunId = 'oldRun';
+        test('should not reset results for suite-level context', () => {
+            store.state.testRun = {
+                status: 'finished',
+                contextId: 'global',
+                suites: { 'SuiteA': { name: 'SuiteA', tests: { 'SuiteA::test1': { id: 'SuiteA::test1' } } } },
+                summary: {},
+                failedTestIds: new Set(),
+                executionEnded: true,
+                sumOfDurations: 10,
+            };
+            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'SuiteA::test1', status: 'passed' }] }];
 
-            store.initializeTestRun(runId, 'global');
-            expect(store.state.realtimeTestRuns['oldRun']).toBeUndefined();
-            expect(store.state.lastCompletedRunId).toBeNull();
+            store.initializeTestRun('SuiteA');
+            expect(store.state.testRun.suites['SuiteA'].tests['SuiteA::test1']).toBeDefined();
+            expect(store.state.testRun.contextId).toBe('SuiteA');
         });
     });
 
     describe('handleTestEvent', () => {
         let run;
-        const runId = 'run123';
 
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
         });
 
         test('should call handleSuiteStarted for suite.started event', () => {
             const eventData = { event: 'suite.started', data: { name: 'SuiteA', count: 1 } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect instead of spying
             expect(run.suites['SuiteA']).toBeDefined();
@@ -167,7 +170,7 @@ describe('Store', () => {
         test('should call handleTestPrepared for test.prepared event', () => {
             run.suites['SuiteA'] = { name: 'SuiteA', tests: {} };
             const eventData = { event: 'test.prepared', data: { testId: 'SuiteA::testMethod' } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod']).toBeDefined();
@@ -184,7 +187,7 @@ describe('Store', () => {
                 hasIssues: false,
             };
             const eventData = { event: 'test.warning', data: { testId: 'SuiteA::testMethod', message: 'Warning!' } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].warnings.length).toBe(1);
@@ -201,7 +204,7 @@ describe('Store', () => {
                 hasIssues: false,
             };
             const eventData = { event: 'test.notice', data: { testId: 'SuiteA::testMethod', message: 'Notice!' } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].notices.length).toBe(1);
@@ -218,7 +221,7 @@ describe('Store', () => {
                 hasIssues: false,
             };
             const eventData = { event: 'test.passed', data: { testId: 'SuiteA::testMethod' } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].status).toBe('passed');
@@ -233,7 +236,7 @@ describe('Store', () => {
                 }
             };
             const eventData = { event: 'test.finished', data: { testId: 'SuiteA::testMethod', duration: 0.1, assertions: 5 } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod'].duration).toBe(0.1);
@@ -243,26 +246,27 @@ describe('Store', () => {
         test('should call handleExecutionEnded for execution.ended event', () => {
             const summary = { numberOfTests: 10, status: 'passed' };
             const eventData = { event: 'execution.ended', data: { summary } };
-            store.handleTestEvent(runId, eventData);
+            store.handleTestEvent(eventData);
 
             // Verify the effect
             expect(run.summary).toEqual(summary);
             expect(run.status).toBe('finished');
-            expect(store.state.lastCompletedRunId).toBe(runId);
+            expect(store.state.isRunning).toBe(false);
         });
 
-        test('should warn for unknown runId', () => {
+        test('should warn for unknown run', () => {
+            store.state.testRun = null; // Simulate no active run
             const eventData = { event: 'test.passed', data: { testId: 'SuiteA::testMethod' } };
-            store.handleTestEvent('unknownRun', eventData);
-            expect(console.warn).toHaveBeenCalledWith('Received event for unknown runId: unknownRun');
+            store.handleTestEvent(eventData);
+            expect(console.warn).toHaveBeenCalledWith('Received event for unknown run');
         });
     });
 
     describe('handleSuiteStarted', () => {
         let run;
         beforeEach(() => {
-            store.initializeTestRun('run123', 'global');
-            run = store.state.realtimeTestRuns['run123'];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
         });
 
         test('should add a new suite to the run', () => {
@@ -281,17 +285,16 @@ describe('Store', () => {
 
     describe('handleTestPrepared', () => {
         let run;
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'SuiteA::testMethod', status: null }] }];
         });
 
         test('should add a new test to an existing suite', () => {
             run.suites['SuiteA'] = { name: 'SuiteA', tests: {} };
             const eventData = { event: 'test.prepared', data: { testId: 'SuiteA::testMethod' } };
-            store.handleTestPrepared(run, eventData, runId);
+            store.handleTestPrepared(run, eventData);
 
             expect(run.suites['SuiteA'].tests['SuiteA::testMethod']).toEqual({
                 id: 'SuiteA::testMethod',
@@ -303,12 +306,11 @@ describe('Store', () => {
                 warnings: [], deprecations: [], notices: []
             });
             expect(store.state.testSuites[0].methods[0].status).toBe('running');
-            expect(store.state.testSuites[0].methods[0].runId).toBe(runId);
         });
 
         test('should create suite if it does not exist and add test', () => {
             const eventData = { event: 'test.prepared', data: { testId: 'SuiteB::testMethod' } };
-            store.handleTestPrepared(run, eventData, runId);
+            store.handleTestPrepared(run, eventData);
 
             expect(run.suites['SuiteB']).toBeDefined();
             expect(run.suites['SuiteB'].tests['SuiteB::testMethod']).toBeDefined();
@@ -318,10 +320,9 @@ describe('Store', () => {
     describe('handleTestWarningOrDeprecation', () => {
         let run;
         const testId = 'SuiteA::testMethod';
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {
@@ -355,10 +356,9 @@ describe('Store', () => {
     describe('handleTestNotice', () => {
         let run;
         const testId = 'SuiteA::testMethod';
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {
@@ -382,11 +382,10 @@ describe('Store', () => {
     describe('handleTestCompleted', () => {
         let run;
         const testId = 'SuiteA::testMethod';
-        const runId = 'run123';
 
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {
@@ -394,12 +393,12 @@ describe('Store', () => {
                 },
                 passed: 0, failed: 0, errored: 0, skipped: 0, incomplete: 0, hasIssues: false,
             };
-            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: testId, status: 'running', runId: runId }] }];
+            store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: testId, status: 'running' }] }];
         });
 
         test('should update test status and suite counts for passed test', () => {
             const eventData = { event: 'test.passed', data: { testId: testId } };
-            store.handleTestCompleted(run, eventData, runId);
+            store.handleTestCompleted(run, eventData);
 
             const test = run.suites['SuiteA'].tests[testId];
             expect(test.status).toBe('passed');
@@ -407,12 +406,11 @@ describe('Store', () => {
             expect(run.failedTestIds.has(testId)).toBe(false);
             expect(run.suites['SuiteA'].hasIssues).toBe(false);
             expect(store.state.testSuites[0].methods[0].status).toBe('passed');
-            expect(store.state.testSuites[0].methods[0].runId).toBeNull();
         });
 
         test('should update test status for failed test and track it', () => {
             const eventData = { event: 'test.failed', data: { testId: testId, message: 'Failed!', trace: 'stack' } };
-            store.handleTestCompleted(run, eventData, runId);
+            store.handleTestCompleted(run, eventData);
 
             const test = run.suites['SuiteA'].tests[testId];
             expect(test.status).toBe('failed');
@@ -426,7 +424,7 @@ describe('Store', () => {
         test('should remove test from failedTestIds if it passes after being failed', () => {
             run.failedTestIds.add(testId);
             const eventData = { event: 'test.passed', data: { testId: testId } };
-            store.handleTestCompleted(run, eventData, runId);
+            store.handleTestCompleted(run, eventData);
             expect(run.failedTestIds.has(testId)).toBe(false);
         });
     });
@@ -434,10 +432,9 @@ describe('Store', () => {
     describe('handleTestFinished', () => {
         let run;
         const testId = 'SuiteA::testMethod';
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
+            store.initializeTestRun('global');
+            run = store.state.testRun;
             run.suites['SuiteA'] = {
                 name: 'SuiteA',
                 tests: {
@@ -449,7 +446,7 @@ describe('Store', () => {
 
         test('should update the duration and assertions of a test', () => {
             const eventData = { event: 'test.finished', data: { testId: testId, duration: 1.23, assertions: 5 } };
-            store.handleTestFinished(run, eventData, runId);
+            store.handleTestFinished(run, eventData);
             const test = run.suites['SuiteA'].tests[testId];
             expect(test.duration).toBe(1.23);
             expect(test.assertions).toBe(5);
@@ -460,86 +457,79 @@ describe('Store', () => {
 
     describe('handleExecutionEnded', () => {
         let run;
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            run = store.state.realtimeTestRuns[runId];
-            store.state.runningTestIds[runId] = true;
-            store.state.stopPending[runId] = true;
+            store.initializeTestRun('global');
+            run = store.state.testRun;
+            store.state.isRunning = true;
+            store.state.isStopping = true;
             store.state.isStarting = true;
         });
 
         test('should set summary, status, clear flags, and reset isStarting', () => {
             store.state.testSuites = [
-                { id: 'SuiteA', runId: runId, methods: [{ id: 'SuiteA::test1', runId: runId }] },
-                { id: 'SuiteB', runId: 'anotherRunId', methods: [{ id: 'SuiteB::test2', runId: 'anotherRunId' }] },
+                { id: 'SuiteA', isRunning: true, methods: [{ id: 'SuiteA::test1', status: 'running' }] },
+                { id: 'SuiteB', isRunning: false, methods: [{ id: 'SuiteB::test2', status: 'passed' }] },
             ];
 
             const summary = { numberOfTests: 10, numberOfFailures: 1, status: 'failure' };
             const eventData = { event: 'execution.ended', data: { summary: summary } };
-            store.handleExecutionEnded(run, eventData, runId);
+            store.handleExecutionEnded(run, eventData);
 
             expect(run.summary).toEqual(summary);
             expect(run.status).toBe('finished');
-            expect(store.state.lastCompletedRunId).toBe(runId);
-            expect(store.state.runningTestIds[runId]).toBeUndefined();
-            expect(store.state.stopPending[runId]).toBeUndefined();
+            expect(store.state.isRunning).toBe(false);
+            expect(store.state.isStopping).toBe(false);
             expect(store.state.isStarting).toBe(false);
 
             // Assert the effects of updateSidebarAfterRun
-            expect(store.state.testSuites[0].runId).toBeNull();
-            expect(store.state.testSuites[0].methods[0].runId).toBeNull();
-            expect(store.state.testSuites[1].runId).toBe('anotherRunId');
-            expect(store.state.testSuites[1].methods[0].runId).toBe('anotherRunId');
+            expect(store.state.testSuites[0].isRunning).toBe(false);
+            expect(store.state.testSuites[0].methods[0].status).toBe('running'); // Status is not reset here
+            expect(store.state.testSuites[1].isRunning).toBe(false);
+            expect(store.state.testSuites[1].methods[0].status).toBe('passed');
         });
     });
 
     describe('stopTestRun', () => {
-        const runId = 'run123';
         beforeEach(() => {
-            store.initializeTestRun(runId, 'global');
-            store.state.runningTestIds[runId] = true;
-            store.state.stopPending[runId] = true;
+            store.initializeTestRun('global');
+            store.state.isRunning = true;
+            store.state.isStopping = true;
             store.state.isStarting = true;
         });
 
         test('should mark run as stopped, clear flags, and reset isStarting', () => {
             store.state.testSuites = [
-                { id: 'SuiteA', runId: runId, methods: [{ id: 'SuiteA::test1', runId: runId }] },
-                { id: 'SuiteB', runId: 'anotherRunId', methods: [{ id: 'SuiteB::test2', runId: 'anotherRunId' }] },
+                { id: 'SuiteA', isRunning: true, methods: [{ id: 'SuiteA::test1', status: 'running' }] },
+                { id: 'SuiteB', isRunning: false, methods: [{ id: 'SuiteB::test2', status: 'passed' }] },
             ];
 
-            store.stopTestRun(runId);
-            expect(store.state.realtimeTestRuns[runId].status).toBe('stopped');
-            expect(store.state.runningTestIds[runId]).toBeUndefined();
-            expect(store.state.stopPending[runId]).toBeUndefined();
+            store.stopTestRun();
+            expect(store.state.testRun.status).toBe('stopped');
+            expect(store.state.isRunning).toBe(false);
+            expect(store.state.isStopping).toBe(false);
             expect(store.state.isStarting).toBe(false);
 
-            expect(store.state.testSuites[0].runId).toBeNull();
-            expect(store.state.testSuites[0].methods[0].runId).toBeNull();
-            expect(store.state.testSuites[1].runId).toBe('anotherRunId');
-            expect(store.state.testSuites[1].methods[0].runId).toBe('anotherRunId');
+            expect(store.state.testSuites[0].isRunning).toBe(false);
+            expect(store.state.testSuites[0].methods[0].status).toBe('running');
+            expect(store.state.testSuites[1].isRunning).toBe(false);
+            expect(store.state.testSuites[1].methods[0].status).toBe('passed');
         });
     });
 
     describe('getFailedTestIds', () => {
-        test('should return failed test IDs from the last completed run', () => {
-            const runId = 'run123';
-            store.initializeTestRun(runId, 'global');
-            store.state.lastCompletedRunId = runId;
-            store.state.realtimeTestRuns[runId].failedTestIds.add('test1');
-            store.state.realtimeTestRuns[runId].failedTestIds.add('test2');
+        test('should return failed test IDs from the current run', () => {
+            store.initializeTestRun('global');
+            store.state.testRun.failedTestIds.add('test1');
+            store.state.testRun.failedTestIds.add('test2');
 
             expect(store.getFailedTestIds()).toEqual(['test1', 'test2']);
         });
     });
 
     describe('hasFailedTests', () => {
-        test('should return true if the last completed run has failed tests', () => {
-            const runId = 'run123';
-            store.initializeTestRun(runId, 'global');
-            store.state.lastCompletedRunId = runId;
-            store.state.realtimeTestRuns[runId].failedTestIds.add('test1');
+        test('should return true if the current run has failed tests', () => {
+            store.initializeTestRun('global');
+            store.state.testRun.failedTestIds.add('test1');
 
             expect(store.hasFailedTests()).toBe(true);
         });
@@ -547,15 +537,13 @@ describe('Store', () => {
 
     describe('clearAllResults', () => {
         test('should clear all test runs and reset state', () => {
-            store.initializeTestRun('run1', 'global');
-            store.state.lastCompletedRunId = 'run1';
+            store.initializeTestRun('global');
             store.state.expandedTestId = 'someTest';
             store.state.testSuites = [{ id: 'SuiteA', methods: [{ id: 'test1', status: 'passed' }] }];
 
             store.clearAllResults();
 
-            expect(store.state.realtimeTestRuns).toEqual({});
-            expect(store.state.lastCompletedRunId).toBeNull();
+            expect(store.state.testRun).toBeNull();
             expect(store.state.expandedTestId).toBeNull();
             // Verify the effect of resetSidebarTestStatuses
             expect(store.state.testSuites[0].methods[0].status).toBeNull();

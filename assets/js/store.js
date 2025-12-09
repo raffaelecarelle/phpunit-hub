@@ -41,11 +41,10 @@ const state = reactive({
     options: { ...defaultOptions },
     coverage: false,
 
-    // Test runs
-    runningTestIds: {},
-    stopPending: {},
-    realtimeTestRuns: {},
-    lastCompletedRunId: null,
+    // Test run
+    testRun: null,
+    isRunning: false,
+    isStopping: false,
 
     // Coverage
     coverageReport: null,
@@ -112,47 +111,47 @@ function setStarting(isStarting) {
     state.isStarting = isStarting;
 }
 
-function initializeTestRun(runId, contextId) {
+function initializeTestRun(contextId) {
     state.isStarting = false;
+    state.isRunning = true;
+    state.isStopping = false;
+
     // Always reset for 'global' runs or for 'failed' runs (to show only re-run tests)
     const shouldReset = contextId === 'global' || contextId === 'failed';
 
-    state.realtimeTestRuns[runId] = {
-        status: 'running',
-        contextId,
-        suites: {},
-        summary: null,
-        failedTestIds: new Set(),
-        executionEnded: false,
-        sumOfDurations: 0,
-    };
-    state.runningTestIds[runId] = true;
-    delete state.stopPending[runId];
-
-    // Clear previous results in reset mode or for failed test runs
     if (shouldReset) {
-        state.realtimeTestRuns = { [runId]: state.realtimeTestRuns[runId] };
-        state.lastCompletedRunId = null;
+        state.testRun = {
+            status: 'running',
+            contextId,
+            suites: {},
+            summary: null,
+            failedTestIds: new Set(),
+            executionEnded: false,
+            sumOfDurations: 0,
+        };
         state.expandedTestId = null;
         state.expandedTestcaseGroups = new Set();
         resetSidebarTestStatuses();
+    } else {
+        // This is a single suite run, we don't reset the whole state
+        state.testRun.contextId = contextId;
     }
 
     // Assign runId to suite if this is a suite-level run
     state.testSuites.forEach(suite => {
         if (suite.id === contextId) {
-            suite.runId = runId;
+            suite.isRunning = true;
         }
     });
 
     state.activeTab = 'results';
 }
 
-function handleTestEvent(runId, eventData) {
-    const run = state.realtimeTestRuns[runId];
+function handleTestEvent(eventData) {
+    const run = state.testRun;
 
     if (!run) {
-        console.warn(`Received event for unknown runId: ${runId}`);
+        console.warn(`Received event for unknown run`);
         return;
     }
 
@@ -161,7 +160,7 @@ function handleTestEvent(runId, eventData) {
             handleSuiteStarted(run, eventData);
             break;
         case 'test.prepared':
-            handleTestPrepared(run, eventData, runId);
+            handleTestPrepared(run, eventData);
             break;
         case 'test.warning':
         case 'test.deprecation':
@@ -176,13 +175,13 @@ function handleTestEvent(runId, eventData) {
         case 'test.skipped':
         case 'test.incomplete':
         case 'test.risky':
-            handleTestCompleted(run, eventData, runId);
+            handleTestCompleted(run, eventData);
             break;
         case 'test.finished':
-            handleTestFinished(run, eventData, runId);
+            handleTestFinished(run, eventData);
             break;
         case 'execution.ended':
-            handleExecutionEnded(run, eventData, runId);
+            handleExecutionEnded(run, eventData);
             break;
     }
 }
@@ -205,7 +204,7 @@ function handleSuiteStarted(run, eventData) {
     };
 }
 
-function handleTestPrepared(run, eventData, runId) {
+function handleTestPrepared(run, eventData) {
     const { suiteName, testName } = parseTestId(eventData.data.testId);
 
     if (!run.suites[suiteName]) {
@@ -241,7 +240,7 @@ function handleTestPrepared(run, eventData, runId) {
     };
 
     // Update sidebar
-    updateSidebarTestStatus(suiteName, eventData.data.testId, 'running', null, runId);
+    updateSidebarTestStatus(suiteName, eventData.data.testId, 'running');
 }
 
 function handleTestWarningOrDeprecation(run, eventData) {
@@ -278,7 +277,7 @@ function handleTestNotice(run, eventData) {
     }
 }
 
-function handleTestCompleted(run, eventData, runId) {
+function handleTestCompleted(run, eventData) {
     const { suiteName, testName } = parseTestId(eventData.data.testId);
     const testId = eventData.data.testId;
 
@@ -308,11 +307,11 @@ function handleTestCompleted(run, eventData, runId) {
         }
 
         // Update sidebar
-        updateSidebarTestStatus(suiteName, testId, status, test.duration, runId);
+        updateSidebarTestStatus(suiteName, testId, status, test.duration);
     }
 }
 
-function handleTestFinished(run, eventData, runId) {
+function handleTestFinished(run, eventData) {
     const { suiteName } = parseTestId(eventData.data.testId);
     const testId = eventData.data.testId;
 
@@ -325,33 +324,31 @@ function handleTestFinished(run, eventData, runId) {
         // Also update the sidebar with the final duration.
         // The status might have already been set by handleTestCompleted.
         if (test.status) {
-            updateSidebarTestStatus(suiteName, testId, test.status, test.duration, runId);
+            updateSidebarTestStatus(suiteName, testId, test.status, test.duration);
         }
     }
 }
 
-function handleExecutionEnded(run, eventData, runId) {
+function handleExecutionEnded(run, eventData) {
     run.summary = eventData.data.summary;
     run.executionEnded = true;
     run.status = 'finished';
-    state.lastCompletedRunId = runId;
-    delete state.runningTestIds[runId];
-    delete state.stopPending[runId];
+    state.isRunning = false;
+    state.isStopping = false;
     state.isStarting = false;
-    updateSidebarAfterRun(runId);
+    updateSidebarAfterRun();
     updateFavicon(run.summary.status === 'passed' ? 'success' : 'failure');
 }
 
-function updateSidebarTestStatus(suiteName, testId, status, time = null, runId = null) {
+function updateSidebarTestStatus(suiteName, testId, status, time = null) {
     state.testSuites.forEach(suite => {
         if (suite.id === suiteName) {
             suite.methods?.forEach(method => {
                 if (method.id === testId) {
                     method.status = status;
                     if (time !== null) method.duration = time;
-                    if (runId) method.runId = runId;
                     if (status !== 'running') {
-                        method.runId = null;
+                        suite.isRunning = false;
                     }
                 }
             });
@@ -361,53 +358,50 @@ function updateSidebarTestStatus(suiteName, testId, status, time = null, runId =
 
 export function resetSidebarTestStatuses() {
     state.testSuites.forEach(suite => {
+        suite.isRunning = false;
         suite.methods?.forEach(method => {
             method.status = null;
             method.duration = null;
-            method.runId = null;
         });
     });
 }
 
-function stopTestRun(runId) {
-    const run = state.realtimeTestRuns[runId];
+function stopTestRun() {
+    const run = state.testRun;
     if (run) {
         run.status = 'stopped';
     }
-    delete state.runningTestIds[runId];
-    delete state.stopPending[runId];
+    state.isRunning = false;
+    state.isStopping = false;
     state.isStarting = false;
-    updateSidebarAfterRun(runId);
+    updateSidebarAfterRun();
 }
 
-function updateSidebarAfterRun(runId) {
+function updateSidebarAfterRun() {
     state.testSuites.forEach(suite => {
-        if (suite.runId === runId) suite.runId = null;
-        suite.methods?.forEach(method => {
-            if (method.runId === runId) method.runId = null;
-        });
+        suite.isRunning = false;
     });
 }
 
-function getTestRun(runId) {
-    return state.realtimeTestRuns[runId];
+function getTestRun() {
+    return state.testRun;
 }
 
-function getRunningTestCount() {
-    return Object.keys(state.runningTestIds).length;
+function isTestRunning() {
+    return state.isRunning;
 }
 
 function clearRunningTests() {
-    state.runningTestIds = {};
-    state.stopPending = {};
+    state.isRunning = false;
+    state.isStopping = false;
 }
 
-function markStopPending(runId) {
-    state.stopPending[runId] = true;
+function markStopPending() {
+    state.isStopping = true;
 }
 
-function clearStopPending(runId) {
-    delete state.stopPending[runId];
+function clearStopPending() {
+    state.isStopping = false;
 }
 
 function toggleSuiteExpansion(suiteId) {
@@ -435,12 +429,12 @@ function toggleFilterPanel() {
 }
 
 function getFailedTestIds() {
-    const run = state.realtimeTestRuns[state.lastCompletedRunId];
+    const run = state.testRun;
     return run ? Array.from(run.failedTestIds) : [];
 }
 
 function hasFailedTests() {
-    const run = state.realtimeTestRuns[state.lastCompletedRunId];
+    const run = state.testRun;
     return run ? run.failedTestIds.size > 0 : false;
 }
 
@@ -487,7 +481,7 @@ export function useStore() {
         handleExecutionEnded, // Exporting handleExecutionEnded
         stopTestRun,
         getTestRun,
-        getRunningTestCount,
+        isTestRunning,
         clearRunningTests,
         markStopPending,
         clearStopPending,
@@ -498,8 +492,7 @@ export function useStore() {
         getFailedTestIds,
         hasFailedTests,
         clearAllResults() {
-            this.state.realtimeTestRuns = {};
-            this.state.lastCompletedRunId = null;
+            this.state.testRun = null;
             this.state.expandedTestId = null;
             this.state.expandedTestcaseGroups = new Set();
             this.state.coverageReport = null;

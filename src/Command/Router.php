@@ -10,7 +10,6 @@ use PhpUnitHub\Discoverer\TestDiscoverer;
 use PhpUnitHub\TestRunner\TestRunner;
 use PhpUnitHub\WebSocket\StatusHandler;
 use Psr\Http\Message\RequestInterface;
-use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;
 use Ratchet\Http\HttpServerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -39,14 +38,11 @@ class Router implements RouterInterface
 {
     private readonly string $publicPath;
 
-    /** @var array<string, Process> */
-    private array $runningProcesses = [];
+    private ?Process $runningProcess = null;
 
-    /** @var array<string, array<string, mixed>> */ // Mappa runId a lastFilters, lastSuites, lastGroups, lastOptions
-    private array $runContexts = [];
+    private ?array $runContext = null;
 
-    /** @var array<string, array<string, mixed>> */ // Mappa runId a summary
-    private array $lastRunSummaries = [];
+    private ?array $lastRunSummary = null;
 
     /** @var string[] */
     private array $failedTests = [];
@@ -81,7 +77,8 @@ class Router implements RouterInterface
     public function onOpen(ConnectionInterface $conn, ?RequestInterface $request = null): void
     {
         $path = $request?->getUri()->getPath();
-        $this->output->writeln('Request for ' . $path, OutputInterface::VERBOSITY_VERBOSE);
+        $method = $request?->getMethod();
+        $response = null;
 
         if ($path === '/ws/status') {
             $this->httpServer->onOpen($conn, $request);
@@ -140,26 +137,24 @@ class Router implements RouterInterface
                 $contextId = $payload['contextId'] ?? 'failed';
             }
 
-            $runId = $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage);
-            $jsonResponse = json_encode(['message' => 'Test run started.', 'runId' => $runId], JSON_THROW_ON_ERROR);
+            $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage);
+            $jsonResponse = json_encode(['message' => 'Test run started.'], JSON_THROW_ON_ERROR);
             $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
         } elseif ($path === '/api/stop' && $method === 'POST') {
             // Handle stop requests for all running tests
             $response = $this->stopAllTests();
-        } elseif (str_starts_with((string) $path, '/api/stop-single-test/') && $method === 'POST') {
-            $parts = explode('/', (string) $path);
-            $runId = end($parts);
-            $response = $this->stopSingleTest($runId);
-        } elseif (str_starts_with((string) $path, '/api/coverage/') && $method === 'GET') {
-            $parts = explode('/', (string) $path);
-            $runId = end($parts);
-            $response = $this->getCoverage($runId);
+        } elseif (($path === '/api/stop-single-test' || str_starts_with((string) $path, '/api/stop-single-test/')) && $method === 'POST') {
+            // The path might still contain a runId from older frontends, but we ignore it now.
+            $response = $this->stopSingleTest();
+        } elseif (($path === '/api/coverage' || str_starts_with((string) $path, '/api/coverage/')) && $method === 'GET') {
+            // The path might still contain a runId from older frontends, but we ignore it now.
+            $response = $this->getCoverage();
         } elseif ($path === '/api/file-coverage' && $method === 'GET') {
             $queryParams = [];
             parse_str((string) $request?->getUri()->getQuery(), $queryParams);
             $filePath = $queryParams['path'] ?? null;
-            $runId = $queryParams['runId'] ?? null;
-            $response = $this->getFileCoverage($runId, $filePath);
+
+            $response = $this->getFileCoverage($filePath);
         } elseif ($path === '/api/file-content' && $method === 'GET') {
             $queryParams = [];
             parse_str((string) $request?->getUri()->getQuery(), $queryParams);
@@ -225,13 +220,15 @@ class Router implements RouterInterface
      * @param string[] $groups
      * @param array<string, bool> $options
      * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
-     * @return string The runId of the started test process.
      */
-    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): string
+    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): void
     {
-        $runId = Uuid::uuid4()->toString();
+        if ($this->runningProcess !== null) {
+            $this->output->writeln('<error>A test run is already in progress.</error>');
+            return;
+        }
 
-        $this->runContexts[$runId] = [
+        $this->runContext = [
             'filters' => $filters,
             'suites' => $suites,
             'groups' => $groups,
@@ -240,26 +237,26 @@ class Router implements RouterInterface
             'coverage' => $coverage,
         ];
 
-        $this->output->writeln(sprintf('Starting test run #%s with filters: ', $runId) . implode(', ', $filters));
+        $this->output->writeln('Starting test run with filters: ' . implode(', ', $filters));
 
-        $jsonBroadcast = json_encode(['type' => 'start', 'runId' => $runId, 'contextId' => $contextId], JSON_THROW_ON_ERROR); // Include contextId
+        $jsonBroadcast = json_encode(['type' => 'start', 'contextId' => $contextId], JSON_THROW_ON_ERROR); // Include contextId
         $this->statusHandler->broadcast($jsonBroadcast);
 
-        $process = $this->testRunner->run($this->runContexts[$runId], $runId);
+        $process = $this->testRunner->run($this->runContext);
 
         // Keep a reference so we can terminate later
-        $this->runningProcesses[$runId] = $process;
+        $this->runningProcess = $process;
 
         // Debug: Listen to STDOUT to see normal output
-        $process->stdout->on('data', function ($chunk) use ($runId) {
-            $this->output->writeln(sprintf('[DEBUG STDOUT] Run %s: %s', $runId, trim($chunk)));
+        $process->stdout->on('data', function ($chunk) {
+            $this->output->writeln(sprintf('[DEBUG STDOUT] %s', trim($chunk)));
         });
 
         // Listen to STDERR for realtime events
         $buffer = '';
 
-        $process->stderr->on('data', function ($chunk) use (&$buffer, $runId) {
-            $this->output->writeln(sprintf('[DEBUG] Received STDERR chunk for run %s: %s bytes', $runId, strlen($chunk)));
+        $process->stderr->on('data', function ($chunk) use (&$buffer) {
+            $this->output->writeln(sprintf('[DEBUG] Received STDERR chunk: %s bytes', strlen($chunk)));
 
             $buffer .= $chunk;
             $lines = explode("\n", $buffer);
@@ -293,17 +290,17 @@ class Router implements RouterInterface
 
                 // Store the summary if it's the execution.ended event
                 if ($decodedLine['event'] === 'execution.ended') {
-                    $this->lastRunSummaries[$runId] = $decodedLine['data']['summary'];
+                    $this->lastRunSummary = $decodedLine['data']['summary'];
                 }
 
-                $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line], JSON_THROW_ON_ERROR);
+                $jsonBroadcast = json_encode(['type' => 'realtime', 'data' => $line], JSON_THROW_ON_ERROR);
                 $this->output->writeln('[DEBUG] Broadcasting realtime event');
                 $this->statusHandler->broadcast($jsonBroadcast);
             }
         });
 
-        $process->on('exit', function ($exitCode) use ($runId, $isRerun, $contextId, &$buffer) { // Pass contextId to closure
-            $this->output->writeln(sprintf('Test run #%s finished with code %s.', $runId, $exitCode));
+        $process->on('exit', function ($exitCode) use ($isRerun, $contextId, &$buffer) { // Pass contextId to closure
+            $this->output->writeln(sprintf('Test run finished with code %s.', $exitCode));
 
             // Ensure all buffered data is processed
             if ($buffer !== '' && $buffer !== '0') {
@@ -328,16 +325,16 @@ class Router implements RouterInterface
                     }
 
                     if ($decodedLine['event'] === 'execution.ended') {
-                        $this->lastRunSummaries[$runId] = $decodedLine['data']['summary'];
+                        $this->lastRunSummary = $decodedLine['data']['summary'];
                     }
 
-                    $jsonBroadcast = json_encode(['type' => 'realtime', 'runId' => $runId, 'data' => $line], JSON_THROW_ON_ERROR);
+                    $jsonBroadcast = json_encode(['type' => 'realtime', 'data' => $line], JSON_THROW_ON_ERROR);
                     $this->statusHandler->broadcast($jsonBroadcast);
                 }
             }
 
             // Update failedTests based on the summary
-            $summary = $this->lastRunSummaries[$runId] ?? null;
+            $summary = $this->lastRunSummary;
             if ($summary !== null && !$isRerun) {
                 if (($summary['numberOfFailures'] ?? 0) > 0 || ($summary['numberOfErrors'] ?? 0) > 0) {
                     // If there are failures/errors, we need to collect the actual failed test names
@@ -351,7 +348,6 @@ class Router implements RouterInterface
 
             $jsonBroadcast = json_encode([
                 'type' => 'exit',
-                'runId' => $runId,
                 'exitCode' => $exitCode,
                 'contextId' => $contextId, // Include contextId in exit message
             ], JSON_THROW_ON_ERROR);
@@ -359,37 +355,32 @@ class Router implements RouterInterface
             $this->statusHandler->broadcast($jsonBroadcast);
 
             if ($exitCode) {
-                $this->notify($exitCode, $summary, $runId);
+                $this->notify($exitCode, $summary);
             }
 
-            // Clear running process/runId state
-            unset($this->runningProcesses[$runId]);
+            // Clear running process state
+            $this->runningProcess = null;
+            $this->runContext = null;
         });
-
-        return $runId;
     }
 
     public function getLastFilters(): array
     {
-        // This now refers to the last global run, not a specific single test run
         return $this->lastFilters;
     }
 
     public function getLastGroups(): array
     {
-        // This now refers to the last global run, not a specific single test run
         return $this->lastGroups;
     }
 
     public function getLastOptions(): array
     {
-        // This now refers to the last global run, not a specific single test run
         return $this->lastOptions;
     }
 
     public function getLastSuites(): array
     {
-        // This now refers to the last global run, not a specific single test run
         return $this->lastSuites;
     }
 
@@ -398,14 +389,12 @@ class Router implements RouterInterface
      */
     private function stopAllTests(): GuzzleResponse
     {
-        if ($this->runningProcesses === []) {
+        if ($this->runningProcess === null) {
             $json = json_encode(['error' => 'No test run in progress.'], JSON_THROW_ON_ERROR);
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], $json);
         }
 
-        foreach (array_keys($this->runningProcesses) as $runId) {
-            $this->terminateProcess($runId);
-        }
+        $this->terminateProcess();
 
         $json = json_encode(['message' => 'Stop requested for all running tests.'], JSON_THROW_ON_ERROR);
         return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
@@ -414,22 +403,22 @@ class Router implements RouterInterface
     /**
      * Attempt to stop a specific running test process.
      */
-    private function stopSingleTest(string $runId): GuzzleResponse
+    private function stopSingleTest(): GuzzleResponse
     {
-        if (!isset($this->runningProcesses[$runId])) {
-            $json = json_encode(['error' => sprintf('No test run found with ID %s.', $runId)], JSON_THROW_ON_ERROR);
+        if ($this->runningProcess === null) {
+            $json = json_encode(['error' => 'No test run in progress.'], JSON_THROW_ON_ERROR);
             return new GuzzleResponse(404, ['Content-Type' => 'application/json'], $json);
         }
 
-        $this->terminateProcess($runId);
+        $this->terminateProcess();
 
-        $json = json_encode(['message' => sprintf('Stop requested for test run %s.', $runId)], JSON_THROW_ON_ERROR);
+        $json = json_encode(['message' => 'Stop requested for test run.'], JSON_THROW_ON_ERROR);
         return new GuzzleResponse(202, ['Content-Type' => 'application/json'], $json);
     }
 
-    private function terminateProcess(string $runId): void
+    private function terminateProcess(): void
     {
-        $process = $this->runningProcesses[$runId] ?? null;
+        $process = $this->runningProcess;
         if (!$process instanceof Process || !$process->isRunning()) {
             return;
         }
@@ -437,31 +426,31 @@ class Router implements RouterInterface
         try {
             $process->terminate();
         } catch (Exception $exception) {
-            $this->output->writeln(sprintf('<error>Failed to terminate process for run %s: %s</error>', $runId, $exception->getMessage()));
+            $this->output->writeln(sprintf('<error>Failed to terminate process: %s</error>', $exception->getMessage()));
             return;
         }
 
         // Broadcast a stopped message immediately so the UI can react quickly
-        $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId], JSON_THROW_ON_ERROR);
+        $jsonBroadcast = json_encode(['type' => 'stopped'], JSON_THROW_ON_ERROR);
         $this->statusHandler->broadcast($jsonBroadcast);
 
         // If the process doesn't exit within a short timeout, force-kill it (SIGKILL)
         try {
             $timeoutSeconds = 2.0;
-            Loop::get()->addTimer($timeoutSeconds, function () use ($runId, $process) {
+            Loop::get()->addTimer($timeoutSeconds, function () use ($process) {
                 // force kill
                 $sigkill = defined('SIGKILL') ? SIGKILL : 9;
                 try {
                     $process->terminate($sigkill);
-                    $jsonBroadcast = json_encode(['type' => 'stopped', 'runId' => $runId, 'forced' => true], JSON_THROW_ON_ERROR);
+                    $jsonBroadcast = json_encode(['type' => 'stopped', 'forced' => true], JSON_THROW_ON_ERROR);
                     $this->statusHandler->broadcast($jsonBroadcast);
                 } catch (Exception $exception) {
-                    $this->output->writeln(sprintf('<error>Failed to force-kill process for run %s: %s</error>', $runId, $exception->getMessage()));
+                    $this->output->writeln(sprintf('<error>Failed to force-kill process: %s</error>', $exception->getMessage()));
                 }
             });
         } catch (Exception $exception) {
             // If scheduling the timer fails for any reason, just log it and continue
-            $this->output->writeln(sprintf('<error>Failed to schedule force-kill timer for run %s: %s</error>', $runId, $exception->getMessage()));
+            $this->output->writeln(sprintf('<error>Failed to schedule force-kill timer: %s</error>', $exception->getMessage()));
         }
     }
 
@@ -514,9 +503,8 @@ class Router implements RouterInterface
      *
      * @param int $exitCode The exit code of the PHPUnit process.
      * @param array<string, mixed>|null $summary The summary data from the 'execution.ended' event.
-     * @param string $runId The ID of the test run.
      */
-    private function notify(int $exitCode, ?array $summary, string $runId): void
+    private function notify(int $exitCode, ?array $summary): void
     {
         $notificationTitle = 'PHPUnit Hub Test Results';
 
@@ -534,16 +522,16 @@ class Router implements RouterInterface
         $notificationProcess = new Process($command);
         $notificationProcess->start(Loop::get()); // Usa il loop di eventi predefinito
 
-        $notificationProcess->on('exit', function ($code) use ($runId, $notificationTitle, $notificationMessage, $command) {
+        $notificationProcess->on('exit', function ($code) use ($notificationTitle, $notificationMessage, $command) {
             if ($code !== 0) {
-                $this->output->writeln(sprintf('<error>Failed to send notification for run #%s. Command: "%s", Exit Code: %s</error>', $runId, $command, $code));
+                $this->output->writeln(sprintf('<error>Failed to send notification. Command: "%s", Exit Code: %s</error>', $command, $code));
             } else {
-                $this->output->writeln(sprintf('<info>Notification sent for run #%s: "%s - %s"</info>', $runId, $notificationTitle, $notificationMessage));
+                $this->output->writeln(sprintf('<info>Notification sent: "%s - %s"</info>', $notificationTitle, $notificationMessage));
             }
         });
     }
 
-    private function getCoverage(string $runId): GuzzleResponse
+    private function getCoverage(): GuzzleResponse
     {
         if (!$this->coverage instanceof Coverage) {
             $coveragePath = $this->projectRoot . sprintf('/clover.xml');
@@ -555,14 +543,10 @@ class Router implements RouterInterface
         return new GuzzleResponse(200, ['Content-Type' => 'application/json'], json_encode($data, JSON_THROW_ON_ERROR));
     }
 
-    private function getFileCoverage(?string $runId, ?string $filePath): GuzzleResponse
+    private function getFileCoverage(?string $filePath): GuzzleResponse
     {
         if ($filePath === null) {
             return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'File path not provided.'], JSON_THROW_ON_ERROR));
-        }
-
-        if ($runId === null) {
-            return new GuzzleResponse(400, ['Content-Type' => 'application/json'], json_encode(['error' => 'Run ID not provided.'], JSON_THROW_ON_ERROR));
         }
 
         $coveragePath = $this->projectRoot . sprintf('/clover.xml');

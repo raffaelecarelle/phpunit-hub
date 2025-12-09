@@ -170,30 +170,26 @@ function runSuiteTests(suiteId) {
 
 async function stopAllTests() {
     try {
-        Object.keys(store.state.runningTestIds).forEach(runId => {
-            store.markStopPending(runId);
-        });
+        store.markStopPending();
         await api.stopAllTests();
     } catch (error) {
         console.error('Failed to stop tests:', error);
-        Object.keys(store.state.runningTestIds).forEach(runId => {
-            store.clearStopPending(runId);
-        });
+        store.clearStopPending();
     }
 }
 
-async function stopSingleTest(runId) {
+async function stopSingleTest() {
     try {
-        store.markStopPending(runId);
-        await api.stopSingleTest(runId);
+        store.markStopPending();
+        await api.stopSingleTest();
     } catch (error) {
-        console.error(`Failed to stop test run ${runId}:`, error);
-        store.clearStopPending(runId);
+        console.error(`Failed to stop test run:`, error);
+        store.clearStopPending();
     }
 }
 
 function togglePlayStop() {
-    if (Object.keys(store.state.runningTestIds).length > 0) {
+    if (store.state.isRunning) {
         stopAllTests();
     } else {
         runAllTests();
@@ -236,23 +232,10 @@ function setupResizer() {
 }
 
 const isAnyTestRunning = computed(() => {
-    if (store.state.isStarting) return true;
-    // Check if there are any tests running
-    const runningCount = Object.keys(store.state.runningTestIds).length;
-    if (runningCount === 0) return false;
-
-    // Check if any running test hasn't received execution.ended yet
-    for (const runId in store.state.runningTestIds) {
-        const run = store.state.realtimeTestRuns[runId];
-        if (!run || !run.executionEnded) {
-            return true;
-        }
-    }
-
-    return false;
+    return store.state.isStarting || store.state.isRunning;
 });
 
-const isAnyStopPending = computed(() => Object.keys(store.state.stopPending).length > 0);
+const isAnyStopPending = computed(() => store.state.isStopping);
 
 const hasFailedTests = computed(() => store.hasFailedTests());
 
@@ -265,19 +248,8 @@ const individualResults = computed(() => getIndividualResults());
 const statusCounts = computed(() => getStatusCounts());
 
 function getResults() {
-    const runs = store.state.realtimeTestRuns;
-    const runIds = Object.keys(runs);
-
-    if (runIds.length === 0) {
-        return null;
-    }
-
-    // Always show only the last completed run
-    let runId = store.state.lastCompletedRunId;
-    if (!runId) {
-        runId = runIds[runIds.length - 1];
-    }
-    return getSingleRunResults(runs[runId]);
+    const run = store.state.testRun;
+    return getSingleRunResults(run);
 }
 
 function calculateRealtimeSummary(run) {
@@ -603,9 +575,9 @@ function getStatusCounts() {
     return counts;
 }
 
-async function fetchCoverageReport(runId) {
+async function fetchCoverageReport() {
     try {
-        const report = await api.fetchCoverage(runId);
+        const report = await api.fetchCoverage();
         store.setCoverageReport(report);
     } catch (error) {
         console.error('Failed to fetch coverage report:', error);
@@ -616,24 +588,19 @@ async function fetchCoverageReport(runId) {
 
 async function showFileCoverage(filePath) {
     try {
-        const runId = store.state.lastCompletedRunId;
-        if (!runId) {
-            console.error('No completed run ID found for file coverage.');
-            return;
-        }
-        const coverage = await api.fetchFileCoverage(runId, filePath);
+        const coverage = await api.fetchFileCoverage(filePath);
         store.setFileCoverage({ ...coverage, path: filePath });
     } catch (error) {
         console.error('Failed to fetch file coverage:', error);
     }
 }
 
-function isTestRunning(runId) {
-    return store.state.runningTestIds[runId] === true;
+function isTestRunning() {
+    return store.state.isRunning;
 }
 
-function isTestStopPending(runId) {
-    return store.state.stopPending[runId] === true;
+function isTestStopPending() {
+    return store.state.isStopping;
 }
 
 function formatNanoseconds(nanoseconds) {
