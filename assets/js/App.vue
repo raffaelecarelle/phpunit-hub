@@ -46,13 +46,9 @@ import MainContent from './components/MainContent.vue';
 const store = useStore();
 const api = new ApiClient('');
 let wsManager = null;
-const testIndex = {};
 
 onMounted(async () => {
     try {
-        // Fetch tests
-        await fetchTests();
-
         // Connect WebSocket
         const wsHost = window.WS_HOST || '127.0.0.1';
         const wsPort = window.WS_PORT || '8080';
@@ -75,38 +71,6 @@ onMounted(async () => {
 watch(() => [store.state.options, store.state.selectedSuites, store.state.selectedGroups, store.state.coverage], (newState, oldState) => {
     store.saveState();
 }, { deep: true });
-
-async function fetchTests() {
-    store.state.isLoading = true;
-    try {
-        const data = await api.fetchTests();
-        store.state.testSuites = data.suites;
-        store.state.availableSuites = data.availableSuites || [];
-        store.state.availableGroups = data.availableGroups || [];
-        store.state.coverageDriverMissing = !data.coverageDriver;
-
-        // Build test index
-        buildTestIndex();
-    } catch (error) {
-        console.error('Failed to fetch tests:', error);
-        throw error; // Re-throw the error
-    } finally {
-        store.state.isLoading = false;
-    }
-}
-
-function buildTestIndex() {
-    store.state.testSuites.forEach(suite => {
-        if (suite.methods) {
-            suite.methods.forEach(method => {
-                testIndex[method.id] = {
-                    suite,
-                    method
-                };
-            });
-        }
-    });
-}
 
 async function stopSingleTest() {
     try {

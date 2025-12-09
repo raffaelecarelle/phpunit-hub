@@ -24,13 +24,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useStore } from '../store.js';
 import TestSearchBar from './sidebar/TestSearchBar.vue';
 import TestSuite from './sidebar/TestSuite.vue';
+import { ApiClient } from '../api.js';
 
+const api = new ApiClient('');
 const store = useStore();
 const suitesToDisplay = ref(store.state.testSuites || []);
+const testIndex = {};
 
 defineProps(['isTestRunning', 'isTestStopPending']);
 const emit = defineEmits(['toggle-suite', 'stopSingleTest']);
@@ -41,5 +44,46 @@ function toggleSuite(suiteId) {
 
 function stopSingleTest() {
     emit('stopSingleTest');
+}
+
+onMounted(async () => {
+    try {
+        // Fetch tests
+        await fetchTests();
+    } catch (error) {
+        console.error('Failed to initialize sidebar:', error);
+    }
+});
+
+async function fetchTests() {
+    store.state.isLoading = true;
+    try {
+        const data = await api.fetchTests();
+        store.state.testSuites = data.suites;
+        store.state.availableSuites = data.availableSuites || [];
+        store.state.availableGroups = data.availableGroups || [];
+        store.state.coverageDriverMissing = !data.coverageDriver;
+
+        // Build test index
+        buildTestIndex();
+    } catch (error) {
+        console.error('Failed to fetch tests:', error);
+        throw error; // Re-throw the error
+    } finally {
+        store.state.isLoading = false;
+    }
+}
+
+function buildTestIndex() {
+    store.state.testSuites.forEach(suite => {
+        if (suite.methods) {
+            suite.methods.forEach(method => {
+                testIndex[method.id] = {
+                    suite,
+                    method
+                };
+            });
+        }
+    });
 }
 </script>
