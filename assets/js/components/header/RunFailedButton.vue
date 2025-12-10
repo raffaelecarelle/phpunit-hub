@@ -10,9 +10,9 @@
 import { computed } from 'vue';
 import { useStore } from '../../store.js';
 
-const hasFailedTests = computed(() => store.hasFailedTests());
-
 const store = useStore();
+
+const hasFailedTests = computed(() => store.hasFailedTests());
 
 function runFailedTests() {
     store.runFailedTests();
