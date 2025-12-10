@@ -1,16 +1,16 @@
 <template>
-    <div class="mb-4">
-        <TestSuiteHeader
-            :suite="suite"
-            @toggle-suite="toggleSuiteExpansion"
-            @runSuiteTests="runSuiteTests"
-        />
-        <TestList
-            v-show="store.state.expandedSuites.has(suite.id)"
-            :suite="suite"
-            @runSingleTest="runSingleTest"
-        />
-    </div>
+  <div class="mb-4">
+    <TestSuiteHeader
+      :suite="suite"
+      @toggle-suite="toggleSuiteExpansion"
+      @run-suite-tests="runSuiteTests"
+    />
+    <TestList
+      v-show="store.state.expandedSuites.has(suite.id)"
+      :suite="suite"
+      @run-single-test="runSingleTest"
+    />
+  </div>
 </template>
 
 <script setup>

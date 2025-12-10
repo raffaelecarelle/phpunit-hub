@@ -1,17 +1,23 @@
 <template>
-    <div id="app" class="flex flex-col h-screen">
-        <Header></Header>
+  <div
+    id="app"
+    class="flex flex-col h-screen"
+  >
+    <Header />
 
-        <!-- Main Container -->
-        <div class="flex flex-grow overflow-hidden">
-            <TestSidebar></TestSidebar>
+    <!-- Main Container -->
+    <div class="flex flex-grow overflow-hidden">
+      <TestSidebar />
 
-            <!-- Resizer -->
-            <div id="resizer" class="w-1.5 cursor-col-resize bg-gray-700 hover:bg-blue-600 transition-colors duration-200"></div>
+      <!-- Resizer -->
+      <div
+        id="resizer"
+        class="w-1.5 cursor-col-resize bg-gray-700 hover:bg-blue-600 transition-colors duration-200"
+      />
 
-            <MainContent></MainContent>
-        </div>
+      <MainContent />
     </div>
+  </div>
 </template>
 
 <script setup>

@@ -1,4 +1,4 @@
-import { vi } from 'vitest'; // Import vi from vitest
+import {vi, expect, test, describe, beforeEach, afterEach} from 'vitest'; // Import vi from vitest
 
 // Mock the global WebSocket object
 const mockWebSocketInstance = {
@@ -10,7 +10,7 @@ const mockWebSocketInstance = {
     send: vi.fn(),
 };
 // Mock WebSocket as a constructor that returns mockWebSocketInstance
-const MockWebSocket = vi.fn(function WebSocket(url) {
+const MockWebSocket = vi.fn(function WebSocket() {
     // In a real scenario, you might want to store the URL or other constructor args
     // For now, just return the predefined mock instance
     return mockWebSocketInstance;
@@ -40,7 +40,7 @@ class MockStore {
     }
 }
 
-import { WebSocketManager } from '../websocket.js';
+import {WebSocketManager} from '../websocket.js';
 
 describe('WebSocketManager', () => {
     let wsManager;
@@ -53,9 +53,12 @@ describe('WebSocketManager', () => {
 
         vi.clearAllMocks();
         Utils.updateFavicon.mockClear(); // Clear the mock here
-        vi.spyOn(console, 'log').mockImplementation(() => {});
-        vi.spyOn(console, 'error').mockImplementation(() => {});
-        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'log').mockImplementation(() => {
+        });
+        vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        vi.spyOn(console, 'warn').mockImplementation(() => {
+        });
         vi.useFakeTimers(); // Mock timers for setTimeout
     });
 
@@ -86,7 +89,9 @@ describe('WebSocketManager', () => {
         });
 
         test('should reject if WebSocket constructor throws an error', async () => {
-            MockWebSocket.mockImplementationOnce(() => { throw new Error('Invalid URL'); });
+            MockWebSocket.mockImplementationOnce(() => {
+                throw new Error('Invalid URL');
+            });
             await expect(wsManager.connect()).rejects.toThrow('Invalid URL');
         });
     });
@@ -123,19 +128,19 @@ describe('WebSocketManager', () => {
 
     describe('handleMessage', () => {
         test('should call handleTestStart for "start" message type', () => {
-            const message = { type: 'start', contextId: 'global' };
+            const message = {type: 'start', contextId: 'global'};
             wsManager.handleMessage(message);
             expect(store.initializeTestRun).toHaveBeenCalledWith('global');
         });
 
         test('should call handleRealtimeEvent for "realtime" message type', () => {
-            const message = { type: 'realtime', data: JSON.stringify({ event: 'test.prepared' }) };
+            const message = {type: 'realtime', data: JSON.stringify({event: 'test.prepared'})};
             wsManager.handleMessage(message);
-            expect(store.handleTestEvent).toHaveBeenCalledWith({ event: 'test.prepared' });
+            expect(store.handleTestEvent).toHaveBeenCalledWith({event: 'test.prepared'});
         });
 
         test('should call handleTestExit for "exit" message type', () => {
-            const message = { type: 'exit' };
+            const message = {type: 'exit'};
             const fetchCoverageReportSpy = vi.fn();
             wsManager.callbacks.fetchCoverageReport = fetchCoverageReportSpy;
             store.state.coverage = true;
@@ -144,7 +149,7 @@ describe('WebSocketManager', () => {
         });
 
         test('should call handleTestStopped for "stopped" message type', () => {
-            const message = { type: 'stopped' };
+            const message = {type: 'stopped'};
             const updateFaviconSpy = vi.spyOn(wsManager, 'updateFaviconIfComplete');
             wsManager.handleMessage(message);
             expect(store.stopTestRun).toHaveBeenCalled();
@@ -152,7 +157,7 @@ describe('WebSocketManager', () => {
         });
 
         test('should warn for unknown message type', () => {
-            const message = { type: 'unknown' };
+            const message = {type: 'unknown'};
             wsManager.handleMessage(message);
             expect(console.warn).toHaveBeenCalledWith('Unknown message type:', 'unknown');
         });
@@ -160,13 +165,13 @@ describe('WebSocketManager', () => {
 
     describe('handleRealtimeEvent', () => {
         test('should parse message data and call store.handleTestEvent', () => {
-            const message = { data: JSON.stringify({ event: 'test.passed', data: { test: 'Suite::test' } }) };
+            const message = {data: JSON.stringify({event: 'test.passed', data: {test: 'Suite::test'}})};
             wsManager.handleRealtimeEvent(message);
-            expect(store.handleTestEvent).toHaveBeenCalledWith({ event: 'test.passed', data: { test: 'Suite::test' } });
+            expect(store.handleTestEvent).toHaveBeenCalledWith({event: 'test.passed', data: {test: 'Suite::test'}});
         });
 
         test('should log an error if message data is invalid JSON', () => {
-            const message = { data: 'invalid json' };
+            const message = {data: 'invalid json'};
             wsManager.handleRealtimeEvent(message);
             expect(console.error).toHaveBeenCalledWith('Failed to parse realtime event:', expect.any(Error), 'invalid json');
         });

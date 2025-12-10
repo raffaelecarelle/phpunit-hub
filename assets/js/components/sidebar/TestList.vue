@@ -1,12 +1,12 @@
 <template>
-    <ul class="ml-2 mt-2 space-y-1">
-        <TestItem
-            v-for="method in suite.methods"
-            :key="method.id"
-            :method="method"
-            @runSingleTest="runSingleTest"
-        />
-    </ul>
+  <ul class="ml-2 mt-2 space-y-1">
+    <TestItem
+      v-for="method in suite.methods"
+      :key="method.id"
+      :method="method"
+      @run-single-test="runSingleTest"
+    />
+  </ul>
 </template>
 
 <script setup>

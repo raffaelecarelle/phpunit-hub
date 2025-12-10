@@ -1,5 +1,5 @@
 // Mock Vue's reactive function
-import { vi } from 'vitest';
+import { vi, expect, describe, test, beforeEach, afterEach} from 'vitest';
 
 vi.mock('vue', () => ({
     reactive: (obj) => obj,

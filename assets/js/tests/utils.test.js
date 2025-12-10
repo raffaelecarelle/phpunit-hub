@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 // Mock btoa as it's not available in a Node.js test environment
-import { vi } from 'vitest'; // Import vi from vitest
+import { vi, expect, test, describe, beforeEach } from 'vitest'; // Import vi from vitest
 
 global.btoa = vi.fn((str) => Buffer.from(str).toString('base64'));
 
