@@ -103,6 +103,7 @@ class TestRunner
             if ($option === 'displayRisky') {
                 continue;
             }
+
             if ($isEnabled) {
                 // Convert the camelCase option name from the frontend to the kebab-case CLI flag.
                 $optionFlag = '--' . $this->camelToKebab($option);
@@ -141,22 +142,22 @@ class TestRunner
         // 4. Create a composite stream to merge the process's actual STDERR with the UDP event stream.
         // This allows the application to listen on a single stream for both test events and any real errors
         // that might occur, like PHPUnit startup failures.
-        $compositeStderr = new ThroughStream();
+        $throughStream = new ThroughStream();
 
         // Forward any actual STDERR output from the process to our composite stream.
-        $process->stderr->on('data', fn ($data) => $compositeStderr->write($data));
+        $process->stderr->on('data', fn ($data) => $throughStream->write($data));
 
         // Listen for incoming data on the UDP socket and forward it to the composite stream.
-        $this->loop->addReadStream($udpSocket, function ($socket) use ($compositeStderr) {
+        $this->loop->addReadStream($udpSocket, function ($socket) use ($throughStream) {
             $data = stream_socket_recvfrom($socket, 65535); // Read up to 64KB
             if ($data !== false && $data !== '') {
-                $compositeStderr->write($data);
+                $throughStream->write($data);
             }
         });
 
         // 5. Replace the original stderr stream on the process object with our composite stream.
         // From now on, consumers of the process's stderr will receive the merged data.
-        $process->stderr = $compositeStderr;
+        $process->stderr = $throughStream;
 
         // 6. Clean up resources when the process exits.
         $process->on('exit', function () use ($udpSocket) {
@@ -193,6 +194,7 @@ class TestRunner
         if ($cloverReport instanceof DOMElement && $cloverReport->hasAttribute('outputFile')) {
             $cloverFile = $cloverReport->getAttribute('outputFile');
         }
+
         $command .= ' --coverage-clover ' . escapeshellarg($cloverFile);
 
         // Find source inclusion/exclusion paths to pass as filters.

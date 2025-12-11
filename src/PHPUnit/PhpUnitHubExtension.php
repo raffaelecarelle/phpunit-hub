@@ -42,7 +42,7 @@ use PHPUnit\Runner\Extension\ParameterCollection;
 use PHPUnit\TextUI\Configuration\Configuration;
 use PHPUnit\TestRunner\TestResult\Facade as TestResultFacade;
 use PHPUnit\Event\Test\FinishedSubscriber as TestFinishedSubscriber;
-use function var_dump;
+
 use function getenv;
 use function stream_socket_client;
 
@@ -73,8 +73,8 @@ class PhpUnitHubExtension implements Extension
         // It serializes event data into a JSON payload and sends it.
         $writeEvent = static function (string $event, array $data) use ($udpSocket): void {
             $payload = json_encode(['event' => $event, 'data' => $data]) . "\n";
-            
-            if ($udpSocket) {
+
+            if ($udpSocket !== null) {
                 // If the UDP socket is available, send the data over it (fire and forget).
                 // This is the preferred method for real-time, unbuffered communication.
                 @fwrite($udpSocket, $payload);
@@ -92,7 +92,7 @@ class PhpUnitHubExtension implements Extension
             // Check if the test name matches the pattern for a test with a data set.
             if (preg_match('/^(.*?) with data set "(.*)"$/', $testId, $matches)) {
                 [, $methodName, $dataSetName] = $matches;
-                
+
                 // Attempt to decode the data set name as a JSON string.
                 // Data providers often serialize complex data types (like arrays or objects) as JSON.
                 $dataSet = json_decode($dataSetName, true);
@@ -118,6 +118,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test is about to start.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PreparedSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -138,6 +139,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test passes successfully.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PassedSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -158,6 +160,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test fails due to an assertion failure.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements FailedSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -180,6 +183,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test encounters an error (e.g., an uncaught exception).
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements ErroredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -202,6 +206,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test is skipped (e.g., via markTestSkipped()).
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements SkippedSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -223,6 +228,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test is marked as incomplete.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements MarkedIncompleteSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -244,6 +250,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a warning.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements WarningTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -265,6 +272,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a user-level deprecation notice.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements DeprecationTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -286,6 +294,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a PHP-level deprecation notice.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpDeprecationTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -307,6 +316,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test is considered risky (e.g., performs no assertions).
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements ConsideredRiskySubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -328,6 +338,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a user-level notice.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements NoticeTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -349,6 +360,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a PHP-level notice.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpNoticeTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -370,6 +382,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when a test triggers a PHP-level warning.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements PhpWarningTriggeredSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
@@ -449,6 +462,7 @@ class PhpUnitHubExtension implements Extension
         // Subscriber for when an individual test has finished, regardless of its outcome.
         $facade->registerSubscriber(new class ($writeEvent, $formatTestId) implements TestFinishedSubscriber {
             private readonly Closure $writeEvent;
+
             private readonly Closure $formatTestId;
 
             public function __construct(callable $writeEvent, callable $formatTestId)
