@@ -41,7 +41,7 @@ const state = reactive({
     selectedGroups: [],
     options: { ...defaultOptions },
     coverage: false,
-    parallel: false, // Added parallel flag
+    parallel: false,
 
     // Test run
     testRun: null,
@@ -74,7 +74,7 @@ async function _runTests(runOptions = {}) {
         suites: state.selectedSuites,
         options: { ...phpunitOptions, colors: true },
         coverage: !!state.coverage,
-        parallel: !!state.parallel, // Pass parallel state
+        parallel: !!state.parallel,
         contextId: runOptions.contextId || 'global',
     };
 
@@ -123,7 +123,7 @@ function saveState() {
         selectedSuites: state.selectedSuites,
         selectedGroups: state.selectedGroups,
         coverage: state.coverage,
-        parallel: state.parallel, // Save parallel state
+        parallel: state.parallel,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
@@ -515,7 +515,7 @@ function clearFilters() {
     state.selectedSuites = [];
     state.selectedGroups = [];
     state.coverage = false;
-    state.parallel = false; // Reset parallel state on clear filters
+    state.parallel = false;
     state.options = { ...defaultOptions };
 }
 
