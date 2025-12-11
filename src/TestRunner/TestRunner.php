@@ -156,6 +156,7 @@ class TestRunner
                         fclose($conn);
                         return;
                     }
+
                     $throughStream->write($data);
                 });
             }

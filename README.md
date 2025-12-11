@@ -104,7 +104,7 @@ That's it! All dependencies will be installed automatically.
     - The **"Results"** tab will populate in real-time as tests execute, showing you immediate feedback on test status, failures, and errors.
     - Tests are grouped by their TestCase class, with failures and errors displayed prominently at the top.
 
-### Running Tests in Parallel with ParaTest
+### Running Tests in Parallel with ParaTeste
 
 PHPUnit Hub supports running tests in parallel using [ParaTest](https://github.com/paratestphp/paratest). This can significantly speed up your test execution on multi-core machines.
 

@@ -25,15 +25,15 @@ class TestRunnerTest extends TestCase
         parent::setUp();
         $this->loop = $this->createMock(LoopInterface::class);
         $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid('', true);
-        mkdir($this->tempDir, 0777, true);
+        mkdir($this->tempDir, 0o777, true);
 
         // Create a fake vendor/bin directory
         $binDir = $this->tempDir . '/vendor/bin';
-        mkdir($binDir, 0777, true);
+        mkdir($binDir, 0o777, true);
         file_put_contents($binDir . '/phpunit', '#!/usr/bin/env php');
         file_put_contents($binDir . '/paratest', '#!/usr/bin/env php');
-        chmod($binDir . '/phpunit', 0755);
-        chmod($binDir . '/paratest', 0755);
+        chmod($binDir . '/phpunit', 0o755);
+        chmod($binDir . '/paratest', 0o755);
 
 
         $this->originalCwd = getcwd();
@@ -58,7 +58,7 @@ class TestRunnerTest extends TestCase
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? $this->deleteDirectory("$dir/$file") : unlink("$dir/$file");
+            (is_dir(sprintf('%s/%s', $dir, $file))) ? $this->deleteDirectory(sprintf('%s/%s', $dir, $file)) : unlink(sprintf('%s/%s', $dir, $file));
         }
 
         rmdir($dir);
@@ -91,8 +91,8 @@ class TestRunnerTest extends TestCase
         $process = $testRunner->run(['filters' => [], 'coverage' => false]);
 
         $reflectionClass = new ReflectionClass(Process::class);
-        $envProperty = $reflectionClass->getProperty('env');
-        $env = $envProperty->getValue($process);
+        $reflectionProperty = $reflectionClass->getProperty('env');
+        $env = $reflectionProperty->getValue($process);
 
         $this->assertArrayHasKey('PHPUNIT_GUI_TCP_PORT', $env);
         $this->assertIsNumeric($env['PHPUNIT_GUI_TCP_PORT']);
