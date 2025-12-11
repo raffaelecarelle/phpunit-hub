@@ -193,7 +193,10 @@
             </div>
         </div>
 
-        <div class="form-group">
+        <div
+            v-if="store.state.paratest"
+            class="form-group"
+        >
             <label class="block text-sm font-medium text-gray-300 mb-2">Parallel</label>
             <div class="grid grid-cols-2 gap-2">
                 <label class="flex items-center text-sm">

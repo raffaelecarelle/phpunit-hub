@@ -42,6 +42,7 @@ const state = reactive({
     options: { ...defaultOptions },
     coverage: false,
     parallel: false,
+    paratest: false,
 
     // Test run
     testRun: null,
