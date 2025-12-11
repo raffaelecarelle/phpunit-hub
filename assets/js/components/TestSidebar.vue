@@ -57,6 +57,7 @@ async function fetchTests() {
         store.state.availableSuites = data.availableSuites || [];
         store.state.availableGroups = data.availableGroups || [];
         store.state.coverageDriverMissing = !data.coverageDriver;
+        store.state.paratest = data.paratest;
 
         // Build test index
         buildTestIndex();

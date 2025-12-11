@@ -32,8 +32,6 @@ use function sprintf;
 use function str_replace;
 use function str_starts_with;
 
-// Aggiunto per chiarezza, anche se probabilmente già presente
-
 class Router implements RouterInterface
 {
     private readonly string $publicPath;
@@ -107,6 +105,7 @@ class Router implements RouterInterface
             $options = [];
             $isRerun = false;
             $coverage = false;
+            $parallel = false;
 
             if ($path === '/api/run') {
                 $body = $request?->getBody()->getContents();
@@ -117,6 +116,7 @@ class Router implements RouterInterface
                 $options = $payload['options'] ?? [];
                 $coverage = $payload['coverage'] ?? false;
                 $contextId = $payload['contextId'] ?? null; // Get contextId from payload
+                $parallel = $payload['parallel'] ?? false;
                 $this->lastFilters = $filters;
                 $this->lastSuites = $suites;
                 $this->lastGroups = $groups;
@@ -138,7 +138,7 @@ class Router implements RouterInterface
                 $contextId = $payload['contextId'] ?? 'failed';
             }
 
-            $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage);
+            $this->runTests($filters, $suites, $groups, $options, $isRerun, $contextId, $coverage, $parallel);
             $jsonResponse = json_encode(['message' => 'Test run started.'], JSON_THROW_ON_ERROR);
             $response = new GuzzleResponse(202, ['Content-Type' => 'application/json'], $jsonResponse);
         } elseif ($path === '/api/stop' && $method === 'POST') {
@@ -222,7 +222,7 @@ class Router implements RouterInterface
      * @param array<string, bool> $options
      * @param string|null $contextId An identifier from the frontend to associate this run with a specific UI element.
      */
-    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false): void
+    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false, bool $parallel = false): void
     {
         if ($this->runningProcess instanceof Process) {
             $this->output->writeln('<error>A test run is already in progress.</error>');
@@ -236,6 +236,7 @@ class Router implements RouterInterface
             'options' => $options,
             'contextId' => $contextId, // Store contextId
             'coverage' => $coverage,
+            'parallel' => $parallel,
         ];
 
         $this->output->writeln('Starting test run with filters: ' . implode(', ', $filters));

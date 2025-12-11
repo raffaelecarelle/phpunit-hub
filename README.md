@@ -104,6 +104,42 @@ That's it! All dependencies will be installed automatically.
     - The **"Results"** tab will populate in real-time as tests execute, showing you immediate feedback on test status, failures, and errors.
     - Tests are grouped by their TestCase class, with failures and errors displayed prominently at the top.
 
+### Running Tests in Parallel with ParaTeste
+
+PHPUnit Hub supports running tests in parallel using [ParaTest](https://github.com/paratestphp/paratest). This can significantly speed up your test execution on multi-core machines.
+
+To use ParaTest, first install it as a development dependency:
+
+```sh
+composer require --dev brianium/paratest
+```
+
+Then, you can flag on UI "Run in parallel" settings
+
+**Generating Coverage with ParaTest**:
+
+If you want to generate code coverage reports while running tests in parallel with ParaTest, you need to configure a `cacheDirectory` in your `phpunit.xml` or `phpunit.xml.dist` file. This is crucial for ParaTest to correctly aggregate coverage data from parallel processes.
+
+Add the `cacheDirectory` attribute to your `<phpunit>` tag:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+             bootstrap="vendor/autoload.php"
+             colors="true"
+             cacheDirectory=".phpunit.cache"> <!-- Add this line for ParaTest coverage -->
+    <testsuites>
+        <testsuite name="default">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <extensions>
+        <bootstrap class="PhpUnitHub\PHPUnit\PhpUnitHubExtension"/>
+    </extensions>
+</phpunit>
+```
+
 ### File Watching (Auto Re-run)
 
 To automatically re-run tests whenever a source or test file changes, start the server with the `--watch` option:

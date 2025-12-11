@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
 use React\EventLoop\LoopInterface;
+use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 
@@ -24,7 +25,16 @@ class TestRunnerTest extends TestCase
         parent::setUp();
         $this->loop = $this->createMock(LoopInterface::class);
         $this->tempDir = sys_get_temp_dir() . '/phpunit-gui-test-runner-' . uniqid('', true);
-        mkdir($this->tempDir);
+        mkdir($this->tempDir, 0o777, true);
+
+        // Create a fake vendor/bin directory
+        $binDir = $this->tempDir . '/vendor/bin';
+        mkdir($binDir, 0o777, true);
+        file_put_contents($binDir . '/phpunit', '#!/usr/bin/env php');
+        file_put_contents($binDir . '/paratest', '#!/usr/bin/env php');
+        chmod($binDir . '/phpunit', 0o755);
+        chmod($binDir . '/paratest', 0o755);
+
 
         $this->originalCwd = getcwd();
         chdir($this->tempDir);
@@ -34,19 +44,24 @@ class TestRunnerTest extends TestCase
     {
         chdir($this->originalCwd);
         if (is_dir($this->tempDir)) {
-            $files = glob($this->tempDir . '/*');
-            if ($files !== false) {
-                foreach ($files as $file) {
-                    if (is_file($file)) {
-                        unlink($file);
-                    }
-                }
-            }
-
-            rmdir($this->tempDir);
+            $this->deleteDirectory($this->tempDir);
         }
 
         parent::tearDown();
+    }
+
+    private function deleteDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            (is_dir(sprintf('%s/%s', $dir, $file))) ? $this->deleteDirectory(sprintf('%s/%s', $dir, $file)) : unlink(sprintf('%s/%s', $dir, $file));
+        }
+
+        rmdir($dir);
     }
 
     public function testRunReturnsProcessInstance(): void
@@ -54,6 +69,33 @@ class TestRunnerTest extends TestCase
         $testRunner = new TestRunner($this->loop, $this->tempDir);
         $process = $testRunner->run(['filters' => [], 'coverage' => false]);
         $this->assertInstanceOf(Process::class, $process);
+    }
+
+    public function testRunBuildsCorrectCommandForParatest(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $testRunner->run(['filters' => [], 'coverage' => false, 'parallel' => true]);
+
+        $command = $testRunner->getLastCommand();
+
+        $this->assertStringContainsString('bin/paratest', $command);
+        $this->assertStringNotContainsString('bin/phpunit', $command);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testRunSetsTcpPortEnvironmentVariable(): void
+    {
+        $testRunner = new TestRunner($this->loop, $this->tempDir);
+        $process = $testRunner->run(['filters' => [], 'coverage' => false]);
+
+        $reflectionClass = new ReflectionClass(Process::class);
+        $reflectionProperty = $reflectionClass->getProperty('env');
+        $env = $reflectionProperty->getValue($process);
+
+        $this->assertArrayHasKey('PHPUNIT_GUI_TCP_PORT', $env);
+        $this->assertIsNumeric($env['PHPUNIT_GUI_TCP_PORT']);
     }
 
     /**

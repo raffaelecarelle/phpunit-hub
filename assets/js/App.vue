@@ -57,7 +57,8 @@ watch(() => [
     store.state.options,
     store.state.selectedSuites,
     store.state.selectedGroups,
-    store.state.coverage
+    store.state.coverage,
+    store.state.parallel
 ], () => {
     store.saveState();
 }, { deep: true });

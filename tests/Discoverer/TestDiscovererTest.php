@@ -78,7 +78,7 @@ class TestDiscovererTest extends TestCase
     {
         $testDiscoverer = new TestDiscoverer($this->projectRoot);
         $result = $testDiscoverer->discover();
-        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false], $result);
+        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false], $result);
     }
 
     public function testDiscoverWithInvalidConfigFile(): void
@@ -86,7 +86,7 @@ class TestDiscovererTest extends TestCase
         $this->createConfigFile('phpunit.xml', 'invalid xml');
         $testDiscoverer = new TestDiscoverer($this->projectRoot);
         $result = $testDiscoverer->discover();
-        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false], $result);
+        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false], $result);
     }
 
     public function testDiscoverSuites(): void
@@ -117,5 +117,20 @@ class TestDiscovererTest extends TestCase
         $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
         $result = $testDiscoverer->discover();
         $this->assertNotEmpty($result['suites']);
+    }
+
+    public function testDiscoverDetectsParatest(): void
+    {
+        $this->createConfigFile('phpunit.xml', '<phpunit/>');
+        $binDir = Composer::getComposerBinDir($this->projectRoot);
+        $this->filesystem->dumpFile($binDir . '/phpunit', '#!/usr/bin/env php');
+        $this->filesystem->dumpFile($binDir . '/paratest', '#!/usr/bin/env php');
+
+        $this->phpUnitCommandExecutor->method('execute')->willReturn('');
+
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
+        $result = $testDiscoverer->discover();
+
+        $this->assertTrue($result['paratest']);
     }
 }

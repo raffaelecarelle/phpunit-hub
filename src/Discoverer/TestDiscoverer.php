@@ -19,12 +19,16 @@ class TestDiscoverer
 
     private readonly string $phpunitPath;
 
+    private readonly string $paratestPath;
+
     public function __construct(
         private readonly string $projectRoot,
         private readonly PhpUnitCommandExecutor $phpUnitCommandExecutor = new PhpUnitCommandExecutor()
     ) {
         $this->configFile = $this->findConfigFile();
-        $this->phpunitPath = Composer::getComposerBinDir($projectRoot) . DIRECTORY_SEPARATOR . 'phpunit';
+        $binDir = Composer::getComposerBinDir($projectRoot);
+        $this->phpunitPath = $binDir . DIRECTORY_SEPARATOR . 'phpunit';
+        $this->paratestPath = $binDir . DIRECTORY_SEPARATOR . 'paratest';
     }
 
     /**
@@ -40,13 +44,14 @@ class TestDiscoverer
      *     }>,
      *     availableSuites: string[],
      *     availableGroups: string[],
-     *     coverageDriver: bool
+     *     coverageDriver: bool,
+     *     paratest: bool
      * }
      */
     public function discover(): array
     {
         if (!is_file($this->configFile) || !is_file($this->phpunitPath)) {
-            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false];
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false];
         }
 
         try {
@@ -54,8 +59,9 @@ class TestDiscoverer
             $availableGroups = $this->discoverGroups();
             $foundTests = $this->discoverTests();
             $coverageDriver = (new Coverage($this->projectRoot, ''))->hasDriver();
+            $paratest = is_file($this->paratestPath);
         } catch (Exception) {
-            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false];
+            return ['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false];
         }
 
         return [
@@ -63,6 +69,7 @@ class TestDiscoverer
             'availableSuites' => $availableSuites,
             'availableGroups' => $availableGroups,
             'coverageDriver' => $coverageDriver,
+            'paratest' => $paratest,
         ];
     }
 
