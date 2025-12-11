@@ -118,4 +118,19 @@ class TestDiscovererTest extends TestCase
         $result = $testDiscoverer->discover();
         $this->assertNotEmpty($result['suites']);
     }
+
+    public function testDiscoverDetectsParatest(): void
+    {
+        $this->createConfigFile('phpunit.xml', '<phpunit/>');
+        $binDir = Composer::getComposerBinDir($this->projectRoot);
+        $this->filesystem->dumpFile($binDir . '/phpunit', '#!/usr/bin/env php');
+        $this->filesystem->dumpFile($binDir . '/paratest', '#!/usr/bin/env php');
+
+        $this->phpUnitCommandExecutor->method('execute')->willReturn('');
+
+        $testDiscoverer = new TestDiscoverer($this->projectRoot, $this->phpUnitCommandExecutor);
+        $result = $testDiscoverer->discover();
+
+        $this->assertTrue($result['paratest']);
+    }
 }

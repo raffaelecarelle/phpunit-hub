@@ -60,28 +60,37 @@ class PhpUnitHubExtension implements Extension
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
         // When running tests in parallel (e.g., with ParaTest), standard output can be buffered,
-        // which delays the GUI from receiving event data. To solve this, we open a direct UDP socket
-        // to the GUI if the 'PHPUNIT_GUI_UDP_PORT' environment variable is set.
-        $udpSocket = null;
-        $udpPort = getenv('PHPUNIT_GUI_UDP_PORT');
-        if ($udpPort !== false) {
+        // which delays the GUI from receiving event data. To solve this, we open a direct TCP socket
+        // to the GUI if the 'PHPUNIT_GUI_TCP_PORT' environment variable is set.
+        $socket = null;
+        $tcpPort = getenv('PHPUNIT_GUI_TCP_PORT');
+        if ($tcpPort !== false) {
             // The '@' suppresses errors in case the connection fails (e.g., if the GUI is not running).
-            $udpSocket = @stream_socket_client('udp://127.0.0.1:' . $udpPort, $errno, $errstr, 0);
+            // We use a persistent connection to avoid reconnecting for every event within the same worker process.
+            $socket = @stream_socket_client(
+                'tcp://127.0.0.1:' . $tcpPort,
+                $errno,
+                $errstr,
+                30,
+                STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT
+            );
         }
 
         // This helper function is the central communication channel to the GUI.
         // It serializes event data into a JSON payload and sends it.
-        $writeEvent = static function (string $event, array $data) use ($udpSocket): void {
+        $writeEvent = static function (string $event, array $data) use ($socket): void {
+            // We append a newline character to each payload. This is crucial for message framing
+            // on the server side, allowing it to distinguish between separate JSON messages in the TCP stream.
             $payload = json_encode(['event' => $event, 'data' => $data]) . "\n";
 
-            if ($udpSocket !== null) {
-                // If the UDP socket is available, send the data over it (fire and forget).
+            if ($socket !== null) {
+                // If the TCP socket is available, send the data over it.
                 // This is the preferred method for real-time, unbuffered communication.
-                @fwrite($udpSocket, $payload);
+                @fwrite($socket, $payload);
                 return;
             }
 
-            // As a fallback, if the UDP socket is not available, we write the event data to STDERR.
+            // As a fallback, if the socket is not available, we write the event data to STDERR.
             // We use STDERR to avoid mixing our JSON output with PHPUnit's standard test results on STDOUT.
             fwrite(STDERR, $payload);
         };

@@ -22,7 +22,8 @@ use function trim;
 use function stream_socket_server;
 use function stream_set_blocking;
 use function stream_socket_get_name;
-use function stream_socket_recvfrom;
+use function stream_socket_accept;
+use function stream_get_contents;
 use function fclose;
 use function getenv;
 use function array_merge;
@@ -118,51 +119,55 @@ class TestRunner
 
         $this->lastCommand = $command;
 
-        // --- UDP Socket for Real-time Event Streaming ---
-        // When using ParaTest, workers buffer their output, which means we don't get events in real-time.
-        // To work around this, our PhpUnitHubExtension sends events over a UDP socket. Here, we set up
-        // the server side of that communication channel.
+        // --- TCP Server for Real-time Event Streaming ---
+        // When using ParaTest, workers buffer their output. To work around this, our PhpUnitHubExtension
+        // connects to a TCP server to send events in real-time.
 
-        // 1. Create a UDP server socket. We use port 0 to let the OS choose a random, free port.
-        $udpSocket = stream_socket_server('udp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND);
-        stream_set_blocking($udpSocket, false); // Use non-blocking mode to integrate with the event loop.
+        // 1. Create a TCP server socket on a random free port.
+        $tcpServer = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+        stream_set_blocking($tcpServer, false);
 
         // 2. Retrieve the dynamically assigned port.
-        $address = stream_socket_get_name($udpSocket, false);
+        $address = stream_socket_get_name($tcpServer, false);
         $port = (int) substr(strrchr($address, ':'), 1);
 
         // 3. Pass the port to the child process via an environment variable.
-        // The PhpUnitHubExtension in the child process will read this variable to know where to send events.
-        // We must merge with getenv() to ensure the child process inherits the existing environment.
-        $env = array_merge(getenv(), ['PHPUNIT_GUI_UDP_PORT' => (string) $port]);
+        $env = array_merge(getenv(), ['PHPUNIT_GUI_TCP_PORT' => (string) $port]);
 
         $process = new Process($command, $this->projectRoot, $env);
         $process->start($this->loop);
 
-        // 4. Create a composite stream to merge the process's actual STDERR with the UDP event stream.
-        // This allows the application to listen on a single stream for both test events and any real errors
-        // that might occur, like PHPUnit startup failures.
+        // 4. Create a composite stream to merge the process's actual STDERR with the TCP event stream.
         $throughStream = new ThroughStream();
 
         // Forward any actual STDERR output from the process to our composite stream.
         $process->stderr->on('data', fn ($data) => $throughStream->write($data));
 
-        // Listen for incoming data on the UDP socket and forward it to the composite stream.
-        $this->loop->addReadStream($udpSocket, function ($socket) use ($throughStream) {
-            $data = stream_socket_recvfrom($socket, 65535); // Read up to 64KB
-            if ($data !== false && $data !== '') {
-                $throughStream->write($data);
+        // 5. Listen for incoming connections on the TCP server.
+        $this->loop->addReadStream($tcpServer, function ($server) use ($throughStream) {
+            $conn = @stream_socket_accept($server);
+            if ($conn) {
+                stream_set_blocking($conn, false);
+                $this->loop->addReadStream($conn, function ($conn) use ($throughStream) {
+                    $data = stream_get_contents($conn);
+                    if ($data === '' || $data === false) {
+                        // Connection closed by the worker
+                        $this->loop->removeReadStream($conn);
+                        fclose($conn);
+                        return;
+                    }
+                    $throughStream->write($data);
+                });
             }
         });
 
-        // 5. Replace the original stderr stream on the process object with our composite stream.
-        // From now on, consumers of the process's stderr will receive the merged data.
+        // 6. Replace the original stderr stream on the process object with our composite stream.
         $process->stderr = $throughStream;
 
-        // 6. Clean up resources when the process exits.
-        $process->on('exit', function () use ($udpSocket) {
-            $this->loop->removeReadStream($udpSocket);
-            fclose($udpSocket);
+        // 7. Clean up the server socket when the main process exits.
+        $process->on('exit', function () use ($tcpServer) {
+            $this->loop->removeReadStream($tcpServer);
+            fclose($tcpServer);
         });
 
         return $process;
