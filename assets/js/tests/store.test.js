@@ -69,6 +69,7 @@ describe('Store', () => {
             isRunning: false,
             isStopping: false,
             parallel: false,
+            paratest: false,
             options: {
                 displayDeprecations: true,
                 displayIncomplete: true,

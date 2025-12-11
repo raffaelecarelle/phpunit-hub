@@ -78,7 +78,7 @@ class TestDiscovererTest extends TestCase
     {
         $testDiscoverer = new TestDiscoverer($this->projectRoot);
         $result = $testDiscoverer->discover();
-        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false], $result);
+        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false], $result);
     }
 
     public function testDiscoverWithInvalidConfigFile(): void
@@ -86,7 +86,7 @@ class TestDiscovererTest extends TestCase
         $this->createConfigFile('phpunit.xml', 'invalid xml');
         $testDiscoverer = new TestDiscoverer($this->projectRoot);
         $result = $testDiscoverer->discover();
-        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false], $result);
+        $this->assertEquals(['suites' => [], 'availableSuites' => [], 'availableGroups' => [], 'coverageDriver' => false, 'paratest' => false], $result);
     }
 
     public function testDiscoverSuites(): void
