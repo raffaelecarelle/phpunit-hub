@@ -12,7 +12,7 @@ interface RouterInterface extends HttpServerInterface
      * @param string[] $groups
      * @param array<string, bool> $options
      */
-    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false): void;
+    public function runTests(array $filters, array $suites = [], array $groups = [], array $options = [], bool $isRerun = false, ?string $contextId = null, bool $coverage = false, bool $parallel = false): void;
 
     /**
      * @return string[]

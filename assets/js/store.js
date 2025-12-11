@@ -41,6 +41,7 @@ const state = reactive({
     selectedGroups: [],
     options: { ...defaultOptions },
     coverage: false,
+    parallel: false, // Added parallel flag
 
     // Test run
     testRun: null,
@@ -73,6 +74,7 @@ async function _runTests(runOptions = {}) {
         suites: state.selectedSuites,
         options: { ...phpunitOptions, colors: true },
         coverage: !!state.coverage,
+        parallel: !!state.parallel, // Pass parallel state
         contextId: runOptions.contextId || 'global',
     };
 
@@ -105,6 +107,9 @@ function loadState() {
             if(parsedState.coverage) {
                 state.coverage = parsedState.coverage;
             }
+            if(parsedState.parallel) { // Load parallel state
+                state.parallel = parsedState.parallel;
+            }
         } catch (e) {
             console.error('Failed to load state from localStorage', e);
             localStorage.removeItem(STORAGE_KEY);
@@ -118,6 +123,7 @@ function saveState() {
         selectedSuites: state.selectedSuites,
         selectedGroups: state.selectedGroups,
         coverage: state.coverage,
+        parallel: state.parallel, // Save parallel state
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
 }
@@ -509,6 +515,7 @@ function clearFilters() {
     state.selectedSuites = [];
     state.selectedGroups = [];
     state.coverage = false;
+    state.parallel = false; // Reset parallel state on clear filters
     state.options = { ...defaultOptions };
 }
 
