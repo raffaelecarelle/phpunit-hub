@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use PhpUnitHub\TestRunner\TestRunner;
 use React\EventLoop\LoopInterface;
+use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 
@@ -81,12 +82,17 @@ class TestRunnerTest extends TestCase
         $this->assertStringNotContainsString('bin/phpunit', $command);
     }
 
+    /**
+     * @throws ReflectionException
+     */
     public function testRunSetsTcpPortEnvironmentVariable(): void
     {
         $testRunner = new TestRunner($this->loop, $this->tempDir);
         $process = $testRunner->run(['filters' => [], 'coverage' => false]);
 
-        $env = $process->getEnv();
+        $reflectionClass = new ReflectionClass(Process::class);
+        $envProperty = $reflectionClass->getProperty('env');
+        $env = $envProperty->getValue($process);
 
         $this->assertArrayHasKey('PHPUNIT_GUI_TCP_PORT', $env);
         $this->assertIsNumeric($env['PHPUNIT_GUI_TCP_PORT']);
