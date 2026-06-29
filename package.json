@@ -18,8 +18,8 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "@babel/core": "^7.23.9",
-        "@babel/preset-env": "^7.23.9",
+        "@babel/core": "^8.0.1",
+        "@babel/preset-env": "^8.0.2",
         "@tailwindcss/vite": "^4.1.17",
         "@vitejs/plugin-vue": "^6.0.2",
         "@vue/test-utils": "^2.4.6",
